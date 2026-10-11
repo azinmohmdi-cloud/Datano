@@ -44,8 +44,9 @@ Development normally serves port 3000; production start requires a successful
 build. Installation needs npm registry access, and the existing `next/font/google`
 fonts need Google Fonts access on an uncached dev compilation/build. No API URL
 or running backend is required for the current homepage and invoice examples.
-No frontend test runner or test script is configured. See the engineering
-guide for runner-neutral TDD and task validation; do not claim nonexistent tests passed.
+Playwright browser tests are configured; see [Browser tests](#browser-tests).
+No unit/component test runner is configured. See the engineering guide for
+runner-neutral TDD and task validation.
 
 The recorded setup, initial diagnostics, and validation results for `FE-001`
 are in [the frontend baseline report](docs/validation/FE-001-baseline.md).
@@ -178,7 +179,9 @@ outer `main` or document-level header/footer.
 The header contains only **حساب کاربری**, **درباره ما**, **سرویس‌ها**, and
 **ورود**, plus the home-linked Datano wordmark. Links remain visible in a
 two-column grid on mobile and a row on larger screens. Native links, visible
-keyboard focus, and the skip link work without JavaScript. Styling reuses
+keyboard focus, and the skip link work without JavaScript. The skip link uses
+Next/Link so its hash entry also participates in App Router back navigation.
+Styling reuses
 `buttonVariants`, `cn`, and the existing theme tokens.
 
 `components/layout/ProductLayout/links.ts` defines the reserved destinations:
@@ -250,8 +253,70 @@ The opt-in is a local development switch, not an authentication mechanism.
 
 See [FE-005 validation](docs/validation/FE-005-ui-review.md) for route exclusion,
 determinism, keyboard, responsive/theme, and product-isolation checks. Project
-Playwright infrastructure remains the separate FE-006 task; FE-005 adds no
-browser dependency or test runner.
+Playwright infrastructure is documented below; FE-005 itself added no browser
+dependency or test runner.
+
+## Browser tests
+
+The repository pins `@playwright/test` 1.62.1 in devDependencies. From `Frontend/`,
+with the declared Node/pnpm versions selected:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm test:e2e:install
+pnpm test:e2e
+```
+
+The install script downloads Chromium matching the locked Playwright release;
+Linux hosts may additionally need `pnpm exec playwright install --with-deps chromium`.
+Browser downloads need access to Playwright's distribution service. Uncached
+Next dev startup still needs the existing Google Fonts resources; tests do not
+require a running backend or Google API account.
+
+If Chromium download is unavailable and Google Chrome is already installed,
+select it **explicitly**:
+
+```sh
+PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e
+```
+
+This uses the host Chrome version; it is not a substitute for validating the
+default bundled browser. With the variable unset, Playwright uses its matching
+Chromium. Other channel values fail configuration rather than silently changing
+the browser. Record the selected browser when reporting results.
+
+`playwright.config.ts` starts/stops its own Next development server on
+`http://127.0.0.1:3100` with private UI review enabled. It refuses an already-running
+server; stop any process occupying that port before testing. Another Next dev
+process in this same checkout also holds `.next/dev/lock` and must be stopped.
+The configuration never changes `.env` or makes private fixtures available in
+production. Locale/timezone/light theme/reduced motion are explicit. One worker,
+zero retries, bounded timeouts, and forbidden `test.only` keep failures visible.
+
+The mobile project uses 390×844 with touch/mobile emulation; desktop uses
+1440×900. Both use the Chromium engine. Tests live in `tests/e2e/`; the scoped
+`fixtures/ui-review.ts` fixture opens public/ready/guest in Playwright's fresh
+page/context for each test, with no shared session, backend, random invoice hook,
+or import of application fixtures. Assertions use fixed independent expectations.
+Coverage includes Persian RTL and canonical LTR values, navigation/keyboard/back,
+fixed states/reload/reset without auth effects, and the skip link without JS.
+
+Useful commands:
+
+```sh
+pnpm test:e2e --project=mobile
+pnpm test:e2e --project=desktop
+pnpm test:e2e --repeat-each=2
+pnpm test:e2e --list
+pnpm exec playwright show-report
+```
+
+HTML reports are in `playwright-report/`; failure screenshots/traces in
+`test-results/`. These and optional blob reports are Git/ESLint-ignored generated
+artifacts. The reporter does not open a browser automatically. A failure trace can
+be inspected with `pnpm exec playwright show-trace <trace.zip>`.
+See [FE-006 validation](docs/validation/FE-006-playwright.md) for executed results
+and the browser-download limitation on the validation workstation.
 
 ## API generation and transport
 

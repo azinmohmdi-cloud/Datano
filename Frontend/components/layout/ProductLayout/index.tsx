@@ -1,4 +1,5 @@
 import type { PropsWithChildren } from "react";
+import Link from "next/link";
 
 import ProductHeader from "./header";
 import ProductFooter from "./footer";
@@ -6,12 +7,13 @@ import ProductFooter from "./footer";
 export default function ProductLayout({ children }: PropsWithChildren) {
   return (
     <div className="relative flex min-h-dvh w-full min-w-0 flex-col bg-background text-foreground">
-      <a
+      <Link
         href="#main-content"
+        prefetch={false}
         className="absolute start-4 top-4 z-50 -translate-y-24 rounded-lg bg-background px-4 py-2 text-sm font-medium shadow-md focus:translate-y-0 focus-visible:ring-3 focus-visible:ring-ring"
       >
         رفتن به محتوای اصلی
-      </a>
+      </Link>
       <ProductHeader />
       <main
         id="main-content"
