@@ -154,6 +154,62 @@ must originate within a client boundary. The invoice examples keep their existin
 feature states. See [FE-003 validation](docs/validation/FE-003-shared-ui.md) for
 the focused browser checks and tooling boundaries.
 
+## Product layout composition
+
+`app/(product)/layout.tsx` composes the shared `ProductLayout`: a skip link,
+`ProductHeader`, one `main#main-content`, and the single `ProductFooter`.
+All product pages belong below this route group. Root providers/fonts remain
+in `app/layout.tsx`; the English examples retain their separate ExampleLayout.
+Route groups do not change public URLs: the existing homepage remains `/`.
+
+| Content scope | App Router layout | Shared content component |
+| --- | --- | --- |
+| Public and future authentication pages | `app/(product)/(public)/layout.tsx` | `components/layout/PublicLayout` |
+| Account, future profile/admin/site list | `app/(product)/account/layout.tsx` | `components/layout/AccountLayout` |
+| Individual site workspace | `app/(product)/sites/[siteId]/layout.tsx` | `components/layout/SiteLayout` |
+
+These inner layouts provide responsive content width/padding. They are used
+**inside ProductLayout** and do not repeat header/footer/main landmarks.
+Account content is capped at `max-w-5xl`; public/site content at `max-w-7xl`.
+ProductLayout grows with content and keeps the footer at the viewport bottom on
+short pages. Use one scope layout per page; page content should not add another
+outer `main` or document-level header/footer.
+
+The header contains only **حساب کاربری**, **درباره ما**, **سرویس‌ها**, and
+**ورود**, plus the home-linked Datano wordmark. Links remain visible in a
+two-column grid on mobile and a row on larger screens. Native links, visible
+keyboard focus, and the skip link work without JavaScript. Styling reuses
+`buttonVariants`, `cn`, and the existing theme tokens.
+
+`components/layout/ProductLayout/links.ts` defines the reserved destinations:
+`/account`, `/about`, `/services`, and `/login`. The header does not infer a
+session/role or implement account redirects. **Only the homepage currently has
+product content**; these destination pages are pending their own tasks and still
+return 404. Automatic prefetching of navigation links is disabled. Do not add
+placeholder login/profile/dashboard pages or claim authentication to make the
+shell appear complete. Account routing from trusted session data remains FE-030.
+
+Every product scope inherits the same footer: Datano wordmark, exactly the three
+quick links (home/services/about), and `© 2026 Datano. تمامی حقوق محفوظ است.`
+No approved logo asset exists yet, so branding uses a text wordmark. No unverified
+contact details, social links, or additional sections are supplied.
+
+For isolated composition, such as the future private UI review environment:
+
+```tsx
+import ProductLayout from "@/components/layout/ProductLayout"
+import AccountLayout from "@/components/layout/AccountLayout"
+
+<ProductLayout>
+  <AccountLayout>{children}</AccountLayout>
+</ProductLayout>
+```
+
+The same pattern applies to PublicLayout/SiteLayout. App Router already supplies
+the outer ProductLayout; pages in that group must not wrap it a second time.
+See [FE-004 validation](docs/validation/FE-004-layouts.md) for production/dev,
+browser, keyboard, responsive, and regression checks.
+
 ## API generation and transport
 
 Set `OPENAPI_JSON_URL` to a reachable backend schema, normally
