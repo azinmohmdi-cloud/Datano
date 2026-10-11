@@ -50,6 +50,31 @@ guide for runner-neutral TDD and task validation; do not claim nonexistent tests
 The recorded setup, initial diagnostics, and validation results for `FE-001`
 are in [the frontend baseline report](docs/validation/FE-001-baseline.md).
 
+## Persian typography and direction
+
+The root document sets `lang="fa"` and `dir="rtl"`. Vazirmatn is loaded once
+through `next/font/google` with Arabic and Latin subsets and `display: "swap"`.
+Global `font-sans` and `font-heading` tokens use `--font-vazirmatn`; controls
+inherit the same typography. The existing Geist Mono token remains available
+for technical code. Product layouts inherit this setup without loading fonts
+or repeating direction settings. The root title/description are Persian;
+page titles can use the shared `%s | دیتانو` template.
+
+Global base styles give email/URL inputs and `code`, `kbd`, `samp`, and `pre`
+left-to-right direction with bidi isolation. These defaults respect an explicit
+`dir` attribute. For displayed email addresses, URLs, or identifiers inside
+Persian prose, isolate the exact value explicitly:
+
+```tsx
+<p>
+  نشانی: <bdi dir="ltr">person+tag@example.com</bdi>
+</p>
+```
+
+Use `dir="auto"` for text of unknown direction. Keep canonical values unchanged;
+direction styles do not translate, normalize, or insert characters into them.
+The existing English invoice examples retain their demo content.
+
 ## API generation and transport
 
 Set `OPENAPI_JSON_URL` to a reachable backend schema, normally
