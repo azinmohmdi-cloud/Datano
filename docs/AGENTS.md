@@ -359,6 +359,16 @@ destructive cleanup unless explicitly authorized. A plan, successful test run,
 backlog checkbox, or suggested commit message does not grant such permission.
 Do not invent a branch, release, CI, or deployment policy.
 
+**Monorepo structure and Git scope**
+
+The Datano workspace is a monorepo managed by a single Git repository at the workspace root. The `Frontend/`, `Backend/`, and `docs/` directories are parts of the same repository, not independent Git repositories.
+
+All Git operations must respect the shared repository structure. Before proposing a commit, inspect the actual diff and identify the affected workspace areas.
+
+Use clear, conventional commit messages with appropriate scopes when applicable, such as `feat(frontend):`, `fix(backend):`, or `docs:`. For changes spanning multiple areas, choose a message that accurately describes the overall change.
+
+Do not assume that changes across different workspace directories belong in the same commit. Group related changes logically and never stage or commit unrelated changes.
+
 ## 10. Automatic completion reports
 
 After each explicitly requested implementation task, automatically provide a
