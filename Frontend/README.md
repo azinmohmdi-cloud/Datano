@@ -75,6 +75,85 @@ Use `dir="auto"` for text of unknown direction. Keep canonical values unchanged;
 direction styles do not translate, normalize, or insert characters into them.
 The existing English invoice examples retain their demo content.
 
+## Shared forms, cards, and states
+
+Named exports under `components/ui/` provide `Input`, `Checkbox`,
+`Field`/`FieldLabel`/`FieldDescription`/`FieldError`, the `Card` parts, and
+`LoadingState`/`EmptyState`/`ErrorState`. They use the installed Base UI,
+Lucide icons, `cn`, and light/dark theme tokens. No fetching, domain validation,
+form library, or product flow is built into these primitives.
+
+Group **one control per Field**. Base UI creates unique control/message IDs and
+connects the label, description, and visible errors automatically. An explicit
+control `id` is supported. Keep errors inside the same Field; remove them when
+resolved so their description references are also removed. For externally
+controlled validation, set `invalid` on Field and conditionally render
+`FieldError match={true}` with the translated message:
+
+```tsx
+import { Field, FieldLabel, FieldDescription, FieldError } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+
+// Inside a client feature: values and callbacks come from its injector.
+<Field name="email" invalid={Boolean(error)}>
+  <FieldLabel>ایمیل</FieldLabel>
+  <Input
+    type="email"
+    autoComplete="email"
+    required
+    value={email}
+    onValueChange={onChangeEmail}
+  />
+  <FieldDescription>نشانی ایمیل خود را وارد کنید.</FieldDescription>
+  {error && <FieldError match={true}>{error}</FieldError>}
+</Field>
+```
+
+Field also preserves Base UI's validation props (`validate`, `validationMode`,
+and `disabled`). Supply Persian validation messages; browser-generated messages
+are not automatically translated. Input supports native attributes and refs,
+`value`/`defaultValue`, and `onValueChange`. Its email/URL direction inherits the
+FE-002 global rules. These styled Base UI wrappers accept a string `className`.
+
+Checkbox supports `checked`/`onCheckedChange`, `defaultChecked`, `indeterminate`,
+`required`, `readOnly`, `disabled`, `name`, and `value`. Its native input participates
+in form submission. Label activation and Space toggle it; disabled controls skip
+keyboard navigation. Use the same Field composition for checkbox errors:
+
+```tsx
+<Field name="remember">
+  <div className="flex items-center gap-2">
+    <Checkbox value="yes" />
+    <FieldLabel>مرا به خاطر بسپار</FieldLabel>
+  </div>
+</Field>
+```
+
+`CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, and `CardFooter`
+compose a Card without owning feature behavior. CardTitle renders an `h2`;
+choose heading levels to match the consuming page. Content wraps long unbroken
+text rather than stretching the page.
+
+State components require a supplied `title` and accept an optional `description`.
+LoadingState exposes a polite status and respects reduced motion. EmptyState
+is ordinary empty-result content; ErrorState exposes its message as an alert.
+EmptyState/ErrorState accept an `action` node, allowing the existing Button or
+links to be reused. Only provide recovery actions backed by a real callback:
+
+```tsx
+<ErrorState
+  title="دریافت اطلاعات ناموفق بود"
+  description="دوباره تلاش کنید."
+  action={<Button type="button" onClick={onRetry}>تلاش دوباره</Button>}
+/>
+```
+
+Form/state components are client primitives where interaction requires it;
+Card and status presentation remain usable in server composition. Event callbacks
+must originate within a client boundary. The invoice examples keep their existing
+feature states. See [FE-003 validation](docs/validation/FE-003-shared-ui.md) for
+the focused browser checks and tooling boundaries.
+
 ## API generation and transport
 
 Set `OPENAPI_JSON_URL` to a reachable backend schema, normally
