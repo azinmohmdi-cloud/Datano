@@ -26,7 +26,7 @@ export const fetcherHookAdapter = <T>(
     method: (options?.method as AxiosRequestConfig["method"]) ?? "GET",
     headers: options?.headers as Record<string, string>,
     signal: options?.signal ?? undefined,
-    data: (options as any)?.body,
+    data: options?.body,
   };
   return customFetcher<T>(config);
 };

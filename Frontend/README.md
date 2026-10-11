@@ -21,8 +21,14 @@ randomized examples; routine tests must use deterministic fixtures.
 
 ## Development
 
-Run commands from `Frontend/`. The locked toolchain needs Node >=22.18.0 for
-Orval (Next.js itself needs >=20.9.0). Preserve the pnpm lockfile and
+Run commands from `Frontend/`. Use Node **24.19.0** from `.nvmrc` and pnpm
+**11.25.0** from `package.json`. With an existing nvm installation, run
+`nvm install` and `nvm use`; another version manager can select the same Node
+version. If pnpm is unavailable, install the declared version with
+`npm install --global pnpm@11.25.0`. Verify `node --version` and `pnpm --version`
+before installing dependencies. Node must be >=22.18.0 for the locked Orval
+(Next.js itself needs >=20.9.0). Ensure the selected Node is first in `PATH` so
+pnpm scripts and child processes also use it. Preserve the pnpm lockfile and
 `pnpm-workspace.yaml` build-script policy.
 
 ```sh
@@ -35,8 +41,14 @@ pnpm start
 ```
 
 Development normally serves port 3000; production start requires a successful
-build. No frontend test runner or test script is configured. See the engineering
+build. Installation needs npm registry access, and the existing `next/font/google`
+fonts need Google Fonts access on an uncached dev compilation/build. No API URL
+or running backend is required for the current homepage and invoice examples.
+No frontend test runner or test script is configured. See the engineering
 guide for runner-neutral TDD and task validation; do not claim nonexistent tests passed.
+
+The recorded setup, initial diagnostics, and validation results for `FE-001`
+are in [the frontend baseline report](docs/validation/FE-001-baseline.md).
 
 ## API generation and transport
 

@@ -1,5 +1,5 @@
-import { Invoice } from "@/lib/types/Invoice";
-import { useEffect, useState } from "react";
+import type { Invoice } from "@/lib/types/Invoice";
+import { useQuery } from "@tanstack/react-query";
 
 export interface UseGetAdminInvoicesReturn {
   invoices: Invoice[];
@@ -7,26 +7,22 @@ export interface UseGetAdminInvoicesReturn {
 }
 
 export default function useGetAdminInvoices(): UseGetAdminInvoicesReturn {
-  // Your integration with data layer goes here
-  // fetching, reading from cache, mocking, etc.
-  // no mather what happens, the contract is already
-  // exists as UseXXXReturn interface at the top
-  const [data, setData] = useState<Invoice[]>([]);
-  const [succeed, setSucceed] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    // We can mock data until the final solution is ready
-    if (Math.random() > 0.15) {
-      setData(MOCKED_ADMIN_INVOICES);
-      setSucceed(true);
-    } else {
-      setSucceed(false);
-    }
-  }, []);
+  const { data, isPending, isError } = useQuery({
+    queryKey: ["examples", "invoices", "admin"],
+    queryFn: async () => {
+      // Random outcomes belong only to this existing demo.
+      if (Math.random() <= 0.15) {
+        throw new Error("Failed to load invoices.");
+      }
+      return MOCKED_ADMIN_INVOICES;
+    },
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
 
   return {
-    invoices: data,
-    succeed,
+    invoices: data ?? [],
+    succeed: isPending ? null : !isError,
   };
 }
 
