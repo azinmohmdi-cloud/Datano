@@ -1,0 +1,100 @@
+[
+  {
+    "id": "708269c3-6740-445d-a528-ff88c60c7eb5",
+    "title": "super:user",
+    "description": "Ability to do anything",
+    "created_at": "2025-12-12T00:31:06Z",
+    "updated_at": "2025-12-13T19:35:32Z"
+  },
+  {
+    "id": "a7a7a152-0738-496a-893e-5beec67c349c",
+    "title": "permissions:read",
+    "description": "Ability to read permissions",
+    "created_at": "2025-12-12T00:33:28Z",
+    "updated_at": "2025-12-12T00:33:28Z"
+  },
+  {
+    "id": "5079a76b-427a-4a68-8178-dcf12d25915e",
+    "title": "roles:create",
+    "description": "Ability to create roles",
+    "created_at": "2025-12-12T00:34:06Z",
+    "updated_at": "2025-12-12T00:34:06Z"
+  },
+  {
+    "id": "df372a87-6d17-481d-9a6c-002bb9590703",
+    "title": "roles:read",
+    "description": "Ability to read roles",
+    "created_at": "2025-12-12T00:34:32Z",
+    "updated_at": "2025-12-12T00:34:32Z"
+  },
+  {
+    "id": "e756611f-1311-4ce5-b470-0c39a947a782",
+    "title": "roles:update",
+    "description": "Ability to update roles",
+    "created_at": "2025-12-12T00:35:11Z",
+    "updated_at": "2025-12-12T00:35:11Z"
+  },
+  {
+    "id": "27d97cc1-01d7-48e6-9644-955c884297ce",
+    "title": "roles:delete",
+    "description": "Ability to delete roles",
+    "created_at": "2025-12-12T00:36:04Z",
+    "updated_at": "2025-12-12T00:36:04Z"
+  },
+  {
+    "id": "4ccef382-49a7-4a0c-8532-f9e1510345e8",
+    "title": "roles:assign_permission",
+    "description": "Ability to assign permissions to roles",
+    "created_at": "2025-12-12T00:37:27Z",
+    "updated_at": "2025-12-12T00:37:27Z"
+  },
+  {
+    "id": "1172ee5f-73f4-4333-b131-d168d8420375",
+    "title": "roles:unassign_permission",
+    "description": "Ability to remove permissions from roles",
+    "created_at": "2025-12-12T00:38:42Z",
+    "updated_at": "2025-12-12T00:38:42Z"
+  },
+  {
+    "id": "42a81114-3fe6-4b3e-86f9-d4ef14be65b2",
+    "title": "users:create",
+    "description": "Ability to create users",
+    "created_at": "2025-12-12T00:42:08Z",
+    "updated_at": "2025-12-12T00:42:08Z"
+  },
+  {
+    "id": "16d66325-e959-46d6-a538-69adb33418e1",
+    "title": "users:read",
+    "description": "Ability to read users",
+    "created_at": "2025-12-12T00:42:16Z",
+    "updated_at": "2025-12-12T00:42:16Z"
+  },
+  {
+    "id": "9b21dc05-4483-4ee5-b2a8-1cb40ca3dd38",
+    "title": "users:update",
+    "description": "Ability to update users",
+    "created_at": "2025-12-12T00:42:29Z",
+    "updated_at": "2025-12-12T00:42:29Z"
+  },
+  {
+    "id": "cf9835c2-afe2-4504-891c-5c2cdb2fa5aa",
+    "title": "users:delete",
+    "description": "Ability to remove users",
+    "created_at": "2025-12-12T00:42:45Z",
+    "updated_at": "2025-12-12T00:42:45Z"
+  },
+  {
+    "id": "88cd4ed4-97d8-4265-88b2-bacaa44e16a9",
+    "title": "users:assign_role",
+    "description": "Ability to assign roles to users",
+    "created_at": "2025-12-12T00:42:59Z",
+    "updated_at": "2025-12-12T00:42:59Z"
+  },
+  {
+    "id": "3920e61d-1d5f-4cae-ac5e-391a455e8e15",
+    "title": "users:unassign_role",
+    "description": "Ability to remove roles from users",
+    "created_at": "2025-12-12T00:43:41Z",
+    "updated_at": "2025-12-12T00:43:41Z"
+  }
+]
