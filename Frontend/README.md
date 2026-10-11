@@ -194,7 +194,7 @@ quick links (home/services/about), and `© 2026 Datano. تمامی حقوق مح
 No approved logo asset exists yet, so branding uses a text wordmark. No unverified
 contact details, social links, or additional sections are supplied.
 
-For isolated composition, such as the future private UI review environment:
+For isolated composition, such as the private UI review environment:
 
 ```tsx
 import ProductLayout from "@/components/layout/ProductLayout"
@@ -209,6 +209,49 @@ The same pattern applies to PublicLayout/SiteLayout. App Router already supplies
 the outer ProductLayout; pages in that group must not wrap it a second time.
 See [FE-004 validation](docs/validation/FE-004-layouts.md) for production/dev,
 browser, keyboard, responsive, and regression checks.
+
+## Private UI review
+
+The opt-in `/ui-review` catalogue renders the existing public/account/site
+shells and shared form/card/table/loading/empty/error components with fixed
+presentation fixtures. Start it locally from `Frontend/`:
+
+```sh
+UI_REVIEW_ENABLED=1 pnpm dev --hostname 127.0.0.1
+```
+
+Open `http://127.0.0.1:3000/ui-review`. The server-only flag defaults to disabled
+in `.env.example`; restart the development server after changing it. There is
+no product navigation entry for this route.
+
+Selectors control `scope` (`public`, `account`, `site`), `state` (`loading`,
+`empty`, `error`, `ready`), and `persona` (`guest`, `user`, `admin`). Their query
+parameters make a view reproducible, for example
+`/ui-review?scope=account&state=error&persona=admin`. Missing, invalid, or duplicate
+values fall back to public/ready/guest. Reset restores those defaults and the
+original input/checkbox values, including when the URL is already at defaults.
+Changing a scenario also restores its fixed values. Loading stays selected
+until changed; the error action only selects the ready fixture.
+
+All sample content carries a visible design-only notice. Persona is a display
+label and creates no session/permissions; controls issue no API calls and write
+no cookies or browser storage. This catalogue supplies the review foundation,
+not a login flow, dashboard, or sample analytics in product pages. Fixtures live
+only in `components/feature/internal/UIReview/fixtures.ts`; product features
+must not import them or the development injector.
+
+`next.config.ts` enables the `review.tsx` page extension **only** for an opted-in
+development-server phase. `app/ui-review/page.review.tsx` is therefore absent
+from production route discovery and its fixture code is not in production client
+bundles, even if `UI_REVIEW_ENABLED=1` during build/start. A server-side guard also
+requires development mode and the flag; metadata uses noindex/nofollow. Keep
+review-only route pages under this extension rather than a normal `page.tsx`.
+The opt-in is a local development switch, not an authentication mechanism.
+
+See [FE-005 validation](docs/validation/FE-005-ui-review.md) for route exclusion,
+determinism, keyboard, responsive/theme, and product-isolation checks. Project
+Playwright infrastructure remains the separate FE-006 task; FE-005 adds no
+browser dependency or test runner.
 
 ## API generation and transport
 
