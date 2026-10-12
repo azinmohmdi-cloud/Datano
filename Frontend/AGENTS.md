@@ -320,6 +320,15 @@ or authorization. Do not treat them as a backend proxy or production user servic
 
 ## 6. Performance and UI/UX
 
+### Required design reference
+
+Before designing or changing any page or UI component in every future frontend
+task, read and follow [the Datano design system](docs/design-system.md), extracted
+from the approved FE-007 identity. Keep implemented baselines distinct from future
+standards; extend components for approved page needs without redesigning that
+identity. In each UI task's final report, confirm design-system consistency and
+explain any necessary deviation with a concrete reason.
+
 ### Shared visuals and accessibility
 
 - Use `cn`, existing primitives, `buttonVariants`, and CSS theme tokens such as
