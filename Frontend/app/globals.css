@@ -66,6 +66,8 @@
   --brand-muted: #5b647a;
   --page-editorial-start: #fdf7fb;
   --page-editorial-end: #f7f4fd;
+  --page-login-start: #f2f8fd;
+  --page-login-end: #f7f4fd;
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
@@ -101,6 +103,8 @@
 }
 
 .dark {
+  --page-login-start: #171e2b;
+  --page-login-end: #1e1b2b;
   --page-editorial-start: #19171f;
   --page-editorial-end: #1e1b2b;
   --brand-ink: #b9c5ff;
@@ -176,6 +180,9 @@
   :root:not(.dark) main:has(#about-title) {
     --page-editorial-start: #f2f8fd;
     --page-editorial-end: #f7f4fd;
+  }
+  main:has(.page-surface-login) {
+    background: linear-gradient(135deg, var(--page-login-start), var(--page-login-end));
   }
   .landing-hero {
     background: radial-gradient(ellipse at 12% 40%, color-mix(in srgb, var(--brand-purple) 11%, transparent), transparent 55%),

@@ -104,6 +104,7 @@ controls, cards, the shared header/footer, or the homepage hero.
 | --- | --- | --- |
 | Services | Existing pale lavender `#f7f4fd` → icy blue `#f2f8fd`, 135° linear gradient | Applied only to `/services`; unchanged by FE-009 |
 | About | Very pale icy blue `#f2f8fd` → lavender `#f7f4fd`, 135° linear gradient | Applied only to `/about` in FE-009; replaces the earlier rose/lavender decision |
+| Login | Very pale icy blue `#f2f8fd` → lavender `#f7f4fd`, 135° linear gradient | Applied to `/login` in FE-010 and its private form review; header/footer unchanged |
 | Dashboard | Very light blue `#f3f7ff`; proposed dark adaptation `#171e2b` | Approved future page standard; not applied or defined as a runtime token yet |
 | Profile | Same very light blue as dashboard | Approved future page standard; no profile change here |
 | Homepage and other current pages | Existing background | Unchanged |
@@ -125,6 +126,11 @@ Keep these colors low-saturation and restrained. Dashboard/profile implementatio
 should introduce one central workspace-background token for the approved blue
 standard when needed; do not scatter the value or apply it to AccountLayout or
 SiteLayout prematurely. Neither future page is implemented by this policy.
+
+FE-010 centralizes the approved login backdrop as `--page-login-start` and
+`--page-login-end`, with dark adaptations `#171e2b` and `#1e1b2b`. Only
+`main:has(.page-surface-login)` opts in. Login and its private review reuse the
+same form surface; other routes retain their backgrounds.
 
 ### Shared surface and interaction palette
 
@@ -467,6 +473,17 @@ charts, dashboard preview, signup CTA, or development-status notices. On narrow
 screens the columns stack in their reading order. Its copy describes product
 goals and guiding principles, without invented history, team or contact details.
 
+FE-010 Login uses a centered `max-w-md` form Card inside PublicLayout, with a
+small lock symbol, 24px title, quiet supporting sentence, labeled fields and one
+full-width primary action. A footer row links to signup. It does not use landing
+sections, charts, statistics or marketing illustrations. Inputs have a 48px
+minimum height, and the password visibility control keeps a fixed 44px target
+and 20px icon, like the shared navigation's fixed control geometry. A fixed 52px
+left inset reserves room for that control independently of the input's automatic
+text direction; rem-based padding on both sides would consume the text area at
+200% text size. Its Persian placeholder aligns right. Pending/error presentation reuses existing
+primitives, disabled semantics and textual state labels; it adds no status colors.
+
 Current header: max-w-7xl, `min-h-22` (88px), `px-4 sm:px-6 lg:px-8 py-4`,
 `gap-4`, border-bottom, background, relative z-20. Brand sits on the right.
 The latest source-order correction is **سرویس‌ها → درباره ما → حساب کاربری → ورود**
@@ -528,6 +545,8 @@ claimed by the current token sets.
 | [Global CSS](../app/globals.css) | Runtime tokens, themes, gradients/grid/depth recipes |
 | [ProductBrand](../components/layout/ProductLayout/brand.tsx) | Approved current mark, typography and default sizing |
 | [Private review injector](../components/feature/internal/UIReview/DevelopmentUIReview.tsx) | Development-only shell/control/state inspection; never import into product UI |
+| [Login injector](../components/feature/identity/LoginForm/DatanoLogin.tsx) and [Login UI](../components/feature/identity/LoginForm/index.tsx) | Compact auth form, local validation, accessible visibility control and page-only gradient |
+| [Login review](../components/feature/internal/LoginReview/DevelopmentLoginReview.tsx) | Private, deterministic pending/error presentation; never import into product UI |
 | [Landing tests](../tests/e2e/landing.spec.ts) | Scope, truthful preview, CTA, mobile menu, no-JS, font/RTL, theme/zoom checks |
 | [Shared-shell tests](../tests/e2e/ui-review.spec.ts) | Header/footer consistency, scope switching, fields/states and keyboard regression |
 | [FE-007 record](validation/FE-007-landing.md) | Historical implementation/validation evidence, not a competing design source |

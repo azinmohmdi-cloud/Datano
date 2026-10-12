@@ -167,7 +167,7 @@ Route groups do not change public URLs: the existing homepage remains `/`.
 
 | Content scope | App Router layout | Shared content component |
 | --- | --- | --- |
-| Public and future authentication pages | `app/(product)/(public)/layout.tsx` | `components/layout/PublicLayout` |
+| Public and authentication pages | `app/(product)/(public)/layout.tsx` | `components/layout/PublicLayout` |
 | Account, future profile/admin/site list | `app/(product)/account/layout.tsx` | `components/layout/AccountLayout` |
 | Individual site workspace | `app/(product)/sites/[siteId]/layout.tsx` | `components/layout/SiteLayout` |
 
@@ -192,8 +192,8 @@ Styling reuses
 `components/layout/ProductLayout/links.ts` defines the reserved destinations:
 `/account`, `/about`, `/services`, and `/login`. The header does not infer a
 session/role or implement account redirects. The homepage, `/services`, and `/about`
-have product content; `/account` and `/login` remain pending and return
-404. Automatic prefetching of navigation links is disabled. Do not add
+have product content; `/login` has the FE-010 form UI, while `/account` remains
+pending and returns 404. Automatic prefetching of navigation links is disabled. Do not add
 placeholder login/profile/dashboard pages or claim authentication to make the
 shell appear complete. Account routing from trusted session data remains FE-030.
 
@@ -286,6 +286,38 @@ subtle icy-blue/lavender backdrop scoped to its containing main. No charts,
 cards, preview, data hook, API request, new dependency or client boundary is added.
 The page and links work without JavaScript. See
 [FE-009 validation](docs/validation/FE-009-about.md) for executed checks.
+
+## Login form — FE-010
+
+`/login` composes `identity/LoginForm/DatanoLogin.tsx` and its pure UI through
+the public/product shells. The narrow centered form uses the approved brand,
+Vazirmatn and a quiet icy-blue/lavender backdrop scoped to its containing main.
+It supplies email, show/hide password, remember-me, signup (`/signup`) and recovery
+(`/forgot-password`) links. Those destination forms remain FE-011/FE-012.
+
+The client injector owns values, field/submission errors and password visibility.
+Validation uses the email input's validity and requires a nonempty password;
+login does not impose the new-password creation policy or trim a password.
+Errors are Persian and linked by the existing Base UI Field; submit focuses the
+first invalid field. Editing clears the relevant field/submission error and keeps
+other values. Password/remember state is confined to the mounted form.
+
+FE-030 owns real session integration. A valid public submission currently displays
+the actual availability error, without an API request, artificial pending delay,
+redirect, success, cookie or browser-storage write. Before hydration and without
+JavaScript, form controls are disabled; a noscript message explains how to enable
+the form, and navigation links remain available. Native POST semantics also avoid
+placing credentials in a query string.
+
+With private review enabled, `/ui-review/login?state=pending` and `state=error`
+show fixed presentation states. A selector switches to the empty interactive
+form (`idle`) or another fixture; reload reproduces the selection. The main
+`/ui-review` catalogue links to this review. Fixtures stay outside the product
+module graph and are excluded from production by the existing `review.tsx`
+discovery policy. Public `/login` never reads fixture query parameters.
+
+Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e login.spec.ts`.
+See [FE-010 validation](docs/validation/FE-010-login.md) for executed evidence.
 
 ## Private UI review
 

@@ -39,6 +39,7 @@ export const reviewTranslations: UIReviewUIProps["translations"] = {
   tableCaption: "ردیف‌های ثابت نمونه؛ دادهٔ واقعی محصول نیستند.",
   tableHeaders: { id: "شناسهٔ نمونه", title: "عنوان نمونه", url: "نشانی نمونه" },
   showReady: "نمایش حالت آماده",
+  loginReview: "بررسی فرم ورود",
 };
 
 const sampleRows = [

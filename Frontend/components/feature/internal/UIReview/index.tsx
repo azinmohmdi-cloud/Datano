@@ -1,4 +1,5 @@
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel, FieldDescription, FieldError } from "@/components/ui/field";
@@ -39,6 +40,7 @@ export interface UIReviewUIProps {
     tableCaption: string;
     tableHeaders: { id: string; title: string; url: string };
     showReady: string;
+    loginReview: string;
   };
   callbacks: {
     onChangeSelection: (key: keyof UIReviewUIProps["selection"], value: string) => void;
@@ -61,7 +63,10 @@ export default function UIReviewUI(props: UIReviewUIProps) {
         <Selector id="review-state" label={translations.stateLabel} value={selection.state} options={options.state} onChange={(value) => callbacks.onChangeSelection("state", value)} />
         <Selector id="review-persona" label={translations.personaLabel} value={selection.persona} options={options.persona} onChange={(value) => callbacks.onChangeSelection("persona", value)} />
       </div>
-      <Button id="review-reset" type="button" variant="outline" onClick={callbacks.onReset}>{translations.reset}</Button>
+      <div className="flex flex-wrap gap-3">
+        <Button id="review-reset" type="button" variant="outline" onClick={callbacks.onReset}>{translations.reset}</Button>
+        <Link href="/ui-review/login" prefetch={false} className={buttonVariants({ variant: "link" })}>{translations.loginReview}</Link>
+      </div>
       <div id="review-preview" tabIndex={-1} data-review-preview data-review-state={selection.state} data-review-persona={selection.persona} className="space-y-6 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/30">
         <p className="text-sm">{translations.personaPrefix}{props.personaLabel}</p>
         <Preview key={props.previewKey} state={selection.state} preview={props.preview} translations={translations} onShowReady={callbacks.onShowReady} />
