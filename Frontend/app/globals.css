@@ -64,6 +64,8 @@
   --brand-soft: #f0f2fc;
   --brand-panel: #f8f9fd;
   --brand-muted: #5b647a;
+  --page-editorial-start: #fdf7fb;
+  --page-editorial-end: #f7f4fd;
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
@@ -99,6 +101,8 @@
 }
 
 .dark {
+  --page-editorial-start: #19171f;
+  --page-editorial-end: #1e1b2b;
   --brand-ink: #b9c5ff;
   --brand-soft: #22253e;
   --brand-panel: #191c2c;
@@ -161,6 +165,14 @@
 
 /* Static illustration surfaces: no movement, including reduced-motion mode. */
 @layer components {
+  /* Page-owned opt-in keeps the shared header/footer and other routes unchanged. */
+  main:has(.page-surface-editorial) {
+    background: linear-gradient(135deg, var(--page-editorial-start), var(--page-editorial-end));
+  }
+  :root:not(.dark) main:has(#services-title) {
+    --page-editorial-start: #f7f4fd;
+    --page-editorial-end: #f2f8fd;
+  }
   .landing-hero {
     background: radial-gradient(ellipse at 12% 40%, color-mix(in srgb, var(--brand-purple) 11%, transparent), transparent 55%),
       radial-gradient(ellipse at 90% 5%, color-mix(in srgb, var(--brand-blue) 8%, transparent), transparent 60%), var(--brand-panel);

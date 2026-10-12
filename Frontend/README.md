@@ -12,9 +12,9 @@ describes page → injector → data hooks/pure UI composition.
 
 ## Current implementation
 
-The application contains a Persian public landing page with a labeled explanatory
-dashboard preview, English invoice examples, shared primitives/providers, mock
-invoice hooks, and local health/user routes. Services/about pages, ownership
+The application contains Persian public landing and services pages with labeled
+conceptual visuals, English invoice examples, shared primitives/providers, mock
+invoice hooks, and local health/user routes. The about page, ownership
 verification, Google integrations, production authentication, and data-driven
 analytical charts are not implemented. Landing SVGs are unscaled conceptual
 illustrations. Local user routes have separate
@@ -191,9 +191,9 @@ Styling reuses
 
 `components/layout/ProductLayout/links.ts` defines the reserved destinations:
 `/account`, `/about`, `/services`, and `/login`. The header does not infer a
-session/role or implement account redirects. **Only the homepage currently has
-product content**; these destination pages are pending their own tasks and still
-return 404. Automatic prefetching of navigation links is disabled. Do not add
+session/role or implement account redirects. The homepage and `/services` have
+product content; `/account`, `/about`, and `/login` remain pending and return
+404. Automatic prefetching of navigation links is disabled. Do not add
 placeholder login/profile/dashboard pages or claim authentication to make the
 shell appear complete. Account routing from trusted session data remains FE-030.
 
@@ -230,8 +230,8 @@ remains server-renderable; only shared navigation needs a client boundary.
 
 The landing includes the hero, problem, receive/analyze/recommend workflow,
 capabilities, reasons, audience, explanatory preview, and closing CTA. Start-use
-links reserve `/signup` for FE-011; the services CTA reserves `/services` for
-FE-008. These destination pages remain pending and currently return 404.
+links reserve `/signup` for FE-011 (currently 404); the services CTA opens the
+implemented `/services` page from FE-008.
 The preview link focuses `/#dashboard-preview` with native navigation even
 without JavaScript. The static preview labels its purpose and presents metric
 names with `—`, without invented values, connected-source status, or a public demo.
@@ -244,6 +244,33 @@ It does not import private UI-review fixtures. The invoice examples retain their
 direct URLs and no longer appear in the product homepage.
 
 See [FE-007 validation](docs/validation/FE-007-landing.md) for executed checks.
+
+## Public services
+
+`/services` composes `ServicesPage/DatanoServices.tsx` and its pure UI through
+the existing public shell. It introduces GA4, Search Console, Google Ads,
+and rule-based recommendations with a labeled source-to-dashboard diagram.
+The final page has a centered title/description above its existing diagram,
+source cards, recommendation evidence and one closing CTA. Separate workflow
+and dashboard sections were removed by user instruction to avoid homepage
+duplication. Copy explicitly identifies
+these operational capabilities as under development, independent optional
+sources, and recommendations that depend on valid sufficient evidence.
+
+The sole content CTA targets `/signup`. Hero has no action links; the shared
+header/footer retain their existing links. No new private route,
+provider connection, authentication state, or API call is introduced.
+`components/ui/concept-chart.tsx` shares the original landing line/bar SVG
+geometry with services. Decorative source-flow graphics, absent-value marks,
+and visible conceptual labels do not present generated data as real analytics.
+No chart library or other dependency is added. Both pages remain server-renderable.
+
+The approved [design system](docs/design-system.md) governs brand, typography,
+icons, surfaces and responsive behavior. Services alone currently opts into
+the subtle rose/lavender page backdrop. About inherits this requirement for
+FE-009; the light-blue dashboard/profile policy is recorded for future work.
+The homepage and shared shell retain their existing backgrounds. See
+[FE-008 validation](docs/validation/FE-008-services.md) for executed checks.
 
 ## Private UI review
 

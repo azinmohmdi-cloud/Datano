@@ -1,7 +1,7 @@
 # Datano design system
 
 Established 2026-10-12 from the user-approved FE-007 landing, including the
-subsequent header-order correction. Source baseline: Git commit `34ff723`.
+subsequent header-order correction. Initial source baseline: Git commit `34ff723`.
 Paths below are relative to `Frontend/` unless a link specifies otherwise.
 
 This is the visual reference for every future product UI task. It preserves the
@@ -58,6 +58,34 @@ document that source; they are not a second palette to copy into components.
 Brand fill and accent text have different roles. For small text on dark surfaces,
 use `text-brand-ink`, not an automatic `text-brand-blue` replacement. Verify
 contrast for the actual foreground/background combination and opacity.
+
+### Page background policy — approved FE-008 final revision
+
+The user's final services revision adds a quiet page-level palette alongside
+the unchanged brand colors. Page backdrops do not recolor logos, icons, charts,
+controls, cards, the shared header/footer, or the homepage hero.
+
+| Page | Approved backdrop | Runtime status |
+| --- | --- | --- |
+| Services | Very pale rose → lavender, 135° linear gradient | Applied only to `/services` |
+| About | Same rose/lavender backdrop and dark adaptation | Future requirement for FE-009; no about page implemented here |
+| Dashboard | Very light blue `#f3f7ff`; proposed dark adaptation `#171e2b` | Approved future page standard; not applied or defined as a runtime token yet |
+| Profile | Same very light blue as dashboard | Approved future page standard; no profile change here |
+| Homepage and other current pages | Existing background | Unchanged |
+
+Existing editorial tokens in `app/globals.css` are
+`--page-editorial-start: #fdf7fb` and `--page-editorial-end: #f7f4fd` in light
+mode, with `#19171f` and `#1e1b2b` respectively in dark mode. The runtime recipe
+is `linear-gradient(135deg, var(--page-editorial-start), var(--page-editorial-end))`.
+An explicit `page-surface-editorial` class in the page UI opts its containing
+`main` into this backdrop using `main:has(.page-surface-editorial)`. It fills the
+content area and gutters without viewport-sized decorative elements or altering
+the header/footer. About should opt into this same recipe in its authorized task.
+
+Keep these colors low-saturation and restrained. Dashboard/profile implementation
+should introduce one central workspace-background token for the approved blue
+standard when needed; do not scatter the value or apply it to AccountLayout or
+SiteLayout prematurely. Neither future page is implemented by this policy.
 
 ### Shared surface and interaction palette
 
@@ -193,7 +221,8 @@ symbols, or chronological data.
 
 The implementation is Base UI/shadcn, `cn`, and Tailwind theme tokens. Reuse the
 following modules rather than introducing a parallel UI library. Landing
-helpers are local functions, not exported reusable component APIs.
+helpers are local functions, except ConceptChart, extracted without visual changes
+for actual reuse by the FE-008 services page and the landing.
 
 | Element | Current source / availability | Design and behavior reference |
 | --- | --- | --- |
@@ -204,6 +233,7 @@ helpers are local functions, not exported reusable component APIs.
 | Card | [card.tsx](../components/ui/card.tsx): Card, Header, Title, Description, Content, Footer | `rounded-xl border bg-card py-6 shadow-sm`; inner `px-6`, title 18/28px, prose 14/24px |
 | Loading/Empty/Error | [status.tsx](../components/ui/status.tsx) | `rounded-xl border bg-card p-6`, centered icon/text; optional real action; loading polite status, reduced-motion spinner; error alert |
 | Table | [table.tsx](../components/ui/table.tsx) | Existing local horizontal-scroll container, caption/headers, separators, hover/selection; check RTL overrides in product consumers |
+| Conceptual SVG | [concept-chart.tsx](../components/ui/concept-chart.tsx): ConceptChart | Shared line/bar illustration from FE-007, reused by FE-008; requires a label unless decorative; no data/API contract |
 | Select | No shared product Select | Private review uses a native select recipe; it is evidence of styling, not an exported component |
 | Badge | No shared Badge | Existing conceptual labels are inline spans/divs; use their recipe when a shared API is unnecessary |
 | Alert | No general shared Alert | FieldError/ErrorState exist; landing development note and preview notice are local semantic markup |
@@ -247,12 +277,15 @@ or fixtures into product UI.
 
 ### Existing conceptual SVG baseline
 
-The non-exported `ConceptChart` in
-[LandingPage/index.tsx](../components/feature/public/LandingPage/index.tsx)
-renders fixed unscaled geometry. It has no numerical axes, legend, Tooltip,
+The shared `ConceptChart` in
+[components/ui/concept-chart.tsx](../components/ui/concept-chart.tsx)
+renders the original FE-007 fixed unscaled geometry. FE-008 extracted it for
+reuse without changing paths, colors, dimensions, or accessibility behavior.
+It has no numerical axes, legend, Tooltip,
 interactive period selector, real account series, or API. Recharts is not
 installed. `HeroVisual` and `DashboardPreview` are examples of this composition,
-not operational dashboards or public chart component APIs.
+not operational dashboards. The shared SVG API accepts `bars`, and either a
+Persian `label` or `decorative: true`; it never accepts analytical data.
 
 | Detail | Exact current SVG implementation |
 | --- | --- |
@@ -376,6 +409,18 @@ its approved account scope. No new shell, sidebar, or authentication page is
 implemented by those examples. Preserve the shared frame and choose a structure
 that serves each page rather than copying the whole landing.
 
+The final services composition deliberately differs from the homepage: a centered
+editorial title and description above the unchanged source diagram, with no hero
+eyebrow, development note or action. Only source cards, the recommendations/evidence
+section and the original closing signup CTA follow it. The standalone workflow
+and integrated-dashboard sections are omitted by explicit user instruction to
+avoid repeating the homepage. The diagram's own labels remain visible, including
+its conceptual/no-real-data caption. Source cards, recommendations, closing CTA
+and shared navigation retain their existing content and design. This approved
+revision supersedes the original services composition described by older UX and
+FE-008 validation records; it does not authorize changing Backlog criteria or
+removing those sections from the homepage.
+
 Current header: max-w-7xl, `min-h-22` (88px), `px-4 sm:px-6 lg:px-8 py-4`,
 `gap-4`, border-bottom, background, relative z-20. Brand sits on the right.
 The latest source-order correction is **سرویس‌ها → درباره ما → حساب کاربری → ورود**
@@ -430,7 +475,9 @@ claimed by the current token sets.
 | Reference | What to inspect/reuse |
 | --- | --- |
 | [DatanoLanding](../components/feature/public/LandingPage/DatanoLanding.tsx) | Honest Persian copy, translations, conceptual/source/unit labels, destinations |
-| [LandingPage UI](../components/feature/public/LandingPage/index.tsx) | Hero, SectionHeading, ActionLink, process/features, KPI/preview and ConceptChart recipes; all helpers local |
+| [LandingPage UI](../components/feature/public/LandingPage/index.tsx) | Hero, SectionHeading, ActionLink, process/features and KPI/preview recipes; local helpers, shared ConceptChart import |
+| [ConceptChart](../components/ui/concept-chart.tsx) | Unchanged approved line/bar SVG geometry shared by landing and services |
+| [ServicesPage UI](../components/feature/public/ServicesPage/index.tsx) | Final editorial hero, preserved source diagram/cards and recommendation evidence, single closing CTA; page-only background opt-in |
 | [Global CSS](../app/globals.css) | Runtime tokens, themes, gradients/grid/depth recipes |
 | [ProductBrand](../components/layout/ProductLayout/brand.tsx) | Approved current mark, typography and default sizing |
 | [Private review injector](../components/feature/internal/UIReview/DevelopmentUIReview.tsx) | Development-only shell/control/state inspection; never import into product UI |
