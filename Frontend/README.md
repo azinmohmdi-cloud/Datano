@@ -293,7 +293,7 @@ The page and links work without JavaScript. See
 the public/product shells. The narrow centered form uses the approved brand,
 Vazirmatn and a quiet icy-blue/lavender backdrop scoped to its containing main.
 It supplies email, show/hide password, remember-me, signup (`/signup`) and recovery
-(`/forgot-password`) links. Those destination forms remain FE-011/FE-012.
+(`/forgot-password`) links. Signup UI is supplied by FE-011; recovery remains FE-012.
 
 The client injector owns values, field/submission errors and password visibility.
 Validation uses the email input's validity and requires a nonempty password;
@@ -318,6 +318,40 @@ discovery policy. Public `/login` never reads fixture query parameters.
 
 Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e login.spec.ts`.
 See [FE-010 validation](docs/validation/FE-010-login.md) for executed evidence.
+
+## Signup form — FE-011
+
+`/signup` composes `SignupForm/DatanoSignup.tsx`, its client form controller and
+pure UI through the existing public/product shells. It reuses the approved login
+backdrop tokens and control styling without editing the login or public-page
+components. A wider centered Card has a responsive given/family-name row, email,
+two password fields with independent visibility controls, terms acceptance and
+an existing-account link to `/login`.
+
+Names must contain non-whitespace text. Email uses native type validity with
+Persian feedback. New passwords contain 15–128 Unicode code points, counted with
+`Array.from` rather than UTF-16 length. No composition requirement, trimming,
+normalization, truncation or native min/max length attribute is applied. Matching
+is exact; editing the password rechecks an already-entered confirmation. Existing
+Base UI Field connects labels, descriptions and errors. First-invalid focus is
+scoped to the submitted form. Native POST and pre-hydration/no-JavaScript disabling
+prevent credential submission before the client handler is ready.
+
+Approved, versioned terms are still absent (`EXT-002`). Public acceptance and
+submission therefore stay disabled with a concise reason beside the checkbox.
+The form accepts no query flag to bypass that gate and does not supply invented
+legal text or a terms page. Real registration and versioned acceptance remain
+FE-030/FE-048; no account, role, API request, session or storage write is simulated.
+
+Private `/ui-review/signup` provides interactive validation/checkbox testing,
+blocked, fixed pending and fixed error scenarios. Its explicit design-only notice
+explains that checkbox interaction is not legal acceptance. Any valid interactive
+submission still reports actual unavailability. Fixture values remain private;
+the route is excluded from production by the existing `review.tsx` policy.
+The catalogue links to this review. No successful-registration scenario exists.
+
+Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e signup.spec.ts`.
+See [FE-011 validation](docs/validation/FE-011-signup.md) for executed evidence.
 
 ## Private UI review
 

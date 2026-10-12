@@ -105,6 +105,7 @@ controls, cards, the shared header/footer, or the homepage hero.
 | Services | Existing pale lavender `#f7f4fd` → icy blue `#f2f8fd`, 135° linear gradient | Applied only to `/services`; unchanged by FE-009 |
 | About | Very pale icy blue `#f2f8fd` → lavender `#f7f4fd`, 135° linear gradient | Applied only to `/about` in FE-009; replaces the earlier rose/lavender decision |
 | Login | Very pale icy blue `#f2f8fd` → lavender `#f7f4fd`, 135° linear gradient | Applied to `/login` in FE-010 and its private form review; header/footer unchanged |
+| Signup | Same quiet icy-blue/lavender gradient as Login | Applied only to `/signup` and its private form review in FE-011 using the existing login backdrop tokens |
 | Dashboard | Very light blue `#f3f7ff`; proposed dark adaptation `#171e2b` | Approved future page standard; not applied or defined as a runtime token yet |
 | Profile | Same very light blue as dashboard | Approved future page standard; no profile change here |
 | Homepage and other current pages | Existing background | Unchanged |
@@ -484,6 +485,18 @@ text direction; rem-based padding on both sides would consume the text area at
 200% text size. Its Persian placeholder aligns right. Pending/error presentation reuses existing
 primitives, disabled semantics and textual state labels; it adds no status colors.
 
+FE-011 Signup retains the approved login form identity in a wider `max-w-xl`
+Card. Given/family names share a row from sm upward and stack in reading order
+on mobile; email and the two password controls remain full-width. Independent
+visibility controls use the same 44px/20px geometry and fixed text inset as Login.
+A short password-policy description and exact-match feedback sit with their
+fields. Terms availability/acceptance stays beside its checkbox; no invented
+legal page is introduced. The compact form rhythm is `space-y-4` with a single
+primary action and a Login footer link. It adds no marketing sections, charts,
+status colors, logo changes or changes to the approved Login UI. The new
+`main:has(.page-surface-signup)` rule reuses `--page-login-start/end`, preserving
+the Login selector and all other page backgrounds.
+
 Current header: max-w-7xl, `min-h-22` (88px), `px-4 sm:px-6 lg:px-8 py-4`,
 `gap-4`, border-bottom, background, relative z-20. Brand sits on the right.
 The latest source-order correction is **سرویس‌ها → درباره ما → حساب کاربری → ورود**
@@ -547,6 +560,8 @@ claimed by the current token sets.
 | [Private review injector](../components/feature/internal/UIReview/DevelopmentUIReview.tsx) | Development-only shell/control/state inspection; never import into product UI |
 | [Login injector](../components/feature/identity/LoginForm/DatanoLogin.tsx) and [Login UI](../components/feature/identity/LoginForm/index.tsx) | Compact auth form, local validation, accessible visibility control and page-only gradient |
 | [Login review](../components/feature/internal/LoginReview/DevelopmentLoginReview.tsx) | Private, deterministic pending/error presentation; never import into product UI |
+| [Signup injector](../components/feature/identity/SignupForm/DatanoSignup.tsx) and [Signup UI](../components/feature/identity/SignupForm/index.tsx) | Responsive identity fields, independent password visibility, policy/match feedback and blocked public terms |
+| [Signup review](../components/feature/internal/SignupReview/DevelopmentSignupReview.tsx) | Private interactive validation, terms checkbox exercise, pending/error and blocked scenarios |
 | [Landing tests](../tests/e2e/landing.spec.ts) | Scope, truthful preview, CTA, mobile menu, no-JS, font/RTL, theme/zoom checks |
 | [Shared-shell tests](../tests/e2e/ui-review.spec.ts) | Header/footer consistency, scope switching, fields/states and keyboard regression |
 | [FE-007 record](validation/FE-007-landing.md) | Historical implementation/validation evidence, not a competing design source |

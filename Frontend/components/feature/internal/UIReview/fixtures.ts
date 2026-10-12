@@ -40,6 +40,7 @@ export const reviewTranslations: UIReviewUIProps["translations"] = {
   tableHeaders: { id: "شناسهٔ نمونه", title: "عنوان نمونه", url: "نشانی نمونه" },
   showReady: "نمایش حالت آماده",
   loginReview: "بررسی فرم ورود",
+  signupReview: "بررسی فرم ثبت‌نام",
 };
 
 const sampleRows = [
