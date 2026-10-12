@@ -5,6 +5,13 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-purple: var(--brand-purple);
+  --color-brand-lilac: var(--brand-lilac);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-panel: var(--brand-panel);
+  --color-brand-muted: var(--brand-muted);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-vazirmatn);
@@ -48,7 +55,15 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Marketing identity is separate from the analytical chart palette. */
 :root {
+  --brand-blue: #3956d9;
+  --brand-purple: #7350c7;
+  --brand-lilac: #b9b2ff;
+  --brand-ink: #344ac0;
+  --brand-soft: #f0f2fc;
+  --brand-panel: #f8f9fd;
+  --brand-muted: #5b647a;
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
@@ -84,6 +99,10 @@
 }
 
 .dark {
+  --brand-ink: #b9c5ff;
+  --brand-soft: #22253e;
+  --brand-panel: #191c2c;
+  --brand-muted: #b4bbd0;
   --background: oklch(0.141 0.005 285.823);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.21 0.006 285.885);
@@ -137,5 +156,21 @@
   }
   [dir="ltr"] {
     unicode-bidi: isolate;
+  }
+}
+
+/* Static illustration surfaces: no movement, including reduced-motion mode. */
+@layer components {
+  .landing-hero {
+    background: radial-gradient(ellipse at 12% 40%, color-mix(in srgb, var(--brand-purple) 11%, transparent), transparent 55%),
+      radial-gradient(ellipse at 90% 5%, color-mix(in srgb, var(--brand-blue) 8%, transparent), transparent 60%), var(--brand-panel);
+  }
+  .landing-grid {
+    background-image: linear-gradient(color-mix(in srgb, var(--brand-blue) 6%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in srgb, var(--brand-blue) 6%, transparent) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .landing-depth {
+    box-shadow: 0 24px 70px -30px color-mix(in srgb, var(--brand-blue) 35%, transparent);
   }
 }

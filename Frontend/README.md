@@ -12,10 +12,12 @@ describes page → injector → data hooks/pure UI composition.
 
 ## Current implementation
 
-The application contains a starter homepage, English invoice examples,
-shared primitives/providers, mock invoice hooks, and local health/user routes.
-Marketing screens, ownership verification, Google integrations, production
-authentication, and charts are not implemented. Local user routes have separate
+The application contains a Persian public landing page with a labeled explanatory
+dashboard preview, English invoice examples, shared primitives/providers, mock
+invoice hooks, and local health/user routes. Services/about pages, ownership
+verification, Google integrations, production authentication, and data-driven
+analytical charts are not implemented. Landing SVGs are unscaled conceptual
+illustrations. Local user routes have separate
 mock arrays and do not implement the FastAPI contract. Invoice outcomes are
 randomized examples; routine tests must use deterministic fixtures.
 
@@ -177,8 +179,11 @@ short pages. Use one scope layout per page; page content should not add another
 outer `main` or document-level header/footer.
 
 The header contains only **حساب کاربری**, **درباره ما**, **سرویس‌ها**, and
-**ورود**, plus the home-linked Datano wordmark. Links remain visible in a
-two-column grid on mobile and a row on larger screens. Native links, visible
+**ورود**, plus the home-linked Datano wordmark and provisional geometric SVG
+mark. Desktop navigation is a single row; smaller screens use native
+`details`/`summary` with an accessible menu name and expanded state. A focused
+client navigation component adds Escape/focus-return, closure when focus leaves
+the menu, and route-based `aria-current`. Native disclosure, links, visible
 keyboard focus, and the skip link work without JavaScript. The skip link uses
 Next/Link so its hash entry also participates in App Router back navigation.
 Styling reuses
@@ -194,7 +199,8 @@ shell appear complete. Account routing from trusted session data remains FE-030.
 
 Every product scope inherits the same footer: Datano wordmark, exactly the three
 quick links (home/services/about), and `© 2026 Datano. تمامی حقوق محفوظ است.`
-No approved logo asset exists yet, so branding uses a text wordmark. No unverified
+No approved logo asset exists yet. The FE-007 geometric mark is a temporary
+visual identity, not the final official logo. No unverified
 contact details, social links, or additional sections are supplied.
 
 For isolated composition, such as the private UI review environment:
@@ -212,6 +218,32 @@ The same pattern applies to PublicLayout/SiteLayout. App Router already supplies
 the outer ProductLayout; pages in that group must not wrap it a second time.
 See [FE-004 validation](docs/validation/FE-004-layouts.md) for production/dev,
 browser, keyboard, responsive, and regression checks.
+
+## Public landing
+
+`/` composes `LandingPage/DatanoLanding.tsx` (static Persian copy and destinations)
+and its pure UI entry point, using the existing ProductLayout/PublicLayout.
+It introduces the product's intended scope and explicitly states that the
+operational integrations/dashboard are still under development. No data hook,
+API call, sample account, customer claim, or chart dependency is used. The landing
+remains server-renderable; only shared navigation needs a client boundary.
+
+The landing includes the hero, problem, receive/analyze/recommend workflow,
+capabilities, reasons, audience, explanatory preview, and closing CTA. Start-use
+links reserve `/signup` for FE-011; the services CTA reserves `/services` for
+FE-008. These destination pages remain pending and currently return 404.
+The preview link focuses `/#dashboard-preview` with native navigation even
+without JavaScript. The static preview labels its purpose and presents metric
+names with `—`, without invented values, connected-source status, or a public demo.
+Hand-coded SVG line/area and rounded bar illustrations have explicit conceptual
+labels, no numerical scale, unique gradient IDs, and accessible descriptions.
+Decorative SVGs are hidden from assistive technology. No chart animations are
+used. Dedicated blue/purple brand tokens in `app/globals.css` support light/dark
+surfaces without replacing the future analytics palette.
+It does not import private UI-review fixtures. The invoice examples retain their
+direct URLs and no longer appear in the product homepage.
+
+See [FE-007 validation](docs/validation/FE-007-landing.md) for executed checks.
 
 ## Private UI review
 

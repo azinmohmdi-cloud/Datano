@@ -1,11 +1,11 @@
-import Link from "next/link";
+import type { Metadata } from "next";
+import DatanoLanding from "@/components/feature/public/LandingPage/DatanoLanding";
 
-export default function Home() {
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-4 py-12">
-      <Link href="/examples/me/invoices">My Invoices Example</Link>
-      <span> | </span>
-      <Link href="/examples/admin/invoices">Admin Invoices Example</Link>
-    </div>
-  );
+export const metadata: Metadata = {
+  title: { absolute: "دیتانو | از داده تا تصمیم روشن" },
+  description: "با مسیر طراحی دیتانو برای تحلیل داده‌های GA4، Search Console و Google Ads آشنا شوید؛ از دریافت داده تا پیشنهادهای قابل‌بررسی در یک داشبورد فارسی.",
+};
+
+export default function HomePage() {
+  return <DatanoLanding />;
 }
