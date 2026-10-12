@@ -106,6 +106,7 @@ controls, cards, the shared header/footer, or the homepage hero.
 | About | Very pale icy blue `#f2f8fd` → lavender `#f7f4fd`, 135° linear gradient | Applied only to `/about` in FE-009; replaces the earlier rose/lavender decision |
 | Login | Very pale icy blue `#f2f8fd` → lavender `#f7f4fd`, 135° linear gradient | Applied to `/login` in FE-010 and its private form review; header/footer unchanged |
 | Signup | Same quiet icy-blue/lavender gradient as Login | Applied only to `/signup` and its private form review in FE-011 using the existing login backdrop tokens |
+| Recovery | Same quiet icy-blue/lavender gradient as Login | Applied to `/forgot-password` and its private form review in FE-012 using the existing login backdrop tokens |
 | Dashboard | Very light blue `#f3f7ff`; proposed dark adaptation `#171e2b` | Approved future page standard; not applied or defined as a runtime token yet |
 | Profile | Same very light blue as dashboard | Approved future page standard; no profile change here |
 | Homepage and other current pages | Existing background | Unchanged |
@@ -129,9 +130,10 @@ standard when needed; do not scatter the value or apply it to AccountLayout or
 SiteLayout prematurely. Neither future page is implemented by this policy.
 
 FE-010 centralizes the approved login backdrop as `--page-login-start` and
-`--page-login-end`, with dark adaptations `#171e2b` and `#1e1b2b`. Only
-`main:has(.page-surface-login)` opts in. Login and its private review reuse the
-same form surface; other routes retain their backgrounds.
+`--page-login-end`, with dark adaptations `#171e2b` and `#1e1b2b`.
+`main:has(.page-surface-login)`, `.page-surface-signup` and `.page-surface-recovery`
+opt their containing main into these tokens. Each private review uses its product
+form surface; unrelated routes retain their backgrounds.
 
 ### Shared surface and interaction palette
 
@@ -497,6 +499,26 @@ status colors, logo changes or changes to the approved Login UI. The new
 `main:has(.page-surface-signup)` rule reuses `--page-login-start/end`, preserving
 the Login selector and all other page backgrounds.
 
+FE-012 Recovery uses one `AuthFormLayout` with the existing Login `max-w-md`
+cap (448px), rounded-2xl Card, restrained brand shadow, 24px heading and 48px
+minimum inputs/primary action. The existing Signup `max-w-xl` cap (576px) remains
+unchanged; no third auth width or revision to those approved pages is introduced.
+The Mail/ShieldCheck/KeyRound icon, heading, description and numbered three-step
+indicator share fixed slots and visual recipes across the flow. Progress exposes
+`aria-current="step"` and textual labels, independently of color.
+
+Headings and form panels overlap intrinsic grid cells to reserve the largest
+content at the current width. This keeps frame geometry and primary-action
+placement stable between normal stages without a fixed height. Inactive panels
+remain mounted for input retention but are invisible, inert, aria-hidden and
+disabled. Compact code/resend rows reduce unnecessary reserved space; errors
+and enlarged text can increase intrinsic height without clipping. The previous
+action retains its slot during stage one; the Login footer remains common.
+Step changes focus the active enabled field. Shared Field connects Persian errors
+and descriptions; countdown numbers/codes/emails are isolated from RTL prose.
+Timers and advancing stages exist only in the clearly labeled private review.
+`main:has(.page-surface-recovery)` reuses the existing auth backdrop tokens.
+
 Current header: max-w-7xl, `min-h-22` (88px), `px-4 sm:px-6 lg:px-8 py-4`,
 `gap-4`, border-bottom, background, relative z-20. Brand sits on the right.
 The latest source-order correction is **سرویس‌ها → درباره ما → حساب کاربری → ورود**
@@ -562,6 +584,8 @@ claimed by the current token sets.
 | [Login review](../components/feature/internal/LoginReview/DevelopmentLoginReview.tsx) | Private, deterministic pending/error presentation; never import into product UI |
 | [Signup injector](../components/feature/identity/SignupForm/DatanoSignup.tsx) and [Signup UI](../components/feature/identity/SignupForm/index.tsx) | Responsive identity fields, independent password visibility, policy/match feedback and blocked public terms |
 | [Signup review](../components/feature/internal/SignupReview/DevelopmentSignupReview.tsx) | Private interactive validation, terms checkbox exercise, pending/error and blocked scenarios |
+| [Recovery layout](../components/layout/AuthFormLayout/index.tsx) and [Recovery UI](../components/feature/identity/RecoveryForm/index.tsx) | One intrinsic frame and progress indicator across all three auth recovery panels |
+| [Recovery review](../components/feature/internal/RecoveryReview/DevelopmentRecoveryReview.tsx) | Private flow, validation, countdown, resend, expiry and attempt-limit inspection without auth effects |
 | [Landing tests](../tests/e2e/landing.spec.ts) | Scope, truthful preview, CTA, mobile menu, no-JS, font/RTL, theme/zoom checks |
 | [Shared-shell tests](../tests/e2e/ui-review.spec.ts) | Header/footer consistency, scope switching, fields/states and keyboard regression |
 | [FE-007 record](validation/FE-007-landing.md) | Historical implementation/validation evidence, not a competing design source |

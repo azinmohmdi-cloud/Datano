@@ -1,0 +1,38 @@
+import type { RecoveryFormUIProps } from ".";
+
+export const recoveryTranslations: RecoveryFormUIProps["translations"] = {
+  progress: "مراحل بازیابی رمز عبور",
+  headings: [
+    { id: "recovery-email-title", title: "بازیابی رمز عبور", description: "ایمیل حساب خود را وارد کنید.", icon: "email", stepLabel: "ایمیل", number: "۱" },
+    { id: "recovery-code-title", title: "کد بازیابی", description: "کد ۸رقمی بازیابی را وارد کنید و ادامه دهید.", icon: "code", stepLabel: "کد بازیابی", number: "۲" },
+    { id: "recovery-password-title", title: "تعیین رمز جدید", description: "برای حساب خود رمز عبور تازه‌ای انتخاب کنید.", icon: "password", stepLabel: "رمز جدید", number: "۳" },
+  ],
+  email: "ایمیل", emailPlaceholder: "name@example.com",
+  code: "کد بازیابی", codeHint: "کد ۸رقمی را کامل وارد کنید.",
+  codeFor: "ایمیل مربوط به درخواست:", expires: "زمان باقی‌مانده:", attempts: "تلاش‌های باقی‌مانده:",
+  resend: "ارسال مجدد کد", resendWait: "ارسال مجدد پس از", seconds: "ثانیه",
+  password: "رمز عبور جدید", confirmation: "تکرار رمز عبور جدید",
+  passwordHint: "۱۵ تا ۱۲۸ کاراکتر؛ حروف فارسی و فاصله هم قابل استفاده‌اند.",
+  passwordMatch: "رمزهای عبور یکسان‌اند.",
+  showPassword: "نمایش رمز عبور جدید", hidePassword: "مخفی‌کردن رمز عبور جدید",
+  showConfirmation: "نمایش تکرار رمز عبور جدید", hideConfirmation: "مخفی‌کردن تکرار رمز عبور جدید",
+  actions: ["ادامه", "بررسی کد", "ثبت رمز جدید"],
+  previous: "مرحله قبل", login: "بازگشت به ورود",
+  pendingAction: "در حال بررسی…", pendingStatus: "در حال بررسی درخواست",
+  noScript: "برای استفاده از فرم بازیابی، JavaScript مرورگر را فعال کنید.",
+};
+
+export const recoveryMessages = {
+  emailRequired: "ایمیل خود را وارد کنید.", emailInvalid: "یک ایمیل معتبر وارد کنید.",
+  codeFormat: "کد باید دقیقاً ۸ رقم باشد.", codeInvalid: "کد واردشده درست نیست.",
+  expired: "مهلت کد به پایان رسیده است. کد تازه درخواست کنید.",
+  locked: "تعداد تلاش‌ها به پایان رسیده است. کد تازه درخواست کنید.",
+  passwordRequired: "رمز عبور جدید خود را وارد کنید.",
+  passwordLength: "رمز عبور باید بین ۱۵ و ۱۲۸ کاراکتر باشد.",
+  confirmationRequired: "رمز عبور جدید را دوباره وارد کنید.",
+  confirmationMismatch: "تکرار رمز عبور با رمز عبور یکسان نیست.",
+  requestUnavailable: "بازیابی رمز عبور در حال حاضر در دسترس نیست.",
+  resetUnavailable: "تغییر رمز عبور در حال حاضر در دسترس نیست.",
+  reviewError: "بررسی درخواست انجام نشد. دوباره تلاش کنید.",
+  resendNotice: "زمان‌سنج نمونه بازنشانی شد؛ ایمیلی ارسال نشده است.",
+} as const;

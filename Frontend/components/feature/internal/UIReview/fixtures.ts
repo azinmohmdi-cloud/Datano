@@ -41,6 +41,7 @@ export const reviewTranslations: UIReviewUIProps["translations"] = {
   showReady: "نمایش حالت آماده",
   loginReview: "بررسی فرم ورود",
   signupReview: "بررسی فرم ثبت‌نام",
+  recoveryReview: "بررسی بازیابی رمز",
 };
 
 const sampleRows = [

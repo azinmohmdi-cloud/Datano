@@ -293,7 +293,7 @@ The page and links work without JavaScript. See
 the public/product shells. The narrow centered form uses the approved brand,
 Vazirmatn and a quiet icy-blue/lavender backdrop scoped to its containing main.
 It supplies email, show/hide password, remember-me, signup (`/signup`) and recovery
-(`/forgot-password`) links. Signup UI is supplied by FE-011; recovery remains FE-012.
+(`/forgot-password`) links. Signup and recovery UI are supplied by FE-011/FE-012.
 
 The client injector owns values, field/submission errors and password visibility.
 Validation uses the email input's validity and requires a nonempty password;
@@ -352,6 +352,44 @@ The catalogue links to this review. No successful-registration scenario exists.
 
 Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e signup.spec.ts`.
 See [FE-011 validation](docs/validation/FE-011-signup.md) for executed evidence.
+
+## Password recovery — FE-012
+
+`/forgot-password` composes `RecoveryForm/DatanoRecovery.tsx`, a client controller
+and pure UI through the existing public shell. A shared `AuthFormLayout` provides
+one centered `max-w-md` Card, heading/icon slot, three-step indicator and Login
+footer link. All stages retain the same frame and primary-action position.
+Overlapping intrinsic grid cells reserve the largest heading/form at the current
+width; inactive panels stay mounted to preserve values, but are invisible, inert,
+hidden from assistive technology and disabled. No fixed card height is imposed.
+Errors may grow the form, and narrow/reduced-height viewports remain scrollable.
+Login's existing 448px cap and Signup's 576px cap are preserved; recovery follows
+Login's cap and reuses the same gradient/control tokens.
+
+The public form validates email and reports real unavailability on valid submit.
+It does not advance, read preview query flags, send email, verify a code, change
+password, start an auth session or persist credentials. Before hydration and
+without JavaScript, controls remain disabled. FE-031 owns the real integration.
+
+Private `/ui-review/recovery?step=email|code|password&state=ready` reviews the
+continuous flow with an explicit design-only notice. Other scenarios are
+`pending`, `error`, `expired`, `locked`, `resend-ready` and `near-expiry`.
+Step changes preserve all input values and focus the active field; changing the
+initial scenario intentionally resets its fixture. Codes require exactly eight
+digits, preserving a leading zero; Persian/Arabic decimal digits become ASCII
+without silently truncating other input. New passwords use the existing approved
+15–128 Unicode-code-point policy and exact confirmation, with independent
+visibility controls and no trimming/normalization/composition requirement.
+
+The private timer models a 10-minute expiry, 60-second resend cooldown and five
+invalid attempts. Resend clears the old sample code and resets counters, with
+text explicitly stating that no email was sent. Moving to the next private panel
+is UI inspection, never successful verification. Even a valid new password ends
+with an availability error, never a successful reset. Production excludes the
+review route and fixture values using the unchanged FE-005 policy.
+
+Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e recovery.spec.ts`.
+See [FE-012 validation](docs/validation/FE-012-recovery.md) for executed evidence.
 
 ## Private UI review
 
