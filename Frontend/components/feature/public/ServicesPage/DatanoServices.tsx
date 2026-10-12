@@ -9,7 +9,7 @@ export default function DatanoServices() {
         titleAccent: "از داده تا تصمیم",
         introduction: "از تحلیل رفتار کاربران و عملکرد جست‌وجو تا بررسی تبلیغات و پیشنهادهای هوشمند مبتنی بر داده؛ دیتانو در حال توسعه است تا تمام این امکانات را در یک فضای فارسی و یکپارچه کنار هم قرار دهد و مسیر شناخت، تحلیل و بهبود عملکرد سایت شما را روشن‌تر کند.",
         signup: "شروع استفاده (رایگان)",
-        conceptual: "نمای توضیحی؛ دادهٔ واقعی نیست",
+        conceptual: "",
         chartCaption: "نمودار مفهومی؛ بدون مقیاس و دادهٔ واقعی",
         diagram: {
           title: "سه نگاه، یک مسیر تحلیل",
@@ -23,7 +23,7 @@ export default function DatanoServices() {
         sources: {
           eyebrow: "منابع طراحی‌شده برای دیتانو",
           title: "سه منبع، سه زاویهٔ دید",
-          description: "این بخش دامنهٔ سرویس‌های در حال توسعه را معرفی می‌کند. هر منبع با دسترسی مجاز و متناسب با نیاز سایت انتخاب خواهد شد.",
+          description: "",
           cards: [
             {
               id: "ga4", name: "Google Analytics 4", category: "رفتار و ترافیک سایت", icon: "activity", visual: "line",
@@ -64,7 +64,7 @@ export default function DatanoServices() {
             { icon: "report", title: "قاعده و شواهد", description: "علت پیشنهاد و ورودی‌های معتبر همان ارزیابی." },
             { icon: "compass", title: "اولویت و پیگیری", description: "زمینهٔ انتخاب اقدام و بررسی تاریخچهٔ پیشنهاد." },
           ],
-          note: "این بخش ساختار شواهد را توضیح می‌دهد؛ پیشنهاد واقعی تولید نشده است.",
+          note: "",
         },
         closing: {
           eyebrow: "یک قدم به شناخت روشن‌تر",
