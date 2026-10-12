@@ -329,6 +329,27 @@ standards; extend components for approved page needs without redesigning that
 identity. In each UI task's final report, confirm design-system consistency and
 explain any necessary deviation with a concrete reason.
 
+### UI content generation policy — permanent default
+
+Apply the [Content Guidelines](docs/design-system.md#content-guidelines--permanent-product-standard)
+to all current and future Datano pages in every frontend task. Public copy must
+be professional, user-centered, natural Persian focused on services, capabilities,
+and verified product value. Do not automatically add or repeat development-status,
+backend-readiness, demo-only, or incomplete-feature disclaimers across the UI.
+Record implementation progress, API connection status, technical limitations, and
+unfinished capabilities in project documentation and task reports.
+
+This does not permit presenting unimplemented capabilities as active or usable,
+inventing statistics, results, or success, or hiding errors. When a preview needs
+clarification to avoid misleading users, use a short, non-repetitive label such as
+«پیش‌نمایش مفهومی» rather than lengthy warnings. In operational flows such as signup,
+source connection, and dashboards, show actual unavailability and relevant states
+honestly, in language proportionate to the user's needs.
+
+Preserve existing rules and report specific conflicts with approved requirements;
+do not silently delete or rewrite them. Apply this policy to existing UI only
+within an authorized task's scope; it does not authorize unrelated copy changes.
+
 ### Shared visuals and accessibility
 
 - Use `cn`, existing primitives, `buttonVariants`, and CSS theme tokens such as

@@ -35,6 +35,41 @@ forms, analytics workspaces, and administration share an identity, not an
 identical landing layout. No invented customer counts, statistics, successful
 connections, sessions, endorsements, or promised growth may be introduced.
 
+### Content Guidelines — permanent product standard
+
+These guidelines apply by default to content generation and review for all current
+and future Datano pages in every frontend task.
+
+- **Product value first:** public pages introduce services, capabilities, and
+  Datano's verified value in professional, user-centered language. Keep engineering
+  progress and development stages out of marketing copy.
+- **No automatic disclaimers:** do not add or repeat statements such as «محصول در
+  حال توسعه است», «این بخش صرفاً نمایشی است», «قابلیت هنوز عملیاتی نیست», or «داشبورد
+  واقعی نیست» throughout public pages or UI sections merely because implementation
+  is incomplete. Avoid equivalent recurring development warnings.
+- **Technical reporting belongs in documentation:** record development progress,
+  API connection status, implementation limitations, and unfinished capabilities
+  in project documentation and task reports, rather than repeatedly in site copy.
+- **Claims must remain truthful:** never describe an unimplemented capability as
+  active or usable, fabricate statistics or results, or show invented success.
+- **Clarify previews only when needed:** when users could mistake a preview for
+  real data or functionality, use a short, non-repetitive label such as
+  «پیش‌نمایش مفهومی». Avoid long explanations and repeated warnings; do not remove
+  context necessary for truthful interpretation.
+- **Operational states remain explicit:** signup, source connection, and dashboard
+  flows must honestly communicate actual unavailability, failures, and relevant
+  limitations when they affect the user's action or understanding. Keep the message
+  proportionate to that need; never hide an error or simulate success to reduce copy.
+- **Natural Persian voice:** use fluent, clear, professional Persian suited to the
+  audience. Describe the user's goal and product meaning; avoid developer jargon
+  and backend implementation details in marketing language.
+
+Preserve existing approved rules. If an explicit approved requirement conflicts
+with this policy, report the specific conflict rather than silently removing or
+rewriting that requirement. Historical label examples elsewhere in this document
+are not an instruction to add repeated disclaimers. Updating existing UI under
+this policy requires that UI to be within the authorized task's scope.
+
 ## 2. Colors and tokens — existing baseline
 
 The single runtime source is [app/globals.css](../app/globals.css).
