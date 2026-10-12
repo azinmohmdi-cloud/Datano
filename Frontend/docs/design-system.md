@@ -94,7 +94,7 @@ Brand fill and accent text have different roles. For small text on dark surfaces
 use `text-brand-ink`, not an automatic `text-brand-blue` replacement. Verify
 contrast for the actual foreground/background combination and opacity.
 
-### Page background policy — approved FE-008 final revision
+### Page background policy — approved public pages
 
 The user's final services revision adds a quiet page-level palette alongside
 the unchanged brand colors. Page backdrops do not recolor logos, icons, charts,
@@ -102,8 +102,8 @@ controls, cards, the shared header/footer, or the homepage hero.
 
 | Page | Approved backdrop | Runtime status |
 | --- | --- | --- |
-| Services | Very pale rose → lavender, 135° linear gradient | Applied only to `/services` |
-| About | Same rose/lavender backdrop and dark adaptation | Future requirement for FE-009; no about page implemented here |
+| Services | Existing pale lavender `#f7f4fd` → icy blue `#f2f8fd`, 135° linear gradient | Applied only to `/services`; unchanged by FE-009 |
+| About | Very pale icy blue `#f2f8fd` → lavender `#f7f4fd`, 135° linear gradient | Applied only to `/about` in FE-009; replaces the earlier rose/lavender decision |
 | Dashboard | Very light blue `#f3f7ff`; proposed dark adaptation `#171e2b` | Approved future page standard; not applied or defined as a runtime token yet |
 | Profile | Same very light blue as dashboard | Approved future page standard; no profile change here |
 | Homepage and other current pages | Existing background | Unchanged |
@@ -115,7 +115,11 @@ is `linear-gradient(135deg, var(--page-editorial-start), var(--page-editorial-en
 An explicit `page-surface-editorial` class in the page UI opts its containing
 `main` into this backdrop using `main:has(.page-surface-editorial)`. It fills the
 content area and gutters without viewport-sized decorative elements or altering
-the header/footer. About should opt into this same recipe in its authorized task.
+the header/footer. Services overrides the light tokens only on
+`main:has(#services-title)`; About uses the reverse color order only on
+`main:has(#about-title)`. Both retain the existing dark adaptation. The FE-009
+About palette supersedes its earlier pink backdrop without changing Services,
+the homepage, shared navigation, or future dashboard/profile policy.
 
 Keep these colors low-saturation and restrained. Dashboard/profile implementation
 should introduce one central workspace-background token for the approved blue
@@ -456,6 +460,13 @@ revision supersedes the original services composition described by older UX and
 FE-008 validation records; it does not authorize changing Backlog criteria or
 removing those sections from the homepage.
 
+FE-009 About uses a compact editorial composition: a right-aligned title beside
+a short introduction, followed by mission and approach prose with one services
+link. It reuses the public shell, typography and brand accents, with no cards,
+charts, dashboard preview, signup CTA, or development-status notices. On narrow
+screens the columns stack in their reading order. Its copy describes product
+goals and guiding principles, without invented history, team or contact details.
+
 Current header: max-w-7xl, `min-h-22` (88px), `px-4 sm:px-6 lg:px-8 py-4`,
 `gap-4`, border-bottom, background, relative z-20. Brand sits on the right.
 The latest source-order correction is **سرویس‌ها → درباره ما → حساب کاربری → ورود**
@@ -513,6 +524,7 @@ claimed by the current token sets.
 | [LandingPage UI](../components/feature/public/LandingPage/index.tsx) | Hero, SectionHeading, ActionLink, process/features and KPI/preview recipes; local helpers, shared ConceptChart import |
 | [ConceptChart](../components/ui/concept-chart.tsx) | Unchanged approved line/bar SVG geometry shared by landing and services |
 | [ServicesPage UI](../components/feature/public/ServicesPage/index.tsx) | Final editorial hero, preserved source diagram/cards and recommendation evidence, single closing CTA; page-only background opt-in |
+| [DatanoAbout](../components/feature/public/AboutPage/DatanoAbout.tsx) and [AboutPage UI](../components/feature/public/AboutPage/index.tsx) | Short goal-based Persian copy, mission/approach prose and compact editorial composition; page-only blue/lavender backdrop |
 | [Global CSS](../app/globals.css) | Runtime tokens, themes, gradients/grid/depth recipes |
 | [ProductBrand](../components/layout/ProductLayout/brand.tsx) | Approved current mark, typography and default sizing |
 | [Private review injector](../components/feature/internal/UIReview/DevelopmentUIReview.tsx) | Development-only shell/control/state inspection; never import into product UI |

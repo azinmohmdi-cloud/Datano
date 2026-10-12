@@ -173,6 +173,10 @@
     --page-editorial-start: #f7f4fd;
     --page-editorial-end: #f2f8fd;
   }
+  :root:not(.dark) main:has(#about-title) {
+    --page-editorial-start: #f2f8fd;
+    --page-editorial-end: #f7f4fd;
+  }
   .landing-hero {
     background: radial-gradient(ellipse at 12% 40%, color-mix(in srgb, var(--brand-purple) 11%, transparent), transparent 55%),
       radial-gradient(ellipse at 90% 5%, color-mix(in srgb, var(--brand-blue) 8%, transparent), transparent 60%), var(--brand-panel);

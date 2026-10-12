@@ -191,8 +191,8 @@ Styling reuses
 
 `components/layout/ProductLayout/links.ts` defines the reserved destinations:
 `/account`, `/about`, `/services`, and `/login`. The header does not infer a
-session/role or implement account redirects. The homepage and `/services` have
-product content; `/account`, `/about`, and `/login` remain pending and return
+session/role or implement account redirects. The homepage, `/services`, and `/about`
+have product content; `/account` and `/login` remain pending and return
 404. Automatic prefetching of navigation links is disabled. Do not add
 placeholder login/profile/dashboard pages or claim authentication to make the
 shell appear complete. Account routing from trusted session data remains FE-030.
@@ -266,11 +266,26 @@ and visible conceptual labels do not present generated data as real analytics.
 No chart library or other dependency is added. Both pages remain server-renderable.
 
 The approved [design system](docs/design-system.md) governs brand, typography,
-icons, surfaces and responsive behavior. Services alone currently opts into
-the subtle rose/lavender page backdrop. About inherits this requirement for
-FE-009; the light-blue dashboard/profile policy is recorded for future work.
+icons, surfaces and responsive behavior. Services retains its existing subtle
+lavender/icy-blue page backdrop. About uses the icy-blue/lavender gradient approved
+for FE-009; the light-blue dashboard/profile policy is recorded for future work.
 The homepage and shared shell retain their existing backgrounds. See
 [FE-008 validation](docs/validation/FE-008-services.md) for executed checks.
+
+## Public about
+
+`/about` composes `AboutPage/DatanoAbout.tsx` and its pure UI through the existing
+public shell. A compact editorial layout introduces Datano's purpose, mission,
+and approach in short Persian prose. It describes goals and guiding principles,
+without claiming operational integrations, inventing company history, team,
+customers or contact details, or repeating development-status disclaimers.
+
+The only content link opens `/services`; shared header/footer navigation is
+unchanged. The page uses the approved typography and brand colors, with a very
+subtle icy-blue/lavender backdrop scoped to its containing main. No charts,
+cards, preview, data hook, API request, new dependency or client boundary is added.
+The page and links work without JavaScript. See
+[FE-009 validation](docs/validation/FE-009-about.md) for executed checks.
 
 ## Private UI review
 

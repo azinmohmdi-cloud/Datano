@@ -40,9 +40,9 @@ test("landing presents the approved sections and honest explanatory preview", as
   for (const name of ["مشکل چیست؟", "دیتانو چگونه کمک می‌کند؟", "قابلیت‌های اصلی دیتانو", "چرا دیتانو؟", "دیتانو برای چه کسانی طراحی می‌شود؟", "پیش‌نمایش داشبورد", "قدم بعدی، شناخت بهتر سایت شماست."]) {
     await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
   }
-  await expect(page.getByText("محصول در حال توسعه است؛ اتصال منابع و داشبورد عملیاتی هنوز در دسترس نیست.", { exact: true })).toBeVisible();
+  await expect(page.getByText("محصول در حال توسعه است؛ اتصال منابع و داشبورد عملیاتی هنوز در دسترس نیست.", { exact: true })).toHaveCount(0);
   const preview = page.getByRole("region", { name: "پیش‌نمایش داشبورد", exact: true });
-  await expect(preview.getByText("نمای توضیحی؛ دادهٔ واقعی نیست", { exact: true })).toBeVisible();
+  await expect(preview.getByText("نمای توضیحی؛ دادهٔ واقعی نیست", { exact: true })).toHaveCount(0);
   await expect(preview.getByText("—", { exact: true })).toHaveCount(4);
   await expect(preview.getByRole("img", { name: "تصویرسازی مسیر تحلیل؛ شکل‌ها بیانگر داده، روند یا نتیجهٔ واقعی نیستند." })).toHaveCount(3);
   await expect(preview.getByText("نمودار مفهومی · بدون مقیاس و داده", { exact: true })).toHaveCount(3);
@@ -93,7 +93,7 @@ test("Persian typography and landing content fit narrow, tablet, desktop, dark a
     for (const dark of [false, true]) {
       await page.evaluate((enabled) => document.documentElement.classList.toggle("dark", enabled), dark);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      const contrast = await page.getByText("نمای توضیحی؛ دادهٔ واقعی نیست", { exact: true }).evaluate((badge) => {
+      const contrast = await page.getByText("نمایش مفهومی", { exact: true }).evaluate((badge) => {
         const canvas = document.createElement("canvas");
         canvas.width = canvas.height = 1;
         const ctx = canvas.getContext("2d");
