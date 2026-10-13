@@ -43,6 +43,7 @@ export interface UIReviewUIProps {
     loginReview: string;
     signupReview: string;
     recoveryReview: string;
+    profileReview: string;
   };
   callbacks: {
     onChangeSelection: (key: keyof UIReviewUIProps["selection"], value: string) => void;
@@ -70,6 +71,7 @@ export default function UIReviewUI(props: UIReviewUIProps) {
         <Link href="/ui-review/login" prefetch={false} className={buttonVariants({ variant: "link" })}>{translations.loginReview}</Link>
         <Link href="/ui-review/signup" prefetch={false} className={buttonVariants({ variant: "link" })}>{translations.signupReview}</Link>
         <Link href="/ui-review/recovery" prefetch={false} className={buttonVariants({ variant: "link" })}>{translations.recoveryReview}</Link>
+        <Link href="/ui-review/profile" prefetch={false} className={buttonVariants({ variant: "link" })}>{translations.profileReview}</Link>
       </div>
       <div id="review-preview" tabIndex={-1} data-review-preview data-review-state={selection.state} data-review-persona={selection.persona} className="space-y-6 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/30">
         <p className="text-sm">{translations.personaPrefix}{props.personaLabel}</p>

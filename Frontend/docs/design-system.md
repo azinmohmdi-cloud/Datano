@@ -108,7 +108,7 @@ controls, cards, the shared header/footer, or the homepage hero.
 | Signup | Same quiet icy-blue/lavender gradient as Login | Applied only to `/signup` and its private form review in FE-011 using the existing login backdrop tokens |
 | Recovery | Same quiet icy-blue/lavender gradient as Login | Applied to `/forgot-password` and its private form review in FE-012 using the existing login backdrop tokens |
 | Dashboard | Very light blue `#f3f7ff`; proposed dark adaptation `#171e2b` | Approved future page standard; not applied or defined as a runtime token yet |
-| Profile | Same very light blue as dashboard | Approved future page standard; no profile change here |
+| Profile | Very pale icy blue → lavender, matching the current auth gradient | Applied to `/profile` and its private review in FE-013; the user's gradient request supersedes the earlier flat-blue profile proposal |
 | Homepage and other current pages | Existing background | Unchanged |
 
 Existing editorial tokens in `app/globals.css` are
@@ -124,14 +124,15 @@ the header/footer. Services overrides the light tokens only on
 About palette supersedes its earlier pink backdrop without changing Services,
 the homepage, shared navigation, or future dashboard/profile policy.
 
-Keep these colors low-saturation and restrained. Dashboard/profile implementation
+Keep these colors low-saturation and restrained. Future dashboard implementation
 should introduce one central workspace-background token for the approved blue
 standard when needed; do not scatter the value or apply it to AccountLayout or
-SiteLayout prematurely. Neither future page is implemented by this policy.
+SiteLayout prematurely. FE-013 applies the user's subsequent gradient requirement
+only to Profile, leaving the future dashboard policy intact.
 
 FE-010 centralizes the approved login backdrop as `--page-login-start` and
 `--page-login-end`, with dark adaptations `#171e2b` and `#1e1b2b`.
-`main:has(.page-surface-login)`, `.page-surface-signup` and `.page-surface-recovery`
+`main:has(.page-surface-login)`, `.page-surface-signup`, `.page-surface-recovery` and `.page-surface-profile`
 opt their containing main into these tokens. Each private review uses its product
 form surface; unrelated routes retain their backgrounds.
 
@@ -519,6 +520,23 @@ and descriptions; countdown numbers/codes/emails are isolated from RTL prose.
 Timers and advancing stages exist only in the clearly labeled private review.
 `main:has(.page-surface-recovery)` reuses the existing auth backdrop tokens.
 
+FE-013 Profile uses AccountLayout's existing 1024px outer cap, with a compact
+UserRound heading and an lg two-column composition: 256px account summary/logout
+beside the flexible names/email form column. At narrower widths these stack in
+DOM/RTL reading order. It uses rounded-2xl Cards with restrained brand borders
+and shadow-sm, the existing 48px minimum controls, 24px/30px responsive page title
+and shared Field validation. Names remain editable drafts; the summary remains
+the supplied account data. Email proof is distinct from editing names, and current
+email is visible while the new address/code is reviewed. Logout uses a focused
+inline confirmation group with cancellation, rather than an additional modal.
+There is no role/account-activation selector or unrelated dashboard decoration.
+
+The user's FE-013 very pale blue/lavender gradient supersedes the earlier flat
+blue profile proposal. `main:has(.page-surface-profile)` reuses the auth backdrop
+tokens in both themes without changing AccountLayout globally or previous pages.
+Until trusted session data is available, `/profile` displays a concise access
+state with Login; complete interactive account fixtures stay in private review.
+
 Current header: max-w-7xl, `min-h-22` (88px), `px-4 sm:px-6 lg:px-8 py-4`,
 `gap-4`, border-bottom, background, relative z-20. Brand sits on the right.
 The latest source-order correction is **سرویس‌ها → درباره ما → حساب کاربری → ورود**
@@ -586,6 +604,8 @@ claimed by the current token sets.
 | [Signup review](../components/feature/internal/SignupReview/DevelopmentSignupReview.tsx) | Private interactive validation, terms checkbox exercise, pending/error and blocked scenarios |
 | [Recovery layout](../components/layout/AuthFormLayout/index.tsx) and [Recovery UI](../components/feature/identity/RecoveryForm/index.tsx) | One intrinsic frame and progress indicator across all three auth recovery panels |
 | [Recovery review](../components/feature/internal/RecoveryReview/DevelopmentRecoveryReview.tsx) | Private flow, validation, countdown, resend, expiry and attempt-limit inspection without auth effects |
+| [Profile injector](../components/feature/identity/ProfilePage/DatanoProfile.tsx) and [Profile UI](../components/feature/identity/ProfilePage/index.tsx) | Account scope, drafted names, separate email-proof flow and inline logout confirmation |
+| [Profile review](../components/feature/internal/ProfileReview/DevelopmentProfileReview.tsx) | Private deterministic account/form/loading/error/logout inspection without real identity effects |
 | [Landing tests](../tests/e2e/landing.spec.ts) | Scope, truthful preview, CTA, mobile menu, no-JS, font/RTL, theme/zoom checks |
 | [Shared-shell tests](../tests/e2e/ui-review.spec.ts) | Header/footer consistency, scope switching, fields/states and keyboard regression |
 | [FE-007 record](validation/FE-007-landing.md) | Historical implementation/validation evidence, not a competing design source |

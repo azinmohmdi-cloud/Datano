@@ -42,6 +42,7 @@ export const reviewTranslations: UIReviewUIProps["translations"] = {
   loginReview: "بررسی فرم ورود",
   signupReview: "بررسی فرم ثبت‌نام",
   recoveryReview: "بررسی بازیابی رمز",
+  profileReview: "بررسی پروفایل",
 };
 
 const sampleRows = [

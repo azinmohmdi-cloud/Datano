@@ -190,6 +190,9 @@
   main:has(.page-surface-recovery) {
     background: linear-gradient(135deg, var(--page-login-start), var(--page-login-end));
   }
+  main:has(.page-surface-profile) {
+    background: linear-gradient(135deg, var(--page-login-start), var(--page-login-end));
+  }
   .landing-hero {
     background: radial-gradient(ellipse at 12% 40%, color-mix(in srgb, var(--brand-purple) 11%, transparent), transparent 55%),
       radial-gradient(ellipse at 90% 5%, color-mix(in srgb, var(--brand-blue) 8%, transparent), transparent 60%), var(--brand-panel);

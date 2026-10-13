@@ -269,7 +269,8 @@ The approved [design system](docs/design-system.md) governs brand, typography,
 icons, surfaces and responsive behavior. Services retains its existing subtle
 lavender/icy-blue page backdrop. About uses the icy-blue/lavender gradient approved
 for FE-009; the light-blue dashboard/profile policy is recorded for future work.
-The homepage and shared shell retain their existing backgrounds. See
+The profile backdrop was subsequently approved as the same quiet blue/lavender
+gradient for FE-013. The homepage and shared shell retain their existing backgrounds. See
 [FE-008 validation](docs/validation/FE-008-services.md) for executed checks.
 
 ## Public about
@@ -390,6 +391,50 @@ review route and fixture values using the unchanged FE-005 policy.
 
 Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e recovery.spec.ts`.
 See [FE-012 validation](docs/validation/FE-012-recovery.md) for executed evidence.
+
+## Profile UI — FE-013
+
+`/profile` uses a pathless `(account)` group and the existing AccountLayout inside
+ProductLayout. Until FE-030/FE-032 supply trusted session/account data, it renders
+a concise access state with a Login link. Query parameters cannot provide an
+account, role or preview state. No private fixture or fake authenticated identity
+is included in that route; the existing `/account` routing remains FE-030 work.
+
+The complete UI is available privately at `/ui-review/profile`. It uses the same
+shell, Vazirmatn, icons, Card/Field/Input/Button and brand palette. A summary card
+shows account name/current email and an inline logout confirmation. The main
+column contains editable given/family names and a separate change-email flow;
+columns stack in reading order below lg. There is no role, username or account
+activation control, invented avatar-upload feature, chart or marketing section.
+The page-only `.page-surface-profile` opt-in reuses the established very pale
+icy-blue/lavender auth gradient and dark adaptation, as requested for FE-013.
+
+Names require non-whitespace content; changes remain drafts, with first-invalid
+focus and linked Persian feedback. Reset restores only names, leaving email/code
+drafts intact. No real save or account-summary mutation is simulated. Email
+comparison follows MVP trim/lowercase only, without provider-specific dot/plus
+rules. The current email remains unchanged through request/code/error states.
+Private stage navigation preserves drafts; editing the new address invalidates
+its old sample code. Codes accept exactly eight digits, including a leading zero,
+with Persian/Arabic decimal digit conversion and no silent truncation. The private
+clock models 600-second expiry, 60-second resend cooldown and five invalid attempts.
+Resend explicitly states that no email was sent. Valid verification still reports
+unavailability; FE-033 owns real ownership proof/email replacement.
+
+`emailStep=request|code` directly selects the private email stage. `state=ready`
+provides interaction; other initial scenarios are `loading`, `error`,
+`names-pending`, `names-error`, `email-pending`, `email-error`, `code-error`,
+`expired`, `resend-ready`, `logout-confirm`, `logout-pending`, `logout-error`.
+Changing the initial scenario resets the fixture, with a visible notice; changing
+the email stage retains drafts. Logout cancellation returns keyboard focus, while
+confirmation reports unavailability and preserves the account and edits. No
+request, real logout, redirect, session or browser-storage write is performed.
+Controls are disabled before hydration. Private review requires JavaScript and
+otherwise stays in its loading fallback; the public Login link works without it.
+The unchanged FE-005 policy excludes private routes/fixtures from production.
+
+Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e profile.spec.ts`.
+See [FE-013 validation](docs/validation/FE-013-profile.md) for executed evidence.
 
 ## Private UI review
 
