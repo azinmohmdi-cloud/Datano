@@ -18,13 +18,13 @@ export default function DevelopmentWebsiteListReview() {
   const sites = account === "empty" ? [] : account === "single" ? websiteReviewSites.slice(0, 1) : websiteReviewSites;
   return <ProductLayout><AccountLayout>
     <WebsiteListReviewUI account={account} state={state} accounts={websiteReviewAccounts} states={websiteReviewStates} translations={{
-      notice: "بررسی خصوصی سایت‌ها؛ دامنه‌ها و وضعیت‌ها نمونه‌اند. انتخاب سناریو نمونه را بازنشانی می‌کند. حذف واقعی انجام نمی‌شود و ادامه فقط مقصد مرحله بعد را نشان می‌دهد.",
+      notice: "بررسی خصوصی سایت‌ها؛ دامنه‌ها و وضعیت‌ها نمونه‌اند. انتخاب سناریو نمونه را بازنشانی می‌کند. حذف واقعی انجام نمی‌شود؛ افزودن سایت فرم خصوصی را باز می‌کند و ادامه فقط مقصد مرحله بعد را نشان می‌دهد.",
       accountLabel: "نوع حساب نمونه", stateLabel: "سناریوی فهرست", profile: "بازگشت به پروفایل",
     }} callbacks={{
       onAccountChange: (value) => { if (websiteReviewAccounts.some((option) => option.value === value)) router.replace(`/ui-review/websites?account=${value}&state=${state}`, { scroll: false }); },
       onStateChange: (value) => { if (websiteReviewStates.some((option) => option.value === value)) router.replace(`/ui-review/websites?account=${account}&state=${value}`, { scroll: false }); },
     }}>
-      <WebsiteListController key={`${account}:${state}`} sites={sites} initialScenario={state} onDestination={() => { /* Destination review is local; no unfinished route is visited. */ }} />
+      <WebsiteListController key={`${account}:${state}`} sites={sites} initialScenario={state} onDestination={(step) => { if (step === "add") router.push("/ui-review/websites/new"); }} />
     </WebsiteListReviewUI>
   </AccountLayout></ProductLayout>;
 }

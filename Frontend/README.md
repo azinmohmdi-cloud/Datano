@@ -473,10 +473,45 @@ The feature reuses the existing brand, Vazirmatn, RTL, account shell, Card/Butto
 and Loading/Empty/Error primitives. Controls remain disabled before hydration;
 private no-JS review stays in its Suspense fallback. Production excludes review
 routes/fixtures under the existing FE-005 policy. Real list/add integration remains
-FE-034; deletion remains FE-047. FE-015–FE-018 are not implemented by this task.
+FE-034; deletion remains FE-047. FE-015 adds the private form navigation described
+below; ownership, source connection and receipt remain FE-016–FE-018.
 
 Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e websites.spec.ts`.
 See [FE-014 validation](docs/validation/FE-014-websites.md) for executed evidence.
+
+## Add website form UI — FE-015
+
+Open `/ui-review/websites/new` with `UI_REVIEW_ENABLED=1 pnpm dev` or use Add
+from the private website list. The existing account shell, neutral background,
+Vazirmatn, RTL, brand tokens and shared form primitives are retained.
+`state=ready|valid|invalid|duplicate|unavailable|pending|error|registered` selects
+a deterministic initial fixture. Changing the selector resets the draft;
+ordinary validation/submission errors preserve it. Repeated/unknown selectors
+fall back to the empty form. No fixture persists or creates a website.
+
+The form accepts full HTTP(S) homepage URLs with no credentials, custom port,
+non-root path, query or fragment. Matching default ports (HTTP 80 / HTTPS 443)
+are accepted; a root slash is optional. Syntax validation canonicalizes the
+hostname through IDNA, lowercase and removal of its terminal dot. `www` and
+subdomains remain independent. IP literals (including alternative IPv4 notation),
+localhost, local names and invalid hostname labels/lengths are rejected. This is
+client syntax validation, not DNS resolution, availability, SSRF protection or
+authorization; backend checks must remain authoritative.
+
+Same-account duplicate fixtures offer the existing list instead of creating a
+second record. The unavailable-domain fixture reveals no owner information.
+Valid submission reports registration unavailability without a request or false
+success. The independently selected registered fixture explicitly remains
+unverified; there is no token, ownership check, next-stage route, Google source
+or report. FE-016 owns proof UI, and FE-034 with BE-018 owns real registration,
+conflict responses and list/cache integration.
+
+`/websites/new` currently displays honest guest access with Login and a public
+list backlink. Query flags cannot supply an account or sample result. Production
+excludes the new private route/fixture under the unchanged review policy.
+
+Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e add-website.spec.ts websites.spec.ts profile.spec.ts`.
+See [FE-015 validation](docs/validation/FE-015-add-website.md) for executed evidence.
 
 ## Private UI review
 

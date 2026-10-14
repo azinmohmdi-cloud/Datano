@@ -20,15 +20,14 @@ test("public website list requires trusted account data and ignores preview or r
   await expect(page).toHaveURL("/login");
 });
 
-test("empty account offers adding a website without creating a site or visiting a missing next-stage page", async ({ page }) => {
+test("empty account opens the add-site form without creating a site", async ({ page }) => {
   await page.goto("/ui-review/websites?account=empty");
   await expect(page.getByText("هنوز سایتی ثبت نکرده‌اید.", { exact: true })).toBeVisible();
   await expect(page.locator("[data-website-row]")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "مشاهده اطلاعات سایت من", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "افزودن سایت", exact: true }).click();
-  await expect(page.locator("[data-website-destination]")).toHaveAttribute("data-website-destination", "add");
-  await expect(page.getByText("مقصد نمونه: افزودن سایت.", { exact: true })).toBeVisible();
-  await expect(page).toHaveURL(/\/ui-review\/websites/);
+  await expect(page).toHaveURL("/ui-review/websites/new");
+  await expect(page.getByRole("textbox", { name: "آدرس سایت", exact: true })).toBeVisible();
   await expect(page.locator("[data-website-row]")).toHaveCount(0);
 });
 

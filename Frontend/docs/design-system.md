@@ -551,6 +551,18 @@ The private profile summary has an optional site-navigation link; its account
 fields and public access state are preserved. `/websites` shows an access state
 until trusted site data exists; full fixtures remain at `/ui-review/websites`.
 
+FE-015 Add Website uses a `max-w-2xl` inner column in AccountLayout with the
+same neutral background as Website List. A compact Globe2 heading, list backlink,
+rounded-2xl form Card and quiet brand-panel ownership explanation separate
+registration from proof. The full-width URL input uses LTR direction, shared
+Field label/description/error association and the existing 48px minimum height.
+Canonical hostname wraps in an LTR bdi; valid feedback uses a Check symbol and
+brand-ink text, rather than an invented success color. Duplicate, unavailable,
+pending and unverified-result states retain textual labels and shared controls.
+The proof explanation adds no token or verification action; the separately
+selected private registration-result fixture remains unverified. No gradient,
+new token, shared primitive or change to previous profile/list designs is added.
+
 Current header: max-w-7xl, `min-h-22` (88px), `px-4 sm:px-6 lg:px-8 py-4`,
 `gap-4`, border-bottom, background, relative z-20. Brand sits on the right.
 The latest source-order correction is **سرویس‌ها → درباره ما → حساب کاربری → ورود**
