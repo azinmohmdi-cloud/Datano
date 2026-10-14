@@ -622,6 +622,22 @@ chart, recommendation UI, shared date-picker dependency or status palette is add
 Full fixtures remain private; the public page displays the existing access-state
 pattern. This follows the approved dashboard background and identity.
 
+FE-020 KPI Overview composes four rounded-2xl shared Cards in a 1 → 2 at sm → 4
+at lg grid below period controls. Users/Sessions/Key Events identify GA4; CTR
+identifies Search Console. Existing UsersRound/Activity/Flag/Search symbols and
+brand-ink text supplement Persian headings. Values use the established 30px/40px
+metric scale, tabular numerals and intrinsic wrapping. Each card retains unit,
+source/resource, exact aggregate window and coverage. Zero, unavailable, undefined
+ratio, loading/error, incomplete/thresholded/provisional data and stale timestamps
+have distinct textual labels; absence uses `—`. No state depends on color alone.
+Current/comparison readings follow the shell's applied window, not draft inputs.
+The per-value successful timestamp is separate from the three-source freshness
+summary; both use Persian dates with operational time shown in Tehran. Stale values
+remain visible. Existing neutral/brand-soft surfaces and Clock3 symbols provide
+status styling; no palette, shared primitive, typography, shell or backdrop change.
+The optional overview slot preserves ownership/readiness/loading/error gates.
+Complete fixtures and scenario selectors remain in the private review graph.
+
 Current header: max-w-7xl, `min-h-22` (88px), `px-4 sm:px-6 lg:px-8 py-4`,
 `gap-4`, border-bottom, background, relative z-20. Brand sits on the right.
 The latest source-order correction is **سرویس‌ها → درباره ما → حساب کاربری → ورود**

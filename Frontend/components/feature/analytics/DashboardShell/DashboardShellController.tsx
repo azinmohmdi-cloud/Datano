@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useSyncExternalStore } from "react";
+import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { WebsiteListItem } from "@/components/feature/websites/WebsiteList/navigation";
 import { formatReceiptDay } from "@/components/feature/websites/DataReceipt/readiness";
 import DashboardShellUI, { type DashboardShellUIProps } from ".";
@@ -12,9 +12,10 @@ const clientReady = () => true;
 const serverReady = () => false;
 function formatWindow(window: DayWindow | null) { return window ? `${formatReceiptDay(window.from)} ${t.rangeJoin} ${formatReceiptDay(window.to)}` : t.unknown; }
 
-export default function DashboardShellController({ sites, selected, sources, nowUTC, status = "ready", links, onSiteChange }: {
+export default function DashboardShellController({ sites, selected, sources, nowUTC, status = "ready", links, onSiteChange, renderOverview }: {
   sites: readonly WebsiteListItem[]; selected: WebsiteListItem; sources: readonly DashboardSourceInput[]; nowUTC: string;
   status?: DashboardShellUIProps["status"]; links: DashboardShellUIProps["links"]; onSiteChange: (id: string) => void;
+  renderOverview?: (selection: { period: DashboardPeriod; comparison: boolean }) => ReactNode;
 }) {
   const id = useId();
   const hydrated = useSyncExternalStore(subscribe, clientReady, serverReady);
@@ -55,7 +56,7 @@ export default function DashboardShellController({ sites, selected, sources, now
     else if (first && last) { setPeriod({ mode: "custom", window: { from: first, to: last } }); setNotice(t.applied); }
   }
 
-  return <DashboardShellUI id={id} sites={sites.map((site) => ({ id: site.id, domain: site.domain }))} selectedId={selected.id} hostname={selected.domain} verified={selected.verified} reportAvailable={available} status={status} disabled={!hydrated} mode={mode} comparison={comparison} from={from} to={to} fromError={errors.from} toError={errors.to} activeRange={period.mode === "28-days" ? t.activeDefault : `${t.activeCustom} ${formatWindow(period.window)}`} notice={notice} sources={rows} links={links} translations={t} callbacks={{
+  return <DashboardShellUI id={id} sites={sites.map((site) => ({ id: site.id, domain: site.domain }))} selectedId={selected.id} hostname={selected.domain} verified={selected.verified} reportAvailable={available} status={status} disabled={!hydrated} mode={mode} comparison={comparison} from={from} to={to} fromError={errors.from} toError={errors.to} activeRange={period.mode === "28-days" ? t.activeDefault : `${t.activeCustom} ${formatWindow(period.window)}`} notice={notice} sources={rows} overview={available && status === "ready" ? renderOverview?.({ period, comparison }) : undefined} links={links} translations={t} callbacks={{
     onSiteChange: (value) => { if (hydrated && sites.some((site) => site.id === value)) onSiteChange(value); },
     onModeChange: (value) => { if (!interactive || value !== "28-days" && value !== "custom") return; setMode(value); setErrors({ from: "", to: "" }); setNotice(""); if (value === "28-days") setPeriod({ mode: "28-days" }); },
     onComparisonChange: (checked) => { if (interactive) setComparison(checked); },

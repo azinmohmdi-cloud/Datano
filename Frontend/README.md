@@ -714,6 +714,61 @@ No dependency, backend/API, profile, public-page or navigation design is changed
 Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e dashboard-shell.spec.ts data-receipt.spec.ts websites.spec.ts ui-review.spec.ts`.
 See [FE-019 validation](docs/validation/FE-019-dashboard-shell.md) for executed evidence.
 
+## KPI cards and data freshness — FE-020
+
+The existing private dashboard review now composes a separate KPIOverview injector
+through the shell's optional overview slot. The period controller remains the
+single source of truth for applied windows and comparison visibility; draft editing
+does not change KPI selection. Ownership/readiness/loading/error gates remain intact.
+The public `/websites/[websiteId]` access-state injector is unchanged and imports no
+KPI fixtures, records or private selectors. Real reporting still belongs to FE-037/FE-039.
+
+Four cards show GA4 whole-window totalUsers, sessions and keyEvents, and GSC aggregate
+clicks/impressions CTR. Each retains source, unit, resource, exact query window,
+coverage, quality and successful-receipt timestamp. Users are never summed from
+daily rows; keyEvents are not Ads conversions; CTR is not an average of row rates.
+Only one observation matching site/source/property/metric/window is usable.
+Duplicate, mismatched or absent observations produce `—` instead of inferred values.
+The supplied counts/ratios are presentation records, not an invented endpoint schema.
+
+Actual numeric zero, missing value, zero CTR denominator, malformed measurement,
+loading/error, incomplete/thresholded/provisional quality and stale data remain
+distinct. A valid zero click count with positive impressions displays 0%; zero
+impressions display `—` with an explanation. Unknown is never converted to zero.
+Partial known values retain explicit quality labels; no missing current/comparison
+window is fabricated, proportionally scaled or filled from another window.
+
+Successful UTC timestamps display as Persian dates in Asia/Tehran. Age strictly
+greater than 72 hours is labeled stale, following the MVP evidence-freshness boundary;
+exactly 72 hours remains recent. This is not a new report-visibility or recommendation
+engine gate. Values stay visible when old. Missing, malformed or future timestamps
+show unknown freshness. Per-value retrieval time is independent of the last successful
+source sync, so a newer unrelated sync cannot silently freshen an old value. Failed
+syncs with a prior valid result preserve that result and the source's failure label.
+
+`kpi=valid|mixed|zero|missing|zero-denominator|partial|thresholded|stale|loading|error|unknown-time`
+selects fixed private scenarios. Unknown/repeated selectors default to valid;
+arbitrary URL value/role inputs supply no measurement or authority. Changing site
+resets to its preset and valid KPI scenario; changing review scenarios resets the
+shell, as its private notice explains. Valid fixtures include only default whole-window
+and explicit 2026-09-23–2026-10-10 custom-window aggregates; arbitrary other windows
+have no aggregate. Comparison values remain absent unless an exact record exists.
+
+The mixed/stale GA4 fixture ends on 2026-10-10 with a successful receipt at
+2026-10-11T08:00:00Z, 73 hours before the fixed review clock. Period controls/source
+Cards and KPI Cards consume the same metadata; a stale fixture does not contain
+complete civil days after its receipt timestamp. Other sources retain independent
+ends/timestamps. Empty successful GA4 fixtures explicitly supply zero counts;
+empty GSC supplies zero clicks/impressions and undefined CTR.
+
+Design System identity, Persian/RTL/Vazirmatn, existing Card/status/icon recipes,
+both token themes, source-isolated labels and 320/390/768/1440px layouts are preserved.
+No new dependency, chart, Search Performance/Ads section, API call, polling, retry
+operation, storage effect, global palette or change to earlier pages is introduced.
+
+Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e dashboard-kpi.spec.ts dashboard-shell.spec.ts data-receipt.spec.ts websites.spec.ts ui-review.spec.ts`.
+See [FE-020 validation](docs/validation/FE-020-kpi-freshness.md) for executed evidence.
+
 ## Private UI review
 
 The opt-in `/ui-review` catalogue renders the existing public/account/site

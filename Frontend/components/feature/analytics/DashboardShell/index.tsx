@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Activity, ArrowRight, CalendarDays, Globe2, Megaphone, Search, ShieldCheck } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/ui/status";
 import { cn } from "@/lib/utils";
 
 export interface DashboardShellUIProps {
+  overview?: ReactNode;
   id: string;
   sites: readonly { id: string; domain: string }[];
   selectedId: string;
@@ -56,6 +58,7 @@ export default function DashboardShellUI(props: DashboardShellUIProps) {
       <div className="min-w-0 space-y-1"><dl><dt className="text-xs leading-6 text-brand-muted">{t.domain}</dt><dd className="font-semibold leading-8"><bdi dir="ltr" className="wrap-anywhere">{props.hostname}</bdi></dd></dl><p className="flex items-start gap-2 text-sm leading-7 text-brand-ink">{props.verified && <ShieldCheck className="mt-1 size-4 shrink-0" aria-hidden="true" />}{props.verified ? t.verified : t.unverified}</p></div>
     </div>
     <PeriodControls {...props} />
+    {props.verified && props.reportAvailable && props.status === "ready" && props.overview}
     {!props.verified ? <EmptyState title={t.ownershipTitle} description={t.ownershipHint} action={<Link href={props.links.verification} prefetch={false} className={cn(buttonVariants(), actionStyle, "bg-brand-blue text-white hover:bg-brand-blue/90")}>{t.verification}</Link>} /> : !props.reportAvailable ? <EmptyState title={t.notReadyTitle} description={t.notReadyHint} action={<Link href={props.links.receipt} prefetch={false} className={cn(buttonVariants(), actionStyle, "bg-brand-blue text-white hover:bg-brand-blue/90")}>{t.receipt}</Link>} /> : props.status === "loading" ? <LoadingState title={t.loading} /> : props.status === "error" ? <ErrorState title={t.error} description={t.errorHint} /> : <section aria-labelledby={`${props.id}-sources`} className="space-y-4"><h2 id={`${props.id}-sources`} className="text-lg leading-8 font-semibold">{t.sources}</h2><div className="grid min-w-0 gap-5 lg:grid-cols-3">{props.sources.map((source) => <SourcePeriod key={source.id} source={source} comparison={props.comparison} translations={t} />)}</div></section>}
     <div className="flex flex-wrap gap-3"><Link href={props.links.connections} prefetch={false} className={cn(buttonVariants({ variant: "outline" }), actionStyle, "text-brand-ink hover:bg-brand-soft hover:text-brand-ink")}>{t.connections}</Link><Link href={props.links.receipt} prefetch={false} className={cn(buttonVariants({ variant: "outline" }), actionStyle, "text-brand-ink hover:bg-brand-soft hover:text-brand-ink")}>{t.receipt}</Link></div>
   </section>;
