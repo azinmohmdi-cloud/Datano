@@ -667,6 +667,17 @@ explanation identifies top rows as a subset; finalized row data never claims
 population completeness. No new token, palette, typography, shared primitive or
 shell change. Fixtures and the fourth native review selector remain private.
 
+FE-023 Ads Performance follows the same 1 → 2 at sm → 4 at lg metric Card grid
+for cost/clicks/conversions/CPC, followed by a separate conditional ROAS Card and
+a concise explanation of the ratio. Megaphone identifies the source; Coins,
+MousePointerClick, Flag and TrendingUp supplement textual metric names. Monetary
+units retain the actual account's ISO currency in LTR bdi; Persian numerical
+values wrap naturally. Existing 30px/40px values, rounded-2xl Card surfaces,
+brand-ink/brand-soft, semantic headings/dl, textual independent states, reduced-
+motion loading and comparison metadata are preserved. Missing currency, incompatible
+ratio inputs and zero denominators show `—` with a reason. No new palette, token,
+font, shell or primitive; the fifth review selector and all Ads fixtures are private.
+
 Current header: max-w-7xl, `min-h-22` (88px), `px-4 sm:px-6 lg:px-8 py-4`,
 `gap-4`, border-bottom, background, relative z-20. Brand sits on the right.
 The latest source-order correction is **سرویس‌ها → درباره ما → حساب کاربری → ورود**

@@ -821,6 +821,38 @@ Run `pnpm test:e2e dashboard-search.spec.ts dashboard-traffic.spec.ts dashboard-
 See [FE-022 validation](docs/validation/FE-022-search-performance.md) for executed
 results and the exact local review URL.
 
+## Google Ads Performance — FE-023
+
+`analytics/AdsPerformance` adds cost, clicks, conversions, CPC and conditional
+ROAS. It consumes local presentation observations, separate from GA4 keyEvents
+and Search Console. The existing dashboard controller supplies applied periods
+and comparison; no fetching hook, API, dependency or session behavior is added.
+
+Cost micros are validated as nonnegative signed-int64 decimal strings and kept
+in exact rational arithmetic. Click counts are safe integers; conversions and
+conversion value retain their supplied decimal precision. Currency comes from
+the selected Ads account and must match monetary observations. Display formatting
+uses its currency fraction digits, Persian numerals and explicit LTR ISO code,
+without exchange or rial/toman assumptions. Rounding happens only at display;
+small positive values use a less-than label instead of apparent zero.
+
+CPC divides cost by matching clicks; zero clicks is undefined. ROAS divides a
+matching conversion value by positive cost. The same website/account/window,
+currency, report identity, basis, receipt and coverage are required for ratios.
+Missing/incompatible inputs display `—` with a reason. Zero conversion value with
+positive cost gives a real zero ROAS. Quality/freshness are independent of value;
+old values remain visible and unrelated sources retain their metadata.
+
+Private review adds the allowlisted `adsMetric` selector, separate from the existing
+`ads` connection/receipt selector. Scenarios cover USD/EUR/JPY/KWD, partial/stale,
+zero/zero-clicks/zero-value, missing value, currency/basis/coverage mismatch,
+unknown currency, independent loading/error and comparison. Unknown/repeated
+values fall back to valid; changing site resets scenarios. All fixtures remain
+private; real Ads ingestion/report integration belongs to later Backlog work.
+
+Run `pnpm test:e2e dashboard-ads.spec.ts dashboard-search.spec.ts dashboard-traffic.spec.ts dashboard-kpi.spec.ts dashboard-shell.spec.ts`.
+See [FE-023 validation](docs/validation/FE-023-google-ads.md) for executed evidence.
+
 ## Private UI review
 
 The opt-in `/ui-review` catalogue renders the existing public/account/site
