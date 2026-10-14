@@ -331,8 +331,8 @@ The shared `ConceptChart` in
 renders the original FE-007 fixed unscaled geometry. FE-008 extracted it for
 reuse without changing paths, colors, dimensions, or accessibility behavior.
 It has no numerical axes, legend, Tooltip,
-interactive period selector, real account series, or API. Recharts is not
-installed. `HeroVisual` and `DashboardPreview` are examples of this composition,
+interactive period selector, real account series, or API. FE-021 separately installs
+Recharts for TrafficOverview. `HeroVisual` and `DashboardPreview` are examples of this composition,
 not operational dashboards. The shared SVG API accepts `bars`, and either a
 Persian `label` or `decorative: true`; it never accepts analytical data.
 
@@ -360,7 +360,7 @@ explicit no-data description. Grid is 1 → 2 at sm → 4 at lg, `gap-3`,
 `rounded-xl border bg-brand-panel/70 p-4`. Future real KPIs must retain source,
 unit, period, currency/freshness context as required by MVP; absent data is not 0.
 
-### Future visualization standards — not implemented here
+### Visualization standards
 
 Purposeful visualization is a core Datano design principle:
 
@@ -383,11 +383,11 @@ Purposeful visualization is a core Datano design principle:
    `rounded-xl border p-3 shadow-lg`, 14px/24px text, and an isolated source/unit
    value. A real Tooltip must provide period, metric, value and unit, stay inside
    the viewport, and have an equivalent keyboard/touch-accessible explanation.
-   This is a recipe for implementation/review in FE-021, not a delivered Tooltip.
+   FE-021 implements this recipe for TrafficOverview.
 6. **Future axes/legend:** foreground/muted text for readable ticks, brand-muted
    low-opacity guide lines as a starting visual reference, Persian labels, and
    clear units/period. Legends use label + swatch/shape and preserve series
-   identity. Neither numerical axes nor an interactive legend exists today.
+   identity. FE-021 implements numerical axes and a textual, noninteractive legend.
 7. Keep chronological ordering and metric meaning intact under RTL; isolate
    chronological plotting from surrounding RTL copy. Localize display dates
    and numerals deliberately, preserving canonical values. Never flip a time
@@ -402,6 +402,22 @@ Purposeful visualization is a core Datano design principle:
    comparisons, dates, conversions, connection states, or recommendations.
 
 ## 8. Spacing, surfaces, layout, and navigation
+
+FE-021 TrafficOverview uses one rounded-2xl shared Card below the KPI block, with
+the existing Activity symbol, source/property/timezone context and two responsive
+series summaries. Recharts draws a solid blue current curve with a subtle area
+and a dashed purple comparison. Scoped series variables map to existing brand-ink
+and brand-lilac in dark mode for readable strokes; no new palette is introduced.
+Missing days break lines; recorded zero remains
+visible. The plot has a reserved 20rem height, responsive width and explicit LTR
+chronology inside the RTL page. Persian ticks, axis captions and legend retain
+source civil-day meaning. Comparison is explicitly aligned by relative day while
+the tooltip/table retain both actual dates. The popover-token tooltip is Persian,
+keyboard/touch accessible and viewport constrained. A native details disclosure
+provides a semantic table with local horizontal scrolling. Existing state primitives
+cover unavailable/loading/error states; quality/freshness have textual labels.
+Animation is disabled, including tooltip movement. No global token, shared
+primitive, shell, font or earlier page design is changed.
 
 ### Existing measurements
 

@@ -769,6 +769,32 @@ operation, storage effect, global palette or change to earlier pages is introduc
 Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e dashboard-kpi.spec.ts dashboard-shell.spec.ts data-receipt.spec.ts websites.spec.ts ui-review.spec.ts`.
 See [FE-020 validation](docs/validation/FE-020-kpi-freshness.md) for executed evidence.
 
+## Traffic trend — FE-021
+
+`analytics/TrafficOverview` adds the GA4 daily sessions chart below the KPI overview.
+It uses Recharts 3.10.1 with the matching React 19.2.4 `react-is` peer. The pure UI,
+concrete injector, Persian content and snapshot helpers are separate; the existing
+dashboard controller remains the only owner of the applied period/comparison.
+
+Daily snapshots match website, GA4 property, metric and exact query window. Invalid,
+duplicate, missing and uncovered days remain gaps; only explicit zero draws zero.
+Daily data is never used to reconstruct whole-window unique users. Chronological
+plotting is LTR inside the RTL page, with Persian solar dates/numbers and an RTL
+tooltip. Current and previous windows align by day index, retain both actual dates
+and use solid/dashed lines. A native disclosure exposes a semantic daily table.
+
+The private dashboard accepts `traffic=valid|empty|gaps|comparison`, alongside the
+existing `kpi`/source selectors. Unknown/repeated values fall back to valid; changing
+site resets the scenario. Daily fixtures exist for the explicit default/custom
+windows, not arbitrary queries. The `comparison` scenario adds explicit prior
+snapshots and matching source coverage. The default keeps missing comparisons
+unavailable. Fixtures, controls and charts remain outside the production route
+graph. Real reporting is integrated in FE-037; no data hook/API/storage is invented.
+
+Run `pnpm test:e2e dashboard-traffic.spec.ts dashboard-kpi.spec.ts dashboard-shell.spec.ts`
+with the existing browser setup. See [FE-021 validation](docs/validation/FE-021-traffic-trend.md)
+for executed checks, runtime details and scope.
+
 ## Private UI review
 
 The opt-in `/ui-review` catalogue renders the existing public/account/site
