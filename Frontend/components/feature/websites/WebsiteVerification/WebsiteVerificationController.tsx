@@ -9,8 +9,8 @@ const subscribe = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
 
-export default function WebsiteVerificationController({ hostname, metaTag, initialScenario = "ready", initialSeconds = 86400, listHref = "/websites" }: {
-  hostname: string; metaTag: string; initialScenario?: VerificationScenario; initialSeconds?: number; listHref?: string;
+export default function WebsiteVerificationController({ hostname, metaTag, initialScenario = "ready", initialSeconds = 86400, listHref = "/websites", onContinue }: {
+  hostname: string; metaTag: string; initialScenario?: VerificationScenario; initialSeconds?: number; listHref?: string; onContinue?: () => void;
 }) {
   const id = useId();
   const hydrated = useSyncExternalStore(subscribe, clientReady, serverReady);
@@ -67,6 +67,6 @@ export default function WebsiteVerificationController({ hostname, metaTag, initi
     callbacks={{ onCopy,
       onCheck: () => { if (!disabled && challengeActive()) { setStatus("error"); setCopyState("idle"); } },
       onRenew: () => { if (!disabled && expired) setRenewalError(true); },
-      onContinue: () => { if (!disabled && status === "success") setNextStep(true); },
+      onContinue: () => { if (!disabled && status === "success") { if (onContinue) onContinue(); else setNextStep(true); } },
     }} />;
 }

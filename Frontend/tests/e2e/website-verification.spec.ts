@@ -90,8 +90,10 @@ test("success review keeps source connection and report readiness separate and h
   await expect(page.locator("[data-verification-feedback]")).toContainText("هنوز منبعی متصل نشده و گزارشی آماده نیست");
   await expect(page.getByRole("textbox", { name: "کد HTML تأیید مالکیت", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "ورود به داشبورد", exact: true }).click();
-  await expect(page.locator("[data-verification-next-step]")).toContainText("مرحله بعد: اتصال منابع گوگل");
-  await expect(page).toHaveURL("/ui-review/websites/verify?site=new&state=success");
+  await expect(page).toHaveURL("/ui-review/websites/connect?site=new");
+  await expect(page.locator("[data-google-source]")).toHaveCount(3);
+  await expect(page.getByRole("button", { name: "ادامه برای دریافت داده", exact: true })).toBeDisabled();
+  await page.goto("/ui-review/websites/verify?site=new&state=ready");
   await page.getByLabel("سناریوی تأیید مالکیت", { exact: true }).selectOption("ready");
   await page.getByRole("button", { name: "بررسی تأیید", exact: true }).click();
   await page.getByLabel("سناریوی تأیید مالکیت", { exact: true }).selectOption("expired");

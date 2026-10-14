@@ -576,6 +576,20 @@ The success fixture remains separate from source permission/report readiness.
 No gradient, status color, shared header/footer change or design-system deviation
 is introduced.
 
+FE-017 Google Connections uses AccountLayout's existing width and neutral
+background. A compact Link2 heading and site/ownership panel precede three
+independent rounded-2xl source Cards, stacked on mobile and three columns from lg.
+Activity, Search and Megaphone identify GA4, Search Console and Ads using the
+existing generic symbols; no Google logo is invented. Each card has a textual
+state, optional badge and its own action/feedback. Resource choices are native
+radio groups with wrapped Persian labels and LTR identifiers, one choice per
+source. Selection and unrelated/disabled options use the existing brand/muted
+recipes. A focused inline disconnect group reuses destructive text/button styling;
+cancel returns focus. Waiting actions freeze their own card, while other cards
+remain usable. All controls retain the 48px minimum, wrapped labels and existing
+focus treatment. No gradient, token, shared primitive, shell or header/footer
+change is introduced.
+
 Current header: max-w-7xl, `min-h-22` (88px), `px-4 sm:px-6 lg:px-8 py-4`,
 `gap-4`, border-bottom, background, relative z-20. Brand sits on the right.
 The latest source-order correction is **سرویس‌ها → درباره ما → حساب کاربری → ورود**

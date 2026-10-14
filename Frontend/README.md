@@ -458,7 +458,8 @@ destination feedback and any open deletion confirmation. Unverified ownership
 takes precedence over a report flag. Verified sites route conceptually to sources,
 receiving data or the dashboard; successful empty reports also permit dashboard
 navigation. FE-016 opens the private ownership page for an unverified site;
-later destinations remain local review results, not real reports or server
+FE-017 opens source connection for a verified site without sources. Later
+destinations remain local review results, not real reports or server
 authorization/readiness checks.
 
 `state=ready|loading|error|delete-confirm|delete-pending|delete-error` selects the
@@ -475,8 +476,7 @@ and Loading/Empty/Error primitives. Controls remain disabled before hydration;
 private no-JS review stays in its Suspense fallback. Production excludes review
 routes/fixtures under the existing FE-005 policy. Real list/add integration remains
 FE-034; deletion remains FE-047. FE-015 adds the private form navigation described
-below; FE-016 adds ownership review, while source connection and receipt remain
-FE-017–FE-018.
+below; FE-016/FE-017 add ownership/source review, while receipt remains FE-018.
 
 Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e websites.spec.ts`.
 See [FE-014 validation](docs/validation/FE-014-websites.md) for executed evidence.
@@ -531,8 +531,8 @@ expiry. Expiration disables copy/check, clears visible copy confirmation and
 offers a new-code action that reports actual unavailability without renewing the
 old code. Check/retry also reports unavailability, never simulated ownership.
 Success is an independently selected fixture and retains no-source/no-report
-status. Its dashboard action previews source connection locally until FE-017;
-it does not open a fabricated dashboard or missing route.
+status. Its dashboard action opens FE-017's private source connection page for
+the same sample hostname; it does not open a fabricated dashboard.
 
 The private code deliberately uses `UI_REVIEW_ONLY_NOT_A_VALID_CHALLENGE`, not a
 random token or an issued backend challenge. It is rendered as read-only text,
@@ -552,6 +552,58 @@ review flag enabled. FE-035 with BE-020 will supply actual owner/site-bound,
 
 Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e website-verification.spec.ts add-website.spec.ts websites.spec.ts profile.spec.ts`.
 See [FE-016 validation](docs/validation/FE-016-website-verification.md) for executed evidence.
+
+## Google source connection UI — FE-017
+
+Open `/ui-review/websites/connect` with UI Review enabled. GA4, Search Console
+and Ads each have an optional card, independent state and a single selected
+property/account. Product interactions in one card preserve other cards' drafts,
+connections and errors. A waiting/failed source does not block another connected
+source. Any one connected source permits previewing receipt; connection itself
+never implies a successful sync or report. FE-018 owns that next screen.
+
+Independent `ga4`, `gsc` and `ads` selectors accept
+`disconnected|authorizing|select|connected|cancelled|no-access|no-resources|revoked|disconnect-confirm|disconnect-pending|error`.
+Changing private selectors resets the whole fixture, as the notice states;
+ordinary product actions do not. Site selectors are `no-connection`,
+`proof-example`, `new` and `unverified`. The first uses FE-014's verified site;
+proof-example/new represent independently selected successful FE-016 proofs.
+Unknown/repeated selectors fall back to no-connection/disconnected; arbitrary
+property, OAuth code, token or role query parameters are ignored.
+
+Resource selection uses a labeled native radio group: one eligible option per
+source, with visible name and isolated identifier. Unrelated choices are disabled;
+selection errors focus the first eligible radio and are associated with the group.
+Drafts persist on registration error. Private identifiers are visibly inert
+`UI-REVIEW-*` strings or `.test` hostnames; no provider API/schema is fabricated.
+Permission/site eligibility is supplied by fixtures, never inferred from a
+hostname substring. Real discovery and eligibility require trusted backend data.
+
+Local cancellation of a waiting fixture shows cancelled without a popup, callback
+or credential. Check access, missing resources and revoked permission are distinct.
+Revoked sources show the previous selection but cannot permit receipt by themselves.
+Disconnect uses a focused inline confirmation naming the source, with its selected
+resource retained. Cancel restores focus. Confirm reports actual unavailability
+and keeps the connection; pending is a separately selectable fixture. Real
+connect/register/disconnect operations are not simulated as successful.
+
+Successful ownership review and the no-connection list site open their matching
+private connection page, with a list backlink. Unverified ownership blocks every
+source action and offers the existing private verification route; query flags
+cannot bypass that UI guard. `/websites/[websiteId]/connect` currently preserves
+guest access, Login and a public list backlink. Public route/query values do not
+grant identity/permission or expose fixtures. Shared profile, header/footer and
+the old `/sites/[siteId]` scaffold remain unchanged.
+
+FE-036/FE-038/FE-040 with BE-022/BE-025/BE-028/BE-031 implement actual OAuth,
+permitted/related resource discovery and connection. FE-042/BE-034 own real
+disconnect/replacement. Website proof alone grants no Google property permission;
+Ads requires account access and site association. No provider scopes, OAuth URL,
+callback API, token storage, data fetch or real permission claim is introduced.
+Production excludes this private route/fixture under the existing review policy.
+
+Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e google-connections.spec.ts website-verification.spec.ts websites.spec.ts add-website.spec.ts profile.spec.ts`.
+See [FE-017 validation](docs/validation/FE-017-google-connections.md) for executed evidence.
 
 ## Private UI review
 

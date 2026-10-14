@@ -65,9 +65,9 @@ test("multiple sites require explicit selection and retain independent ownership
     await expect(page.locator('[aria-pressed="true"]')).toHaveCount(1);
     await expect(page.locator("[data-selected-website]")).toContainText(domain);
     await view.click();
-    if (destination === "verify") {
-      await expect(page).toHaveURL("/ui-review/websites/verify?site=unverified");
-      await expect(page.locator("[data-website-verification]")).toContainText(domain);
+    if (destination === "verify" || destination === "connect") {
+      await expect(page).toHaveURL(destination === "verify" ? "/ui-review/websites/verify?site=unverified" : "/ui-review/websites/connect?site=no-connection");
+      await expect(page.locator(destination === "verify" ? "[data-website-verification]" : "[data-google-connections]")).toContainText(domain);
       await page.goto("/ui-review/websites?account=multiple");
       continue;
     }

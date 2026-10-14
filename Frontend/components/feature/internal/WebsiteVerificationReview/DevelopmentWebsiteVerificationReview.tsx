@@ -21,7 +21,7 @@ export default function DevelopmentWebsiteVerificationReview() {
       onSiteChange: (value) => { if (verificationReviewSites.some((option) => option.value === value)) router.replace(`/ui-review/websites/verify?site=${value}&state=${fixture.value}`, { scroll: false }); },
       onStateChange: (value) => { if (verificationReviewStates.some((option) => option.value === value)) router.replace(`/ui-review/websites/verify?site=${site.value}&state=${value}`, { scroll: false }); },
     }}>
-      <WebsiteVerificationController key={`${site.value}:${fixture.value}`} hostname={site.label} metaTag={verificationReviewMetaTag} initialScenario={fixture.value} initialSeconds={fixture.seconds} listHref="/ui-review/websites" />
+      <WebsiteVerificationController key={`${site.value}:${fixture.value}`} hostname={site.label} metaTag={verificationReviewMetaTag} initialScenario={fixture.value} initialSeconds={fixture.seconds} listHref="/ui-review/websites" onContinue={() => router.push(`/ui-review/websites/connect?site=${site.value === "unverified" ? "proof-example" : site.value}`)} />
     </WebsiteVerificationReviewUI>
   </AccountLayout></ProductLayout>;
 }
