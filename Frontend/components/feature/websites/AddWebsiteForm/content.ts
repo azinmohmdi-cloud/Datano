@@ -22,6 +22,7 @@ export const addWebsiteTranslations: AddWebsiteFormUIProps["translations"] = {
   ownershipHint: "پس از ثبت، مالکیت سایت باید جداگانه با HTML صفحه اصلی تأیید شود.",
   duplicate: "این سایت قبلاً در سایت‌های شما ثبت شده است.", duplicateLink: "مشاهده سایت‌های من",
   resultTitle: "سایت ثبت‌شده", unverified: "مالکیت: تأیید نشده",
+  verify: "تأیید مالکیت سایت",
   resultHint: "برای ادامه، اثبات مالکیت در مرحله جداگانه انجام می‌شود؛ هنوز اتصال منبع یا گزارش آماده‌ای وجود ندارد.",
 };
 

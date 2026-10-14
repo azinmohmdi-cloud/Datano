@@ -39,8 +39,8 @@ test("single site is selected automatically and ownership takes precedence over 
   await expect(page.locator("[data-website-row]")).toContainText("تأیید نشده");
   await expect(page.locator("[data-website-row]")).toContainText("در انتظار تأیید مالکیت");
   await page.getByRole("button", { name: "مشاهده اطلاعات سایت من", exact: true }).click();
-  await expect(page.locator("[data-website-destination]")).toHaveAttribute("data-website-destination", "verify");
-  await expect(page.locator("[data-website-destination]")).toContainText(firstDomain);
+  await expect(page).toHaveURL("/ui-review/websites/verify?site=unverified");
+  await expect(page.locator("[data-website-verification]")).toContainText(firstDomain);
 });
 
 test("multiple sites require explicit selection and retain independent ownership and report states", async ({ page }) => {
@@ -65,6 +65,12 @@ test("multiple sites require explicit selection and retain independent ownership
     await expect(page.locator('[aria-pressed="true"]')).toHaveCount(1);
     await expect(page.locator("[data-selected-website]")).toContainText(domain);
     await view.click();
+    if (destination === "verify") {
+      await expect(page).toHaveURL("/ui-review/websites/verify?site=unverified");
+      await expect(page.locator("[data-website-verification]")).toContainText(domain);
+      await page.goto("/ui-review/websites?account=multiple");
+      continue;
+    }
     await expect(page.locator("[data-website-destination]")).toHaveAttribute("data-website-destination", destination);
     await expect(page.locator("[data-website-destination]")).toContainText(domain);
     await expect(page.locator("[data-website-destination] bdi")).toHaveCSS("direction", "ltr");

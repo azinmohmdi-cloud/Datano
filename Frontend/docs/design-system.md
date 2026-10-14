@@ -563,6 +563,19 @@ The proof explanation adds no token or verification action; the separately
 selected private registration-result fixture remains unverified. No gradient,
 new token, shared primitive or change to previous profile/list designs is added.
 
+FE-016 HTML Ownership retains the account shell, neutral backdrop and Add Website's
+`max-w-2xl` inner column. A ShieldQuestion heading and separate domain panel lead
+to a rounded-2xl instruction/code Card. The read-only textarea uses LTR text,
+normal wrapping, a labeled copy action, and the existing input/focus recipe;
+no global primitive is added. A Persian countdown shows remaining challenge
+time without live-announcing every tick. Copy feedback, pending checking, failure,
+expiry and operational error use text and existing brand/destructive tokens.
+Success uses ShieldCheck and brand-ink instead of a new green palette. Controls
+have 48px minimum heights and wrapped labels; expiration disables old proof.
+The success fixture remains separate from source permission/report readiness.
+No gradient, status color, shared header/footer change or design-system deviation
+is introduced.
+
 Current header: max-w-7xl, `min-h-22` (88px), `px-4 sm:px-6 lg:px-8 py-4`,
 `gap-4`, border-bottom, background, relative z-20. Brand sits on the right.
 The latest source-order correction is **سرویس‌ها → درباره ما → حساب کاربری → ورود**

@@ -11,8 +11,8 @@ const subscribe = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
 
-export default function AddWebsiteFormController({ initialValue = "", initialScenario = "ready", existingHostnames = [], listHref = "/websites" }: {
-  initialValue?: string; initialScenario?: AddWebsiteScenario; existingHostnames?: readonly string[]; listHref?: string;
+export default function AddWebsiteFormController({ initialValue = "", initialScenario = "ready", existingHostnames = [], listHref = "/websites", verificationHref }: {
+  initialValue?: string; initialScenario?: AddWebsiteScenario; existingHostnames?: readonly string[]; listHref?: string; verificationHref?: string;
 }) {
   const id = useId();
   const hydrated = useSyncExternalStore(subscribe, clientReady, serverReady);
@@ -41,7 +41,7 @@ export default function AddWebsiteFormController({ initialValue = "", initialSce
 
   return <AddWebsiteFormUI id={id} value={value} hostname={hostname} fieldError={checked && !validation.valid ? websiteURLMessages[validation.issue] : ""}
     submissionError={submissionError} valid={checked && validation.valid} duplicate={duplicate} pending={pending} disabled={disabled}
-    registered={initialScenario === "registered"} listHref={listHref} translations={addWebsiteTranslations} callbacks={{ onSubmit,
+    registered={initialScenario === "registered"} listHref={listHref} verificationHref={verificationHref} translations={addWebsiteTranslations} callbacks={{ onSubmit,
       onChange: (next) => { if (!disabled) { setValue(next); setChecked(false); setSubmissionError(""); } },
       onBlur: () => { if (!disabled) setChecked(true); },
     }} />;

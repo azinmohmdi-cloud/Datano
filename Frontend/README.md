@@ -457,8 +457,9 @@ ownership and report state are separate. Selecting another site clears obsolete
 destination feedback and any open deletion confirmation. Unverified ownership
 takes precedence over a report flag. Verified sites route conceptually to sources,
 receiving data or the dashboard; successful empty reports also permit dashboard
-navigation. The displayed destination is a local review result, not a visit to an
-unfinished page, a real report or a server authorization/readiness check.
+navigation. FE-016 opens the private ownership page for an unverified site;
+later destinations remain local review results, not real reports or server
+authorization/readiness checks.
 
 `state=ready|loading|error|delete-confirm|delete-pending|delete-error` selects the
 initial scenario. Invalid/repeated selectors use multiple/ready; changing either
@@ -474,7 +475,8 @@ and Loading/Empty/Error primitives. Controls remain disabled before hydration;
 private no-JS review stays in its Suspense fallback. Production excludes review
 routes/fixtures under the existing FE-005 policy. Real list/add integration remains
 FE-034; deletion remains FE-047. FE-015 adds the private form navigation described
-below; ownership, source connection and receipt remain FE-016–FE-018.
+below; FE-016 adds ownership review, while source connection and receipt remain
+FE-017–FE-018.
 
 Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e websites.spec.ts`.
 See [FE-014 validation](docs/validation/FE-014-websites.md) for executed evidence.
@@ -502,8 +504,8 @@ Same-account duplicate fixtures offer the existing list instead of creating a
 second record. The unavailable-domain fixture reveals no owner information.
 Valid submission reports registration unavailability without a request or false
 success. The independently selected registered fixture explicitly remains
-unverified; there is no token, ownership check, next-stage route, Google source
-or report. FE-016 owns proof UI, and FE-034 with BE-018 owns real registration,
+unverified; FE-016 adds a private ownership-review link without a real token,
+ownership check, Google source or report. FE-034 with BE-018 owns real registration,
 conflict responses and list/cache integration.
 
 `/websites/new` currently displays honest guest access with Login and a public
@@ -512,6 +514,44 @@ excludes the new private route/fixture under the unchanged review policy.
 
 Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e add-website.spec.ts websites.spec.ts profile.spec.ts`.
 See [FE-015 validation](docs/validation/FE-015-add-website.md) for executed evidence.
+
+## HTML ownership verification UI — FE-016
+
+Open `/ui-review/websites/verify` with UI Review enabled. An unverified list site
+opens `?site=unverified`; the separately selected registered Add Website fixture
+links to `?site=new`. Both return to the existing private list. Domain and
+scenario selectors are allowlisted; unknown/repeated parameters fall back to the
+existing unverified site and ready state. Changing either selector resets the
+fixture. No arbitrary hostname or token can be injected via the URL.
+
+`state=ready|checking|success|failed|expired|expiring|error` covers HTML instructions,
+disabled waiting, success, missing code, expiry and operational error. The ready
+sample starts a 24-hour local review timer; `expiring` starts five seconds before
+expiry. Expiration disables copy/check, clears visible copy confirmation and
+offers a new-code action that reports actual unavailability without renewing the
+old code. Check/retry also reports unavailability, never simulated ownership.
+Success is an independently selected fixture and retains no-source/no-report
+status. Its dashboard action previews source connection locally until FE-017;
+it does not open a fabricated dashboard or missing route.
+
+The private code deliberately uses `UI_REVIEW_ONLY_NOT_A_VALID_CHALLENGE`, not a
+random token or an issued backend challenge. It is rendered as read-only text,
+never an actual meta element. Clipboard copying writes exactly the supplied
+meta tag, including ASCII quotes and angle brackets. Denial/unavailability selects
+the code for manual copying and displays an accessible error. Late completion
+after expiry or navigation cannot announce stale success. Timers/async operations
+are cleaned up. Sample copy/results grant no session, site ownership or property
+permission and do not mutate the list, request an API or persist browser state.
+
+`/websites/[websiteId]/verify` follows the Backlog website namespace and currently
+shows guest access, Login and a public list backlink. Route/query parameters do
+not grant identity or expose a challenge/result. The old `/sites/[siteId]` scaffold
+is unchanged. Production excludes private review routes/fixtures even with the
+review flag enabled. FE-035 with BE-020 will supply actual owner/site-bound,
+24-hour challenges and results; BE-019 owns secure HTML fetching/DNS/redirects.
+
+Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e website-verification.spec.ts add-website.spec.ts websites.spec.ts profile.spec.ts`.
+See [FE-016 validation](docs/validation/FE-016-website-verification.md) for executed evidence.
 
 ## Private UI review
 

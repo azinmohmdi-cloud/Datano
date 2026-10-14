@@ -10,12 +10,12 @@ import { cn } from "@/lib/utils";
 
 export interface AddWebsiteFormUIProps {
   id: string; value: string; hostname: string; fieldError: string; submissionError: string;
-  valid: boolean; duplicate: boolean; pending: boolean; disabled: boolean; registered: boolean; listHref: string;
+  valid: boolean; duplicate: boolean; pending: boolean; disabled: boolean; registered: boolean; listHref: string; verificationHref?: string;
   translations: {
     title: string; description: string; back: string; label: string; placeholder: string; hint: string;
     valid: string; canonical: string; independence: string; continue: string; pending: string;
     ownershipTitle: string; ownership: string; ownershipHint: string; duplicate: string; duplicateLink: string;
-    resultTitle: string; unverified: string; resultHint: string;
+    resultTitle: string; unverified: string; resultHint: string; verify: string;
   };
   callbacks: { onSubmit: (event: FormEvent<HTMLFormElement>) => void; onChange: (value: string) => void; onBlur: () => void };
 }
@@ -31,7 +31,7 @@ export default function AddWebsiteFormUI(props: AddWebsiteFormUIProps) {
       <div className="min-w-0 space-y-1"><h1 id={`${props.id}-title`} className="text-2xl leading-9 font-bold sm:text-3xl sm:leading-10">{t.title}</h1><p className="text-base leading-8 text-brand-muted">{t.description}</p></div>
     </div>
     <Card className="rounded-2xl border-brand-blue/10 shadow-sm"><CardContent>
-      {props.registered ? <RegistrationResult hostname={props.hostname} translations={t} /> : <URLForm {...props} />}
+      {props.registered ? <RegistrationResult hostname={props.hostname} verificationHref={props.verificationHref} translations={t} /> : <URLForm {...props} />}
     </CardContent></Card>
     <div className="flex items-start gap-3 rounded-2xl border bg-brand-panel p-5 sm:p-6">
       <ShieldQuestion className="mt-1 size-5 shrink-0 text-brand-ink" aria-hidden="true" />
@@ -62,11 +62,12 @@ function URLForm(props: AddWebsiteFormUIProps) {
   </form>;
 }
 
-function RegistrationResult({ hostname, translations: t }: { hostname: string; translations: AddWebsiteFormUIProps["translations"] }) {
+function RegistrationResult({ hostname, verificationHref, translations: t }: { hostname: string; verificationHref?: string; translations: AddWebsiteFormUIProps["translations"] }) {
   return <div data-registration-result className="min-w-0 space-y-4">
     <h2 className="text-lg leading-8 font-semibold">{t.resultTitle}</h2>
     <p className="font-medium leading-7"><bdi dir="ltr" className="wrap-anywhere">{hostname}</bdi></p>
     <p className="text-sm leading-7 text-brand-ink">{t.unverified}</p>
     <p className="text-sm leading-7 text-brand-muted">{t.resultHint}</p>
+    {verificationHref && <Link href={verificationHref} prefetch={false} className={cn(buttonVariants(), actionStyle, "w-full bg-brand-blue text-white hover:bg-brand-blue/90")}>{t.verify}</Link>}
   </div>;
 }

@@ -17,7 +17,7 @@ export default function DevelopmentAddWebsiteReview() {
       notice: "بررسی خصوصی افزودن سایت؛ تکرار، انتظار و نتیجه ثبت، نمونه‌های ثابت‌اند. هیچ سایت یا مالکیتی ایجاد نمی‌شود. اعتبارسنجی آدرس، بررسی DNS یا آزادبودن دامنه نیست.",
       label: "سناریوی افزودن سایت",
     }} onChange={(value) => { if (addWebsiteReviewStates.some((option) => option.value === value)) router.replace(`/ui-review/websites/new?state=${value}`, { scroll: false }); }}>
-      <AddWebsiteFormController key={fixture.value} initialValue={fixture.input} initialScenario={fixture.value} existingHostnames={addWebsiteReviewHostnames} listHref="/ui-review/websites" />
+      <AddWebsiteFormController key={fixture.value} initialValue={fixture.input} initialScenario={fixture.value} existingHostnames={addWebsiteReviewHostnames} listHref="/ui-review/websites" verificationHref="/ui-review/websites/verify?site=new" />
     </AddWebsiteReviewUI>
   </AccountLayout></ProductLayout>;
 }
