@@ -78,9 +78,11 @@ test("multiple sites require explicit selection and retain independent ownership
       await page.goto("/ui-review/websites?account=multiple");
       continue;
     }
-    await expect(page.locator("[data-website-destination]")).toHaveAttribute("data-website-destination", destination);
-    await expect(page.locator("[data-website-destination]")).toContainText(domain);
-    await expect(page.locator("[data-website-destination] bdi")).toHaveCSS("direction", "ltr");
+    await expect(page).toHaveURL(`/ui-review/websites/dashboard?site=${domain === readyDomain ? "report-ready" : "report-empty"}`);
+    await expect(page.locator("[data-dashboard-shell]")).toContainText(domain);
+    await expect(page.getByLabel("انتخاب سایت", { exact: true })).toHaveValue(domain === readyDomain ? "report-ready" : "report-empty");
+    await page.getByRole("link", { name: "سایت‌های من", exact: true }).click();
+    await expect(page).toHaveURL("/ui-review/websites");
   }
 });
 

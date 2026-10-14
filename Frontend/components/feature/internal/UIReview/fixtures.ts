@@ -44,6 +44,7 @@ export const reviewTranslations: UIReviewUIProps["translations"] = {
   recoveryReview: "بررسی بازیابی رمز",
   profileReview: "بررسی پروفایل",
   websitesReview: "بررسی سایت‌ها",
+  dashboardReview: "بررسی پوستهٔ داشبورد",
 };
 
 const sampleRows = [

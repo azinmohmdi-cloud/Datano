@@ -459,9 +459,9 @@ takes precedence over a report flag. Verified sites route conceptually to source
 receiving data or the dashboard; successful empty reports also permit dashboard
 navigation. FE-016 opens the private ownership page for an unverified site;
 FE-017 opens source connection for a verified site without sources. FE-018 opens
-receipt review for waiting/failed sites. Dashboard destinations remain local
-review results, not real reports or server
-authorization/readiness checks.
+receipt review for waiting/failed sites. FE-019 opens the private dashboard shell
+for ready/valid-empty sites, preserving site identity. This is review navigation,
+not a real report or server authorization/readiness check.
 
 `state=ready|loading|error|delete-confirm|delete-pending|delete-error` selects the
 initial scenario. Invalid/repeated selectors use multiple/ready; changing either
@@ -643,9 +643,9 @@ FE-014 waiting/failed sites open this page with the same hostname. Managing
 connections preserves that site's connection/revoked/disconnected sample states;
 receipt failure remains distinct from disconnection. FE-017 continuation opens
 queued receipt for eligible connected sources, without assuming success.
-List/profile backlinks remain available. Report viewing shows the next dashboard
-destination locally until FE-019 is implemented; no dashboard route/report is
-created. Refresh/check/retry show actual unavailability and preserve all results,
+List/profile backlinks remain available. FE-019 report viewing opens the private
+dashboard shell with the same site and independent source scenarios; no real
+report is created. Refresh/check/retry show actual unavailability and preserve all results,
 with no request, timer, fake progression, percentage or ETA.
 
 `/websites/[websiteId]/receive` follows the approved website namespace and keeps
@@ -664,6 +664,55 @@ are isolated LTR, controls wrap and keep their 48px minimum.
 
 Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e data-receipt.spec.ts google-connections.spec.ts website-verification.spec.ts websites.spec.ts add-website.spec.ts profile.spec.ts`.
 See [FE-018 validation](docs/validation/FE-018-data-receipt.md) for executed evidence.
+
+## Dashboard shell and period controls — FE-019
+
+`/ui-review/websites/dashboard` reviews the shell with UI Review enabled. It uses
+ProductLayout and the existing SiteLayout, a site/domain/ownership panel, period
+controls and three source metadata Cards. No KPI, data series, recommendation or
+real report operation is implemented by this task.
+
+The default window is 28 inclusive final source days, with an immediately preceding
+equal-length comparison enabled initially. Each source keeps its own final end and
+timezone. The fixed review clock is 2026-10-14T09:00:00Z; GSC, GA4 and Ads final
+ends are respectively October 10, 11 and 12. Unknown/older-than-the-approved-delay
+final metadata does not fabricate a default window. Received coverage, intersection
+with the requested/comparison windows, actual covered end and final end are distinct.
+Unavailable values show `—`; incomplete and provisional coverage retain text labels.
+The fixtures contain no previous-period data, so comparison coverage remains absent
+until a custom comparison overlaps supplied coverage. A window does not invent data.
+
+Custom solar dates are entered in labeled text inputs as year/month/day, with
+Persian, Arabic or ASCII digits and `/` or `-` separators. Intl's Persian calendar
+validates civil dates, including leap years; no date library is added. Apply keeps
+canonical Gregorian civil days without shifting them to another timezone. Invalid
+dates, reversed windows and dates after the previous source day are rejected with
+linked Persian errors/focus. Valid windows containing nonfinal days remain provisional;
+they are not evidence for recommendation evaluation. Draft editing does not change
+the applied window. Comparison can be toggled with keyboard; returning to 28 days
+restores per-source defaults. Changing site resets drafts, feedback and comparison.
+
+`site` selects existing allowlisted list/receipt sites, defaulting to `report-ready`.
+Independent `ga4`, `gsc`, `ads` scenarios reuse FE-018's selectors; `view=ready|loading|error`
+reviews shell loading/failure. Unknown/repeated selectors use defaults. Ownership and
+receipt validity gate the private report state; arbitrary URL flags grant no rights.
+The list and receipt actions open the matching shell; receipt handoff and backlinks
+retain source scenarios. Fixtures and the fixed clock remain exclusively internal.
+
+`/websites/[websiteId]` uses a new pathless `(workspace)` group with SiteLayout,
+while existing `(account)` onboarding routes and `/sites/[siteId]` are preserved.
+The public injector displays guest access with Login and My Websites links. It
+imports no fixture/controller and ignores query-supplied identity or source data.
+Real authorization, report data and date-filter/refresh integration remain FE-037/FE-043.
+The private route remains excluded from production discovery and bundles.
+
+The approved pale blue backdrop is centralized in `--page-dashboard` and selected
+only by `.page-surface-dashboard` inside main. Both token themes, Persian/RTL,
+Vazirmatn, brand symbols, shared controls/cards and the single footer are preserved.
+No dependency, backend/API, profile, public-page or navigation design is changed.
+
+Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e dashboard-shell.spec.ts data-receipt.spec.ts websites.spec.ts ui-review.spec.ts`.
+See [FE-019 validation](docs/validation/FE-019-dashboard-shell.md) for executed evidence.
 
 ## Private UI review
 

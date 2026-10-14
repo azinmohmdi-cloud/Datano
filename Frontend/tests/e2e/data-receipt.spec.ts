@@ -9,8 +9,10 @@ test("one successful source permits a partial report while other states remain i
   await expect(page.locator('[data-receipt-source="gsc"]')).toHaveAttribute("data-receipt-state", "failed");
   await expect(page.locator('[data-receipt-source="ads"]')).toHaveAttribute("data-receipt-state", "disconnected");
   await page.getByRole("button", { name: "مشاهده گزارش", exact: true }).click();
-  await expect(page.locator("[data-report-destination]")).toContainText("داشبورد همین سایت");
-  await expect(page).toHaveURL(/\/ui-review\/websites\/receive/);
+  await expect(page).toHaveURL("/ui-review/websites/dashboard?site=waiting&ga4=ready&gsc=failed&ads=disconnected");
+  await expect(page.locator("[data-dashboard-shell]")).toContainText("shop.example.test");
+  await expect(page.locator('[data-dashboard-source="gsc"]')).toContainText("دریافت ناموفق");
+  await expect(page.locator('[data-dashboard-source="ads"]')).toContainText("بدون اتصال");
 });
 
 test("the six receipt states distinguish unknown, waiting, failure, empty and data", async ({ page }) => {
@@ -185,6 +187,7 @@ test("Persian RTL receipt cards fit mobile, tablet, desktop, dark tokens and enl
     for (const dark of [false, true]) {
       await page.evaluate((darkMode) => document.documentElement.classList.toggle("dark", darkMode), dark);
       for (const selector of await page.getByRole("combobox").all()) expect((await selector.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+      await expect(page.getByRole("button", { name: "به‌روزرسانی وضعیت", exact: true })).toBeEnabled();
       await page.getByRole("button", { name: "به‌روزرسانی وضعیت", exact: true }).focus();
       await expect(page.getByRole("button", { name: "به‌روزرسانی وضعیت", exact: true })).toBeFocused();
     }

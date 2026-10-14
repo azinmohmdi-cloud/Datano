@@ -9,7 +9,7 @@ const subscribe = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
 
-export default function DataReceiptController({ hostname, verified, sources, listHref = "/websites", connectionsHref, verificationHref }: { hostname: string; verified: boolean; sources: readonly ReceiptSourceInput[]; listHref?: string; connectionsHref: string; verificationHref?: string }) {
+export default function DataReceiptController({ hostname, verified, sources, listHref = "/websites", connectionsHref, verificationHref, onReportDestination }: { hostname: string; verified: boolean; sources: readonly ReceiptSourceInput[]; listHref?: string; connectionsHref: string; verificationHref?: string; onReportDestination?: () => void }) {
   const id = useId();
   const hydrated = useSyncExternalStore(subscribe, clientReady, serverReady);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -35,6 +35,6 @@ export default function DataReceiptController({ hostname, verified, sources, lis
   return <DataReceiptUI id={id} hostname={hostname} verified={verified} sources={rows} listHref={listHref} connectionsHref={connectionsHref} verificationHref={verificationHref} disabled={!hydrated} readiness={{ status: report.status, available: report.available, title, description, included: report.validSources.map((source) => source.title).join("، ") }} operationError={operationError} reportDestination={reportDestination} translations={t} callbacks={{
     onRefresh: () => { if (hydrated && verified) setOperationError(receiptOperationMessages.refreshUnavailable); },
     onSourceCheck: (sourceId) => { const source = rows.find((row) => row.id === sourceId); if (hydrated && verified && source?.connected && !source.busy && source.state !== "permission-error") setErrors((current) => ({ ...current, [sourceId]: source.state === "failed" || source.state === "incomplete" ? receiptOperationMessages.retryUnavailable : receiptOperationMessages.sourceUnavailable })); },
-    onViewReport: () => { if (hydrated && report.available) setReportDestination(true); },
+    onViewReport: () => { if (hydrated && report.available) { if (onReportDestination) onReportDestination(); else setReportDestination(true); } },
   }} />;
 }

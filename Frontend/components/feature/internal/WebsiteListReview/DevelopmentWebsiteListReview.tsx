@@ -18,7 +18,7 @@ export default function DevelopmentWebsiteListReview() {
   const sites = account === "empty" ? [] : account === "single" ? websiteReviewSites.slice(0, 1) : websiteReviewSites;
   return <ProductLayout><AccountLayout>
     <WebsiteListReviewUI account={account} state={state} accounts={websiteReviewAccounts} states={websiteReviewStates} translations={{
-      notice: "بررسی خصوصی سایت‌ها؛ دامنه‌ها و وضعیت‌ها نمونه‌اند. انتخاب سناریو نمونه را بازنشانی می‌کند. حذف واقعی انجام نمی‌شود؛ افزودن، تأیید مالکیت، اتصال منابع و دریافت داده صفحات خصوصی را باز می‌کنند و داشبورد فقط مقصد نمونه را نشان می‌دهد.",
+      notice: "بررسی خصوصی سایت‌ها؛ دامنه‌ها و وضعیت‌ها نمونه‌اند. انتخاب سناریو نمونه را بازنشانی می‌کند. حذف واقعی انجام نمی‌شود؛ افزودن، تأیید مالکیت، اتصال منابع، دریافت داده و پوستهٔ داشبورد صفحات خصوصی را باز می‌کنند.",
       accountLabel: "نوع حساب نمونه", stateLabel: "سناریوی فهرست", profile: "بازگشت به پروفایل",
     }} callbacks={{
       onAccountChange: (value) => { if (websiteReviewAccounts.some((option) => option.value === value)) router.replace(`/ui-review/websites?account=${value}&state=${state}`, { scroll: false }); },
@@ -29,6 +29,7 @@ export default function DevelopmentWebsiteListReview() {
         else if (step === "verify" && site) router.push(`/ui-review/websites/verify?site=${site.id}`);
         else if (step === "connect" && site) router.push(`/ui-review/websites/connect?site=${site.id}`);
         else if (step === "receive" && site) router.push(`/ui-review/websites/receive?site=${site.id}`);
+        else if (step === "dashboard" && site) router.push(`/ui-review/websites/dashboard?site=${site.id}`);
       }} />
     </WebsiteListReviewUI>
   </AccountLayout></ProductLayout>;

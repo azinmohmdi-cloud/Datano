@@ -68,6 +68,7 @@
   --page-editorial-end: #f7f4fd;
   --page-login-start: #f2f8fd;
   --page-login-end: #f7f4fd;
+  --page-dashboard: #f3f7ff;
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
@@ -103,6 +104,7 @@
 }
 
 .dark {
+  --page-dashboard: #171e2b;
   --page-login-start: #171e2b;
   --page-login-end: #1e1b2b;
   --page-editorial-start: #19171f;
@@ -169,6 +171,9 @@
 
 /* Static illustration surfaces: no movement, including reduced-motion mode. */
 @layer components {
+  main:has(.page-surface-dashboard) {
+    background: var(--page-dashboard);
+  }
   /* Page-owned opt-in keeps the shared header/footer and other routes unchanged. */
   main:has(.page-surface-editorial) {
     background: linear-gradient(135deg, var(--page-editorial-start), var(--page-editorial-end));

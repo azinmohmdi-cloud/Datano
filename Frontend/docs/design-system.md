@@ -107,7 +107,7 @@ controls, cards, the shared header/footer, or the homepage hero.
 | Login | Very pale icy blue `#f2f8fd` → lavender `#f7f4fd`, 135° linear gradient | Applied to `/login` in FE-010 and its private form review; header/footer unchanged |
 | Signup | Same quiet icy-blue/lavender gradient as Login | Applied only to `/signup` and its private form review in FE-011 using the existing login backdrop tokens |
 | Recovery | Same quiet icy-blue/lavender gradient as Login | Applied to `/forgot-password` and its private form review in FE-012 using the existing login backdrop tokens |
-| Dashboard | Very light blue `#f3f7ff`; proposed dark adaptation `#171e2b` | Approved future page standard; not applied or defined as a runtime token yet |
+| Dashboard | Very light blue `#f3f7ff`; dark adaptation `#171e2b` | FE-019 applies central `--page-dashboard` via `.page-surface-dashboard` only |
 | Profile | Very pale icy blue → lavender, matching the current auth gradient | Applied to `/profile` and its private review in FE-013; the user's gradient request supersedes the earlier flat-blue profile proposal |
 | Homepage and other current pages | Existing background | Unchanged |
 
@@ -602,6 +602,25 @@ civil-day meaning. Clock/Loader/Check symbols supplement text, with receiving
 animation limited to motion-safe. Cards stack below lg, all controls keep 48px
 minimum height and wrap, and errors use existing destructive tokens. No gradient,
 new status palette, percentage/ETA, chart, global primitive or shell change.
+
+FE-019 Dashboard Shell uses the existing SiteLayout's 1280px cap in a pathless
+`(workspace)` route group for `/websites/[websiteId]`. Existing account onboarding
+routes and the older `/sites/[siteId]` scaffold retain their shells. The page-only
+`.page-surface-dashboard` opt-in applies the approved `--page-dashboard` blue
+backdrop to its containing main; header/footer and other pages are unchanged.
+A compact Globe2 heading precedes a site selector/domain/ownership panel and a
+rounded-2xl period Card. Native selects and date text inputs keep the existing
+48px minimum, field associations and focus styles. Persian solar date entry is
+explicitly labeled; civil source dates are never shifted between timezones.
+Comparison uses the shared Checkbox with a textual label. Date errors retain
+drafts and focus the invalid control; the applied window remains separately visible.
+Three source metadata Cards stack below lg, with existing Activity/Search/Megaphone
+symbols, h3 headings, textual coverage/finality states and isolated LTR timezones.
+Received coverage, overlap with the requested window, comparison overlap, actual
+end and final day remain separate; unknown periods show `—`. No KPI, analytical
+chart, recommendation UI, shared date-picker dependency or status palette is added.
+Full fixtures remain private; the public page displays the existing access-state
+pattern. This follows the approved dashboard background and identity.
 
 Current header: max-w-7xl, `min-h-22` (88px), `px-4 sm:px-6 lg:px-8 py-4`,
 `gap-4`, border-bottom, background, relative z-20. Brand sits on the right.
