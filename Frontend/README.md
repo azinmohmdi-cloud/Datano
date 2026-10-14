@@ -795,6 +795,32 @@ Run `pnpm test:e2e dashboard-traffic.spec.ts dashboard-kpi.spec.ts dashboard-she
 with the existing browser setup. See [FE-021 validation](docs/validation/FE-021-traffic-trend.md)
 for executed checks, runtime details and scope.
 
+## Search Performance — FE-022
+
+`analytics/SearchPerformance` adds four independent Search Console metrics below
+TrafficOverview: clicks, impressions, aggregate CTR and source aggregate position.
+The pure UI and concrete injector consume presentation observations scoped to the
+website, property and exact applied window. Missing values display `—`; zero,
+undefined CTR, partial/thresholded/provisional data, loading/error and stale values
+retain distinct text and per-value receipt metadata. Existing period/comparison
+state stays in the dashboard shell.
+
+Top query rows are a separate input and table, explicitly identified as a subset.
+No aggregate is computed from their sums, ratios or average positions. Finalized
+rows do not imply a comprehensive query list. Row availability/failure is independent
+of aggregate metrics. The existing CTR overview and this section share the same
+private observation, including review scenario changes.
+
+Private review adds `search=valid|mixed|zero-denominator|partial|stale|loading|error|no-totals|empty-rows|rows-error|comparison`.
+Unknown/repeated selectors use valid; changing site resets scenarios. Review data
+is deterministic and confined to the internal graph. No dependency, API, fetching
+hook, session/storage behavior or prior feature redesign was added. Real Search
+Console ingestion/report integration remains later Backlog work.
+
+Run `pnpm test:e2e dashboard-search.spec.ts dashboard-traffic.spec.ts dashboard-kpi.spec.ts dashboard-shell.spec.ts`.
+See [FE-022 validation](docs/validation/FE-022-search-performance.md) for executed
+results and the exact local review URL.
+
 ## Private UI review
 
 The opt-in `/ui-review` catalogue renders the existing public/account/site
