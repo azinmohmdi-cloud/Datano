@@ -12,8 +12,8 @@ const subscribe = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
 
-export default function GoogleConnectionsController({ hostname, verified, initialSources, listHref = "/websites", verificationHref }: {
-  hostname: string; verified: boolean; initialSources: readonly GoogleConnectionInput[]; listHref?: string; verificationHref?: string;
+export default function GoogleConnectionsController({ hostname, verified, initialSources, listHref = "/websites", verificationHref, onContinue }: {
+  hostname: string; verified: boolean; initialSources: readonly GoogleConnectionInput[]; listHref?: string; verificationHref?: string; onContinue?: (connected: readonly GoogleSourceId[]) => void;
 }) {
   const id = useId();
   const hydrated = useSyncExternalStore(subscribe, clientReady, serverReady);
@@ -56,7 +56,12 @@ export default function GoogleConnectionsController({ hostname, verified, initia
     onDisconnectOpen: (sourceId) => { if (available(sourceId)?.state === "connected") change(sourceId, { state: "disconnect-confirm", error: "" }); },
     onDisconnectCancel: (sourceId) => { if (available(sourceId)?.state === "disconnect-confirm") change(sourceId, { state: "connected", error: "" }); },
     onDisconnectConfirm: (sourceId) => { if (available(sourceId)?.state === "disconnect-confirm") change(sourceId, { error: connectionMessages.disconnectUnavailable }); },
-    onContinue: () => { if (hydrated && canContinue) setNextStep(true); },
+    onContinue: () => {
+      if (!hydrated || !canContinue) return;
+      const connected = sources.filter((source) => ["connected", "disconnect-confirm"].includes(source.state) && source.resources.some((resource) => resource.id === source.connectedId && resource.eligible)).map((source) => source.id);
+      if (onContinue) onContinue(connected);
+      else setNextStep(true);
+    },
   };
   return <GoogleConnectionsUI id={id} hostname={hostname} verified={verified} listHref={listHref} verificationHref={verificationHref} disabled={!hydrated} canContinue={canContinue} nextStep={nextStep} translations={connectionTranslations} callbacks={callbacks}
     sources={sources.map((source) => {

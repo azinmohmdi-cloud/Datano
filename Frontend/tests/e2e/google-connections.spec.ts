@@ -24,9 +24,10 @@ test("each source alone permits the receipt step while failures or pending in ot
     await expect(connected).toHaveAttribute("data-source-state", "connected");
     await expect(connected.locator("[data-connected-resource]")).toHaveCount(1);
     await page.getByRole("button", { name: "ادامه برای دریافت داده", exact: true }).click();
-    await expect(page.locator("[data-connections-next-step]")).toHaveText("مرحله بعد: دریافت داده و بررسی آمادگی گزارش برای منابع متصل.");
-    await expect(page).toHaveURL(/\/ui-review\/websites\/connect/);
-    await expect(page.getByText("گزارش آماده", { exact: true })).toHaveCount(0);
+    await expect(page).toHaveURL(/\/ui-review\/websites\/receive\?/);
+    await expect(page.locator("[data-report-readiness]")).toHaveAttribute("data-report-readiness", "waiting");
+    for (const id of ["ga4", "gsc", "ads"]) await expect(page.locator(`[data-receipt-source="${id}"]`)).toHaveAttribute("data-receipt-state", id === source ? "queued" : "disconnected");
+    await expect(page.getByRole("button", { name: "مشاهده گزارش", exact: true })).toBeDisabled();
   }
 });
 

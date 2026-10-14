@@ -65,6 +65,13 @@ test("multiple sites require explicit selection and retain independent ownership
     await expect(page.locator('[aria-pressed="true"]')).toHaveCount(1);
     await expect(page.locator("[data-selected-website]")).toContainText(domain);
     await view.click();
+    if (destination === "receive") {
+      await expect(page).toHaveURL(`/ui-review/websites/receive?site=${domain === "shop.example.test" ? "waiting" : "failed"}`);
+      await expect(page.locator("[data-data-receipt]")).toContainText(domain);
+      await page.getByRole("link", { name: "بازگشت به سایت‌های من", exact: true }).click();
+      await expect(page).toHaveURL("/ui-review/websites");
+      continue;
+    }
     if (destination === "verify" || destination === "connect") {
       await expect(page).toHaveURL(destination === "verify" ? "/ui-review/websites/verify?site=unverified" : "/ui-review/websites/connect?site=no-connection");
       await expect(page.locator(destination === "verify" ? "[data-website-verification]" : "[data-google-connections]")).toContainText(domain);

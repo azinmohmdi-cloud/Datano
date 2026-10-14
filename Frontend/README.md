@@ -458,8 +458,9 @@ destination feedback and any open deletion confirmation. Unverified ownership
 takes precedence over a report flag. Verified sites route conceptually to sources,
 receiving data or the dashboard; successful empty reports also permit dashboard
 navigation. FE-016 opens the private ownership page for an unverified site;
-FE-017 opens source connection for a verified site without sources. Later
-destinations remain local review results, not real reports or server
+FE-017 opens source connection for a verified site without sources. FE-018 opens
+receipt review for waiting/failed sites. Dashboard destinations remain local
+review results, not real reports or server
 authorization/readiness checks.
 
 `state=ready|loading|error|delete-confirm|delete-pending|delete-error` selects the
@@ -476,7 +477,7 @@ and Loading/Empty/Error primitives. Controls remain disabled before hydration;
 private no-JS review stays in its Suspense fallback. Production excludes review
 routes/fixtures under the existing FE-005 policy. Real list/add integration remains
 FE-034; deletion remains FE-047. FE-015 adds the private form navigation described
-below; FE-016/FE-017 add ownership/source review, while receipt remains FE-018.
+below; FE-016/FE-017/FE-018 add ownership, source connection and receipt review.
 
 Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e websites.spec.ts`.
 See [FE-014 validation](docs/validation/FE-014-websites.md) for executed evidence.
@@ -560,13 +561,16 @@ and Ads each have an optional card, independent state and a single selected
 property/account. Product interactions in one card preserve other cards' drafts,
 connections and errors. A waiting/failed source does not block another connected
 source. Any one connected source permits previewing receipt; connection itself
-never implies a successful sync or report. FE-018 owns that next screen.
+never implies a successful sync or report. FE-018 opens the receipt screen with
+only eligible connected sources queued; other sources remain disconnected in
+that initial receipt preview. No job is actually enqueued.
 
 Independent `ga4`, `gsc` and `ads` selectors accept
 `disconnected|authorizing|select|connected|cancelled|no-access|no-resources|revoked|disconnect-confirm|disconnect-pending|error`.
 Changing private selectors resets the whole fixture, as the notice states;
 ordinary product actions do not. Site selectors are `no-connection`,
-`proof-example`, `new` and `unverified`. The first uses FE-014's verified site;
+`proof-example`, `new`, `unverified` and FE-014's `waiting`, `failed`,
+`report-ready`, `report-empty`. The first uses FE-014's verified site;
 proof-example/new represent independently selected successful FE-016 proofs.
 Unknown/repeated selectors fall back to no-connection/disconnected; arbitrary
 property, OAuth code, token or role query parameters are ignored.
@@ -604,6 +608,62 @@ Production excludes this private route/fixture under the existing review policy.
 
 Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e google-connections.spec.ts website-verification.spec.ts websites.spec.ts add-website.spec.ts profile.spec.ts`.
 See [FE-017 validation](docs/validation/FE-017-google-connections.md) for executed evidence.
+
+## Data receipt and report readiness UI — FE-018
+
+Open `/ui-review/websites/receive` with UI Review enabled. Three independent
+source cards distinguish disconnected, queued, receiving, failed, successful
+empty and successful with data. Report readiness is separate from source status:
+verified ownership and any one connected/permitted source with a successful,
+complete, final result covering its selected window permit a partial report.
+Other disconnected, waiting or failed sources are not counted as zero and do not
+hide that result. An all-empty set of valid results is an available empty report;
+a mixed empty/data set is an available report with data. Previous valid results
+remain available while a new receipt is running or has failed.
+
+Independent `ga4`, `gsc`, `ads` selectors accept
+`disconnected|queued|receiving|failed|empty|ready|incomplete|permission-error|wrong-window|refreshing|retry-failed`.
+The last three exercise a mismatched successful window, a new receive with a
+previous valid result and a failed retry with a previous valid result. Unknown or
+repeated values use the selected site's preset: waiting/failed/ready/empty GSC
+for the corresponding FE-014 fixture; disconnected for other sources/sites.
+Default site is `waiting`. Site selection resets all source scenarios; source
+selection resets the presentation and action errors. These are private fixture
+selectors, never trusted permission, sync or readiness parameters.
+
+Cards display source civil windows/coverage and timezone, complete/final versus
+incomplete/mismatched coverage, and the last successful result/time. Fixed review
+windows have 28 final days and intentionally differ across sources. Civil days
+are displayed in the Persian calendar without shifting them into UTC/Tehran;
+operational UTC success timestamps are displayed in Asia/Tehran. This page does
+not introduce a date filter, comparison charts or a 72-hour readiness blocker;
+the MVP's 72-hour evaluation condition concerns future recommendation work.
+
+FE-014 waiting/failed sites open this page with the same hostname. Managing
+connections preserves that site's connection/revoked/disconnected sample states;
+receipt failure remains distinct from disconnection. FE-017 continuation opens
+queued receipt for eligible connected sources, without assuming success.
+List/profile backlinks remain available. Report viewing shows the next dashboard
+destination locally until FE-019 is implemented; no dashboard route/report is
+created. Refresh/check/retry show actual unavailability and preserve all results,
+with no request, timer, fake progression, percentage or ETA.
+
+`/websites/[websiteId]/receive` follows the approved website namespace and keeps
+the public guest access, Login and public list backlink. Query flags never expose
+sample source results or grant ownership. Production excludes the private route
+and fixture bundles even with `UI_REVIEW_ENABLED=1`. Real authorized job status,
+receipt, retry and report readiness require BE-023/BE-026/BE-027 and FE-037;
+multi-source receipt/refresh follows the later backlog integration tasks.
+Presentation types are local inputs, not invented backend contracts. No backend,
+provider/client generation, dependency, header/footer or profile change.
+
+The approved AccountLayout, neutral background, Persian/RTL, Vazirmatn,
+brand/destructive tokens, shared Card/Button/EmptyState and Lucide symbols are
+reused. Cards stack on mobile and form three columns from lg; technical values
+are isolated LTR, controls wrap and keep their 48px minimum.
+
+Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e data-receipt.spec.ts google-connections.spec.ts website-verification.spec.ts websites.spec.ts add-website.spec.ts profile.spec.ts`.
+See [FE-018 validation](docs/validation/FE-018-data-receipt.md) for executed evidence.
 
 ## Private UI review
 

@@ -22,6 +22,6 @@ export default function DevelopmentGoogleConnectionsReview() {
       onSiteChange: (value) => { if (connectionReviewSites.some((option) => option.value === value)) navigate(value, states); },
       onStateChange: (id, value) => { const option = connectionReviewStates.find((item) => item.value === value); if ((id === "ga4" || id === "gsc" || id === "ads") && option) navigate(site.value, { ...states, [id]: option.value }); },
     }}>
-      <GoogleConnectionsController key={key} hostname={site.hostname} verified={site.verified} initialSources={getConnectionReviewSources(site.hostname, states)} listHref="/ui-review/websites" verificationHref="/ui-review/websites/verify?site=unverified" />
+      <GoogleConnectionsController key={key} hostname={site.hostname} verified={site.verified} initialSources={getConnectionReviewSources(site.hostname, states)} listHref="/ui-review/websites" verificationHref="/ui-review/websites/verify?site=unverified" onContinue={(connected) => router.push(`/ui-review/websites/receive?site=${site.value}&ga4=${connected.includes("ga4") ? "queued" : "disconnected"}&gsc=${connected.includes("gsc") ? "queued" : "disconnected"}&ads=${connected.includes("ads") ? "queued" : "disconnected"}`)} />
     </GoogleConnectionsReviewUI></AccountLayout></ProductLayout>;
 }

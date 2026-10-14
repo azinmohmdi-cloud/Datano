@@ -590,6 +590,19 @@ remain usable. All controls retain the 48px minimum, wrapped labels and existing
 focus treatment. No gradient, token, shared primitive, shell or header/footer
 change is introduced.
 
+FE-018 Data Receipt reuses the same AccountLayout, neutral backdrop and independent
+three-source Card layout as FE-017. A Database heading and site/ownership panel
+precede a distinct report-readiness panel, followed by source connection/status
+actions and the three cards. Report readiness uses existing brand-panel/soft
+surfaces and Persian textual feedback; one valid source can expose a partial or
+empty report without concealing errors in another. Source metadata separates
+requested window, actual coverage/finality, source timezone and last successful
+result/time. Technical timezones/domains use LTR bdi; Persian dates retain source
+civil-day meaning. Clock/Loader/Check symbols supplement text, with receiving
+animation limited to motion-safe. Cards stack below lg, all controls keep 48px
+minimum height and wrap, and errors use existing destructive tokens. No gradient,
+new status palette, percentage/ETA, chart, global primitive or shell change.
+
 Current header: max-w-7xl, `min-h-22` (88px), `px-4 sm:px-6 lg:px-8 py-4`,
 `gap-4`, border-bottom, background, relative z-20. Brand sits on the right.
 The latest source-order correction is **سرویس‌ها → درباره ما → حساب کاربری → ورود**

@@ -9,6 +9,7 @@ export const connectionReviewSites = [
   { value: "proof-example", hostname: "example.test", verified: true },
   { value: "new", hostname: "new.example.test", verified: true },
   { value: "unverified", hostname: "example.test", verified: false },
+  ...websiteReviewSites.filter((site) => ["waiting", "failed", "report-ready", "report-empty"].includes(site.id)).map((site) => ({ value: site.id, hostname: site.domain, verified: site.verified })),
 ];
 export const connectionReviewStates: readonly { value: GoogleConnectionState; label: string }[] = [
   { value: "disconnected", label: "متصل نشده" }, { value: "authorizing", label: "در انتظار مجوز" }, { value: "select", label: "انتخاب منبع" },
