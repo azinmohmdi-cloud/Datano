@@ -436,6 +436,48 @@ The unchanged FE-005 policy excludes private routes/fixtures from production.
 Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e profile.spec.ts`.
 See [FE-013 validation](docs/validation/FE-013-profile.md) for executed evidence.
 
+## Website list and selection UI — FE-014
+
+`/websites` reuses the pathless `(account)` group and AccountLayout. Until
+FE-030/FE-034 supply trusted account/site data, it shows an access state and Login
+link. Query flags cannot supply sites, identity, selection or permission. The
+existing `/account` routing and `/sites/[siteId]` layout are unchanged. No
+individual-site route is added; later workspace routes must follow the approved
+Backlog `/websites/[websiteId]` policy with the previously reported layout
+discrepancy coordinated before altering that scaffold.
+
+The complete UI is privately reviewable at `/ui-review/websites`, linked from
+the review catalogue and the profile's account summary. The profile UI accepts
+an optional navigation href; only its private injector supplies a private link.
+Existing profile fields and public access behavior remain intact.
+
+`account=empty|single|multiple` selects a deterministic fixture. A single site is
+selected automatically; multiple sites require explicit selection. Domain,
+ownership and report state are separate. Selecting another site clears obsolete
+destination feedback and any open deletion confirmation. Unverified ownership
+takes precedence over a report flag. Verified sites route conceptually to sources,
+receiving data or the dashboard; successful empty reports also permit dashboard
+navigation. The displayed destination is a local review result, not a visit to an
+unfinished page, a real report or a server authorization/readiness check.
+
+`state=ready|loading|error|delete-confirm|delete-pending|delete-error` selects the
+initial scenario. Invalid/repeated selectors use multiple/ready; changing either
+selector resets the fixture, as the review notice explains. Reload reconstructs
+the initial scenario without persisting private selections in browser storage.
+Delete confirmation names the target and explains cancellation of sources/jobs,
+loss of access to dependent data and the need for fresh proof after re-registration.
+Cancellation restores focus; confirmation reports actual unavailability and never
+removes a site. Pending/error states are selectable, without sending a mutation.
+
+The feature reuses the existing brand, Vazirmatn, RTL, account shell, Card/Button
+and Loading/Empty/Error primitives. Controls remain disabled before hydration;
+private no-JS review stays in its Suspense fallback. Production excludes review
+routes/fixtures under the existing FE-005 policy. Real list/add integration remains
+FE-034; deletion remains FE-047. FE-015–FE-018 are not implemented by this task.
+
+Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e websites.spec.ts`.
+See [FE-014 validation](docs/validation/FE-014-websites.md) for executed evidence.
+
 ## Private UI review
 
 The opt-in `/ui-review` catalogue renders the existing public/account/site

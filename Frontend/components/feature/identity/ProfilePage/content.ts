@@ -4,7 +4,7 @@ export const profileTranslations: ProfilePageUIProps["translations"] = {
   title: "پروفایل", description: "اطلاعات حساب و تنظیمات ورود خود را مدیریت کنید.",
   access: "برای مشاهده و ویرایش اطلاعات حساب، وارد شوید.", login: "ورود به حساب",
   loading: "در حال دریافت اطلاعات حساب", loadError: "اطلاعات حساب در دسترس نیست.",
-  account: "حساب شما", currentEmail: "ایمیل فعلی",
+  account: "حساب شما", currentEmail: "ایمیل فعلی", sites: "سایت‌های من",
   namesTitle: "اطلاعات شخصی", namesDescription: "نام و نام خانوادگی خود را ویرایش کنید.",
   firstName: "نام", lastName: "نام خانوادگی", save: "ذخیره تغییرات", saving: "در حال ذخیره…", resetNames: "بازنشانی نام‌ها",
   emailTitle: "تغییر ایمیل", emailDescription: "ایمیل فعلی تا تأیید نشانی جدید تغییر نمی‌کند.",

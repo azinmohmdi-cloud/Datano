@@ -25,7 +25,7 @@ export default function DevelopmentProfileReview() {
     }} callbacks={{ onEmailStepChange: selectEmailStep, onStateChange: (value) => {
       if (profileReviewStates.some((option) => option.value === value)) router.replace(`/ui-review/profile?emailStep=${emailStep}&state=${value}`, { scroll: false });
     } }}>
-      <ProfileController key={state} preview account={profileReviewAccount} initialEmailValues={profileReviewEmailValues} emailStep={emailStep} onEmailStepChange={selectEmailStep} initialScenario={state} />
+      <ProfileController key={state} preview sitesHref="/ui-review/websites" account={profileReviewAccount} initialEmailValues={profileReviewEmailValues} emailStep={emailStep} onEmailStepChange={selectEmailStep} initialScenario={state} />
     </ProfileReviewUI>
   </AccountLayout></ProductLayout>;
 }

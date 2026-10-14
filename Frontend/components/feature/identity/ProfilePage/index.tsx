@@ -7,11 +7,13 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { ErrorState, LoadingState } from "@/components/ui/status";
 import ProfileHeading from "./heading";
+import ProfileSitesLink from "./sites-link";
 
 export type ProfileEmailStep = "request" | "code";
 export interface ProfilePageUIProps {
   id: string;
   account: { firstName: string; lastName: string; email: string };
+  sitesHref?: string;
   names: { firstName: string; lastName: string };
   emailValues: { email: string; code: string };
   errors: { firstName: string; lastName: string; names: string; email: string; code: string; emailSubmission: string; logout: string };
@@ -26,7 +28,7 @@ export interface ProfilePageUIProps {
   logoutOpen: boolean;
   translations: {
     title: string; description: string; access: string; login: string; loading: string; loadError: string;
-    account: string; currentEmail: string; namesTitle: string; namesDescription: string; firstName: string; lastName: string;
+    account: string; currentEmail: string; sites: string; namesTitle: string; namesDescription: string; firstName: string; lastName: string;
     save: string; saving: string; resetNames: string; emailTitle: string; emailDescription: string;
     newEmail: string; emailPlaceholder: string; request: string; requesting: string; code: string; codeHint: string; codeFor: string;
     verify: string; verifying: string; previous: string; expires: string; attempts: string; resend: string; resendWait: string; seconds: string;
@@ -74,6 +76,7 @@ function AccountSummary(props: ProfilePageUIProps) {
           <dt className="flex items-center gap-2 text-brand-muted"><Mail className="size-4 shrink-0" aria-hidden="true" />{t.currentEmail}</dt>
           <dd data-profile-current-email className="wrap-anywhere"><bdi dir="ltr">{account.email}</bdi></dd>
         </dl>
+        <ProfileSitesLink label={t.sites} href={props.sitesHref} />
       </CardContent>
       <CardFooter className="border-t pt-5"><LogoutBlock {...props} /></CardFooter>
     </Card>

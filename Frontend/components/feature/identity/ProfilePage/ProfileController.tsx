@@ -10,6 +10,7 @@ import { validateProfileEmail, validateProfileNames } from "./validation";
 export type ProfileScenario = "ready" | "loading" | "error" | "names-pending" | "names-error" | "email-pending" | "email-error" | "code-error" | "expired" | "resend-ready" | "logout-confirm" | "logout-pending" | "logout-error";
 interface ProfileControllerProps {
   account: ProfilePageUIProps["account"];
+  sitesHref?: string;
   initialEmailValues: ProfilePageUIProps["emailValues"];
   preview?: boolean;
   emailStep?: ProfileEmailStep;
@@ -21,7 +22,7 @@ const clientReady = () => true;
 const serverReady = () => false;
 const emptyErrors = { firstName: "", lastName: "", names: "", email: "", code: "", emailSubmission: "", logout: "" };
 
-export default function ProfileController({ account, initialEmailValues, preview = false, emailStep: controlledStep, onEmailStepChange, initialScenario = "ready" }: ProfileControllerProps) {
+export default function ProfileController({ account, sitesHref, initialEmailValues, preview = false, emailStep: controlledStep, onEmailStepChange, initialScenario = "ready" }: ProfileControllerProps) {
   const hydrated = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
   const id = useId();
   const [localStep, setLocalStep] = useState<ProfileEmailStep>("request");
@@ -139,7 +140,7 @@ export default function ProfileController({ account, initialEmailValues, preview
     onLogoutConfirm: () => { if (!disabled) setErrors((current) => ({ ...current, logout: messages.logoutUnavailable })); },
   };
 
-  return <ProfilePageUI id={id} account={account} names={names} emailValues={emailValues}
+  return <ProfilePageUI id={id} account={account} sitesHref={sitesHref} names={names} emailValues={emailValues}
     errors={{ ...errors, code: expired ? messages.expired : locked ? messages.locked : errors.code }}
     status={preview && scenario === "loading" ? "loading" : preview && scenario === "error" ? "error" : "ready"}
     emailStep={emailStep} disabled={!hydrated} pendingAction={pendingAction} dirty={names.firstName !== account.firstName || names.lastName !== account.lastName}

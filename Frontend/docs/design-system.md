@@ -537,6 +537,20 @@ tokens in both themes without changing AccountLayout globally or previous pages.
 Until trusted session data is available, `/profile` displays a concise access
 state with Login; complete interactive account fixtures stay in private review.
 
+FE-014 Website List retains AccountLayout's 1024px cap and the existing neutral
+page background. A compact Globe2 heading and primary Add action precede a
+selected-site panel using brand-panel. Site Cards form one column on mobile and
+two from md; domains wrap inside LTR bdi elements. Ownership and report labels
+are separate semantic dl rows, with textual status and Lucide ownership symbols.
+Selection uses aria-pressed, a check symbol and a restrained brand border/surface;
+failed receipt and deletion reuse destructive styling. Controls have a 48px
+minimum height and wrapped labels. A focused inline confirmation group names the
+site and describes deletion consequences; cancellation returns focus to its
+trigger. No modal, new status color, chart, gradient or shared primitive is added.
+The private profile summary has an optional site-navigation link; its account
+fields and public access state are preserved. `/websites` shows an access state
+until trusted site data exists; full fixtures remain at `/ui-review/websites`.
+
 Current header: max-w-7xl, `min-h-22` (88px), `px-4 sm:px-6 lg:px-8 py-4`,
 `gap-4`, border-bottom, background, relative z-20. Brand sits on the right.
 The latest source-order correction is **سرویس‌ها → درباره ما → حساب کاربری → ورود**
