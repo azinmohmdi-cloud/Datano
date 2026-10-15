@@ -983,8 +983,12 @@ baseline; do not invent endpoints or treat generation as completed integration.
 ### Dashboard redesign: FE-019–FE-023 (2026-10-15)
 
 The opted-in development page `/ui-review/websites/dashboard` now contains three
-independent metric-selectable Recharts plots, compact expandable KPIs, a combined
-site/period toolbar and the preserved top-query table. Review tools are initially
+independent metric-selectable Recharts plots, compact expandable KPIs, separate
+site and period Cards and the preserved top-query table. The final same-day UI
+amendment replaces the former overview/freshness list with three GA4 KPIs above
+the existing traffic chart. All plots share the full content width and 20rem
+height; Search's unchanged query card follows its chart without a two-column gap.
+Earlier task sections above describe their historical baselines. Review tools are initially
 collapsed under «ابزار بررسی خصوصی UI». Existing scenario selectors remain.
 `?trend=empty`, `?trend=gaps`, `?trend=loading`, and `?trend=error` exercise daily
 GSC/Ads states independently of their KPI aggregates. Existing `traffic`, `search`,
@@ -993,4 +997,6 @@ GSC/Ads states independently of their KPI aggregates. Existing `traffic`, `searc
 Public product pages still require a trusted session/report integration. No API
 endpoint or backend code is introduced. Data requirements are recorded in MVP
 and BE-024/026/027/029/030/032/033, FE-037/039/041; fixtures stay excluded from
-production. See `docs/validation/dashboard-redesign.md` for current validation.
+production. See `docs/validation/dashboard-redesign.md` for redesign validation
+and [final UI adjustments](docs/validation/dashboard-final-ui-adjustments.md)
+for the subsequent scoped layout amendment and its checks.

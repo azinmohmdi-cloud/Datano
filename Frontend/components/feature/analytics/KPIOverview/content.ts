@@ -1,10 +1,8 @@
 export const kpiTranslations = {
   details: "جزئیات شاخص", recent: "به‌روز",
-  title: "نمای کلی عملکرد", description: "هر شاخص به منبع و بازهٔ خودش مربوط است؛ دادهٔ منابع مختلف با هم جمع نمی‌شود.",
+  title: "Google Analytics 4", description: "کاربران، نشست‌ها و رویدادهای کلیدی سایت در بازهٔ انتخاب‌شده.",
   source: "منبع", unit: "واحد", resource: "منبع انتخاب‌شده", window: "بازهٔ مقدار", coverage: "پوشش مقدار",
   comparison: "مقدار بازهٔ مقایسه", comparisonWindow: "بازهٔ مقایسه", lastSuccess: "آخرین دریافت موفق مقدار، به وقت تهران",
-  freshnessTitle: "تازگی دادهٔ منابع", sourceLastSuccess: "آخرین دریافت موفق منبع، به وقت تهران", sourceStatus: "وضعیت منبع",
-  freshnessHint: "زمان دریافت مقدار و آخرین دریافت موفق منبع، مستقل نمایش داده می‌شوند. دادهٔ قدیمی همچنان قابل مشاهده است.",
   unknown: "—", join: "تا",
 };
 export const kpiDefinitions = {

@@ -1,5 +1,45 @@
 import { test, expect } from "@playwright/test";
 
+test('separate controls lead into three source sections with equal plot dimensions', async ({ page }) => {
+  await page.goto('/ui-review/websites/dashboard?traffic=comparison&search=comparison&adsMetric=comparison');
+  const site = page.locator('[data-dashboard-site-controls]'), period = page.locator('[data-dashboard-period-controls]');
+  await expect(site.getByRole('heading', { name: 'انتخاب سایت', exact: true })).toBeVisible();
+  await expect(site.getByLabel('انتخاب سایت', { exact: true })).toBeEnabled();
+  await expect(site).toContainText('مالکیت تأیید شده');
+  await expect(period.getByLabel('نوع بازه', { exact: true })).toBeEnabled();
+  await expect(period.locator('[data-active-range]')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'نمای کلی عملکرد', exact: true })).toHaveCount(0);
+  await expect(page.locator('[data-source-freshness], [data-kpi-card="ctr"]')).toHaveCount(0);
+  const ga4 = page.locator('[data-ga4-performance]');
+  await expect(ga4.getByRole('heading', { name: 'Google Analytics 4', exact: true })).toBeVisible();
+  await expect(ga4.locator('[data-kpi-card]')).toHaveCount(3);
+  await expect(ga4.locator('[data-traffic-overview]')).toBeVisible();
+  expect(await page.locator('[data-ga4-performance], [data-search-performance], [data-ads-performance]').evaluateAll(sections => sections.map(section => section.hasAttribute('data-ga4-performance') ? 'ga4' : section.hasAttribute('data-search-performance') ? 'gsc' : 'ads'))).toEqual(['ga4', 'gsc', 'ads']);
+  for (const width of [320, 390, 768, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const siteBox = await site.boundingBox(), periodBox = await period.boundingBox();
+    expect(siteBox).not.toBeNull(); expect(periodBox).not.toBeNull();
+    if (!siteBox || !periodBox) throw new Error('Missing control cards');
+    if (width >= 1024) {
+      expect(siteBox.x).toBeGreaterThan(periodBox.x);
+      expect(Math.abs(siteBox.y - periodBox.y)).toBeLessThan(1);
+      expect(Math.abs(siteBox.width - periodBox.width)).toBeLessThan(1);
+    } else expect(periodBox.y).toBeGreaterThanOrEqual(siteBox.y + siteBox.height);
+    const card = await ga4.locator('[data-kpi-card="keyEvents"]').boundingBox(), section = await ga4.boundingBox();
+    if (!card || !section) throw new Error('Missing GA4 cards');
+    if (width >= 380 && width < 1024) expect(Math.abs(card.width - section.width)).toBeLessThan(1);
+    await expect.poll(async () => page.locator('[data-traffic-plot] .recharts-wrapper').evaluateAll(plots => {
+      const boxes = plots.map(plot => plot.getBoundingClientRect());
+      return boxes.length === 3 && boxes.every(box => box.width > 0 && Math.abs(box.width - boxes[0].width) < 1 && Math.abs(box.height - 320) < 1);
+    })).toBe(true);
+    const plot = await page.locator('[data-source-trend="gsc"]').boundingBox(), table = await page.locator('[data-search-top-rows]').boundingBox();
+    if (!plot || !table) throw new Error('Missing search content');
+    expect(table.y).toBeGreaterThanOrEqual(plot.y + plot.height);
+    expect(table.y - plot.y - plot.height).toBeLessThanOrEqual(20);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  }
+});
+
 test("three independent charts and compact expandable KPIs retain values", async ({ page }) => {
   await page.goto('/ui-review/websites/dashboard');
   await expect(page.locator('[data-source-trend="gsc"] .recharts-surface').first()).toBeVisible();

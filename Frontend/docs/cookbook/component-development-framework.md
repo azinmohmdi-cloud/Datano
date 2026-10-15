@@ -615,8 +615,15 @@ A component directory owns one coherent feature. If a component grows to handle 
 
 ## Dashboard adapters and composition — 2026-10-15
 
-`analytics/DashboardReport/index.tsx` composes the overview/GA4, Search and Ads
-slots without domain dependencies. The existing concrete injectors own period,
+`analytics/DashboardReport/index.tsx` composes the analytics (GA4), Search and Ads
+slots without domain dependencies. The final UI amendment removes the cross-source
+overview/freshness list: the existing KPIOverview module now renders only the three
+GA4 aggregate cards and accepts a chart presentation slot. Its measurement inputs,
+formatting and state logic remain unchanged. Search retains its cards and query
+table in a single-column chart/table grid so all three source plots share the
+same available width and existing 20rem plot height. The shell separates site
+and period Cards without changing controller state or callbacks.
+The existing concrete injectors own period,
 metric selection and presentation mapping. `TrafficOverview/index.tsx` is the
 shared source-aware Recharts presentation; `SourceTrend/series.ts` validates
 GSC/Ads daily snapshot inputs independently from KPI totals and top rows.

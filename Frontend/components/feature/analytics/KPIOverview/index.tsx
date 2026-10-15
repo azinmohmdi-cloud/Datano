@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Activity, Clock3, Flag, LoaderCircle, Search, UsersRound } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
@@ -14,24 +15,24 @@ interface ReadingView {
   coverage: string;
 }
 export interface KPIOverviewUIProps {
+  chart?: ReactNode;
   id: string;
   cards: readonly {
     id: string; title: string; source: string; unit: string; definition: string; resourceLabel: string;
     current: ReadingView; previous: ReadingView | null;
   }[];
-  sources: readonly { id: string; title: string; stateLabel: string; freshness: string; freshnessLabel: string; lastSuccess: string }[];
   translations: { details: string; recent: string;
     title: string; description: string; source: string; unit: string; resource: string; window: string; coverage: string;
-    comparison: string; comparisonWindow: string; lastSuccess: string; freshnessTitle: string; sourceLastSuccess: string; sourceStatus: string; freshnessHint: string;
+    comparison: string; comparisonWindow: string; lastSuccess: string;
   };
 }
 const knownValue = (reading: ReadingView) => reading.kind === "value" || reading.kind === "zero";
 
-export default function KPIOverviewUI({ id, cards, sources, translations: t }: KPIOverviewUIProps) {
-  return <section data-kpi-overview aria-labelledby={`${id}-title`} className="min-w-0 space-y-5">
-    <div className="space-y-1"><h2 id={`${id}-title`} className="text-xl leading-9 font-bold">{t.title}</h2><p className="text-sm leading-7 text-brand-muted">{t.description}</p></div>
-    <div className="grid min-w-0 items-start gap-3 min-[380px]:grid-cols-2">{cards.map((card) => <KPICard key={card.id} card={card} translations={t} />)}</div>
-    <div className="min-w-0 rounded-2xl border border-brand-blue/10 bg-card px-4 py-3"><h3 className="mb-2 text-xs leading-6 font-semibold text-brand-muted">{t.freshnessTitle}</h3><ul className="grid min-w-0 gap-2">{sources.map((source) => <li key={source.id} data-source-freshness={source.id} data-freshness={source.freshness} className="min-w-0 grid gap-x-3 rounded-xl bg-brand-panel px-3 py-2 sm:grid-cols-2"><p className="text-xs font-semibold leading-6"><bdi dir="ltr">{source.title}</bdi></p><p className="text-xs leading-6 text-brand-ink">{source.freshness === 'recent' ? t.recent : source.freshnessLabel}</p><details className="sm:col-span-2"><summary className="min-h-11 cursor-pointer py-2 text-xs leading-7 text-brand-muted">{t.sourceStatus} و {t.sourceLastSuccess}</summary><p className="text-xs leading-6 text-brand-muted">{source.stateLabel}</p><p className="text-xs leading-7 wrap-anywhere">{source.lastSuccess}</p><p className="text-xs leading-6 text-brand-ink">{source.freshnessLabel}</p><p className="text-xs leading-7 text-brand-muted">{t.freshnessHint}</p></details></li>)}</ul></div>
+export default function KPIOverviewUI({ id, cards, chart, translations: t }: KPIOverviewUIProps) {
+  return <section data-ga4-performance aria-labelledby={`${id}-title`} className="min-w-0 space-y-5">
+    <div className="space-y-2"><div className="flex items-center gap-3"><Activity className="size-5 shrink-0 text-brand-ink" aria-hidden="true" /><h2 id={`${id}-title`} className="text-xl leading-9 font-bold"><bdi dir="ltr">{t.title}</bdi></h2></div><p className="text-sm leading-7 text-brand-muted">{t.description}</p></div>
+    <div className="grid min-w-0 items-start gap-3 min-[380px]:grid-cols-2 min-[380px]:[&>*:last-child]:col-span-2 lg:grid-cols-3 lg:[&>*:last-child]:col-span-1">{cards.map((card) => <KPICard key={card.id} card={card} translations={t} />)}</div>
+    {chart}
   </section>;
 }
 

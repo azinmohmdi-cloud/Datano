@@ -147,8 +147,8 @@ test("loading, error, partial and stale Ads states preserve other source metrics
   await page.getByLabel("سناریوی عملکرد تبلیغات", { exact: true }).selectOption("stale");
   await expect(ads.locator('[data-ads-metric="cost"]')).toHaveAttribute("data-ads-freshness", "stale");
   await expect(ads.locator('[data-ads-metric="cost"] [data-ads-value]')).toHaveText("۱٬۰۰۰");
-  await expect(page.locator('[data-source-freshness="ads"]')).toContainText("داده قدیمی");
-  await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("۲٫۴٪");
+  await expect(page.locator('[data-ads-metric="cost"]')).toContainText("داده قدیمی");
+  await expect(page.locator('[data-search-metric="ctr"] [data-search-value]')).toHaveText("۲٫۴٪");
   await expect(page.locator('[data-kpi-card="keyEvents"] [data-kpi-value]')).toHaveText("۴۲");
 });
 

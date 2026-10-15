@@ -682,11 +682,19 @@ font, shell or primitive; the fifth review selector and all Ads fixtures are pri
 
 This authorized redesign supersedes the initial dashboard composition above,
 while preserving all source definitions, states, controls and metadata. Use the
-product `DashboardReport` composition: a two-column overview/GA4 workspace at xl;
-Search KPI row followed by chart/table columns; Ads five-metric row including
-ROAS followed by its bar chart. Smaller widths stack in DOM reading order.
+product `DashboardReport` composition, with the final same-day UI amendment:
+GA4 has three KPI cards (users, sessions, key events) followed by its unchanged
+traffic chart; Search has its unchanged four KPIs, full-width chart, then the
+unchanged top-query card; Ads retains its five-metric row including ROAS and bar
+chart. These source sections follow GA4 → Search → Ads in DOM reading order.
+The former cross-source overview and independent freshness list are removed.
+All three plots use the same available content width and reserved 20rem height
+at every viewport; chart cards grow naturally for metadata and disclosures.
+Search uses a single-column grid to avoid the empty area beside the taller
+chart without stretching the query table or altering chart internals.
 Metric grids allow two columns from 380px and one at 320px; all text can wrap
-and grow at 200%. Cards align at the start so expanding one does not stretch
+and grow at 200%. GA4's third card spans the second row below lg to avoid an
+empty half-row; at lg its three cards share one row. Cards align at the start so expanding one does not stretch
 unrelated cards. No fixed card height, clipping, modal or extra route.
 
 Cards have compact icon/title/source, prominent value and unit. Zero, unavailable,
@@ -694,9 +702,13 @@ loading/error, non-complete quality and stale/unknown freshness stay visible.
 Healthy-state detail, coverage, receipt timestamp and definitions live in native
 `details`/`summary`, with a 44px minimum focusable trigger. The previous value
 remains visible when comparison is enabled; full previous metadata is retained.
-Source freshness is a compact independent list. Site, identity, period and
-comparison form one toolbar; custom-date validation and applied-vs-draft behavior
-are unchanged. Private review tools are a separate, initially collapsed panel.
+Freshness, coverage and receipt remain in the relevant metric/chart disclosures.
+Site selection, hostname and ownership occupy a separate Card from period,
+comparison, applied range and custom dates. At lg the equally wide Cards place
+site on the right and period on the left; items-start preserves independent
+content heights. Smaller widths stack site first. Custom-date validation and
+applied-vs-draft behavior are unchanged. Private review tools are a separate,
+initially collapsed panel.
 
 Every source has a dedicated Recharts plot with a metric selector: GA4 area for
 sessions/daily users; GSC line for clicks/impressions; Ads bars for cost/clicks/

@@ -143,7 +143,7 @@ test("loading, failure, permission and stale readings stay truthful and independ
   await page.goto("/ui-review/websites/dashboard?kpi=loading");
   const traffic = page.locator("[data-traffic-overview]");
   await expect(traffic.getByRole("status")).toHaveText("در حال دریافت روند ترافیک");
-  await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("۲٫۴٪");
+  await expect(page.locator('[data-search-metric="ctr"] [data-search-value]')).toHaveText("۲٫۴٪");
   if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی شاخص‌ها", { exact: true }).selectOption("error");
   await expect(traffic.getByRole("alert")).toHaveText("دریافت روند ترافیک ناموفق بود");

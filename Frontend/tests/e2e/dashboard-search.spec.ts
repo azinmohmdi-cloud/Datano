@@ -70,7 +70,7 @@ test("search performance identifies four aggregate metrics and separates top que
   await expect(search.locator('[data-search-top-rows]')).not.toContainText("داده کامل و نهایی");
 });
 
-test("independent zero, partial, missing and ratio states retain consistent overview CTR", async ({ page }) => {
+test("independent zero, partial, missing and ratio states retain a single source CTR", async ({ page }) => {
   await page.goto("/ui-review/websites/dashboard?search=mixed");
   const search = page.locator("[data-search-performance]");
   await expect(search.locator('[data-search-metric="clicks"]')).toHaveAttribute("data-search-kind", "zero");
@@ -78,14 +78,14 @@ test("independent zero, partial, missing and ratio states retain consistent over
   await expect(search.locator('[data-search-metric="impressions"] [data-search-value]')).toHaveText("۵٬۰۰۰");
   await expect(search.locator('[data-search-metric="position"] [data-search-value]')).toHaveText("—");
   await expect(search.locator('[data-search-metric="ctr"] [data-search-value]')).toHaveText("۰٪");
-  await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("۰٪");
+  await expect(page.locator('[data-kpi-card="ctr"]')).toHaveCount(0);
   await expect(search.locator('[data-search-row="search-review-first"] [data-search-cell="clicks"]')).toContainText("۰");
   if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی عملکرد جست‌وجو", { exact: true }).selectOption("zero-denominator");
   await expect(search.locator('[data-search-metric="impressions"] [data-search-value]')).toHaveText("۰");
   await expect(search.locator('[data-search-metric="ctr"]')).toHaveAttribute("data-search-kind", "zero-denominator");
   await expect(search.locator('[data-search-metric="ctr"] [data-search-value]')).toHaveText("—");
-  await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("—");
+  await expect(page.locator('[data-kpi-card="ctr"]')).toHaveCount(0);
 });
 
 test("metric loading or failure and top-row failure do not conceal successful metrics", async ({ page }) => {
@@ -109,7 +109,7 @@ test("top queries remain a subset even when there is no aggregate or no returned
   const search = page.locator("[data-search-performance]");
   await expect(search.getByRole("table")).toBeVisible();
   await expect(search.locator('[data-search-value]')).toHaveText(["—", "—", "—", "—"]);
-  await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("—");
+  await expect(page.locator('[data-kpi-card="ctr"]')).toHaveCount(0);
   await expect(search).toContainText("شاخص‌های بالا از جمع یا میانگین این ردیف‌ها محاسبه نمی‌شوند");
   if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی عملکرد جست‌وجو", { exact: true }).selectOption("empty-rows");
@@ -127,7 +127,7 @@ test("stale and partial source reports preserve values, coverage and independent
   await expect(search.locator('[data-search-metric="clicks"]')).toHaveAttribute("data-search-freshness", "stale");
   await expect(search.locator('[data-search-metric="clicks"] [data-search-value]')).toHaveText("۱۲۰");
   await expect(search.locator('[data-search-metric="clicks"]')).toContainText("۱۴۰۵/۰۷/۱۹, ۱۱:۳۰");
-  await expect(page.locator('[data-source-freshness="gsc"]')).toContainText("داده قدیمی");
+  await expect(page.locator('[data-search-metric="clicks"]')).toContainText("داده قدیمی");
   await expect(page.locator('[data-kpi-card="sessions"]')).toHaveAttribute("data-kpi-freshness", "recent");
   if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی عملکرد جست‌وجو", { exact: true }).selectOption("partial");

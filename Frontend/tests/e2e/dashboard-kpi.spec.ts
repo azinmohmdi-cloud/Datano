@@ -43,18 +43,18 @@ test("observations bind to site, source, property and exact aggregate window wit
   expect(JSON.stringify(input)).toBe(snapshot);
 });
 
-test("overview cards identify sources, units, whole-window values and successful sync times", async ({ page }) => {
+test("GA4 cards identify sources, units, whole-window values and successful sync times", async ({ page }) => {
   await page.goto("/ui-review/websites/dashboard");
-  await expect(page.getByRole("heading", { name: "نمای کلی عملکرد", exact: true })).toBeVisible();
-  await expect(page.locator("[data-kpi-card]")).toHaveCount(4);
+  await expect(page.locator("[data-ga4-performance]").getByRole("heading", { name: "Google Analytics 4", exact: true })).toBeVisible();
+  await expect(page.locator("[data-kpi-card]")).toHaveCount(3);
   const users = page.locator('[data-kpi-card="users"]');
   await expect(users.locator("[data-kpi-value]")).toHaveText("۱٬۲۳۴");
   await expect(users).toContainText("GA4"); await expect(users).toContainText("کاربر");
   await expect(users).toContainText("۱۴۰۵/۰۶/۲۳ تا ۱۴۰۵/۰۷/۱۹");
-  await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("۲٫۴٪");
-  await expect(page.locator('[data-kpi-card="ctr"]')).toContainText("Search Console");
-  await expect(page.locator('[data-kpi-card="ctr"]')).toContainText("درصد");
-  await expect(page.locator('[data-source-freshness="ga4"]')).toContainText("۱۴۰۵/۰۷/۲۱, ۱۵:۳۰");
+  await expect(page.locator('[data-search-metric="ctr"] [data-search-value]')).toHaveText("۲٫۴٪");
+  await expect(page.locator('[data-search-metric="ctr"]')).toContainText("Search Console");
+  await expect(page.locator('[data-search-metric="ctr"]')).toContainText("درصد");
+  await expect(page.locator('[data-kpi-card="users"]')).toContainText("۱۴۰۵/۰۷/۲۱, ۱۵:۳۰");
   await expect(users).toContainText("کل بازه");
 });
 
@@ -65,8 +65,8 @@ test("actual zero, missing values, zero denominator, partial and stale data rema
   await expect(users).toContainText("صفر ثبت‌شده");
   await expect(page.locator('[data-kpi-card="keyEvents"] [data-kpi-value]')).toHaveText("—");
   await expect(page.locator('[data-kpi-card="keyEvents"]')).toContainText("مقدار موجود نیست");
-  await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("—");
-  await expect(page.locator('[data-kpi-card="ctr"]')).toContainText("تعداد نمایش صفر است");
+  await expect(page.locator('[data-search-metric="ctr"] [data-search-value]')).toHaveText("—");
+  await expect(page.locator('[data-search-metric="ctr"]')).toContainText("تعداد نمایش صفر است");
   await expect(sessions.locator("[data-kpi-value]")).toHaveText("۳۲۱");
   await expect(sessions).toContainText("داده ناقص");
   await expect(users).toContainText("داده قدیمی");
@@ -81,7 +81,7 @@ test("partial, thresholded, loading and failed metrics preserve other sources an
   const sessions = page.locator('[data-kpi-card="sessions"]');
   await expect(sessions.getByRole("status")).toContainText("در حال دریافت مقدار");
   await expect(sessions.locator("[data-kpi-value]")).toHaveText("—");
-  await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("۲٫۴٪");
+  await expect(page.locator('[data-search-metric="ctr"] [data-search-value]')).toHaveText("۲٫۴٪");
   if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی شاخص‌ها", { exact: true }).selectOption("error");
   await expect(sessions.getByRole("alert")).toContainText("دریافت مقدار ناموفق بود");
@@ -94,7 +94,7 @@ test("partial, thresholded, loading and failed metrics preserve other sources an
 
 test("stale values remain visible and timestamps are independent per source", async ({ page }) => {
   await page.goto("/ui-review/websites/dashboard?kpi=stale");
-  const ga4 = page.locator('[data-source-freshness="ga4"]'), gsc = page.locator('[data-source-freshness="gsc"]');
+  const ga4 = page.locator('[data-kpi-card="users"]'), gsc = page.locator('[data-search-metric="ctr"]');
   await expect(ga4).toContainText("داده قدیمی");
   await expect(gsc).toContainText("دریافت موفق در ۷۲ ساعت گذشته");
   await expect(page.locator('[data-kpi-card="users"] [data-kpi-value]')).toHaveText("۱٬۲۳۴");
@@ -118,12 +118,12 @@ test("range changes never reuse aggregates from another window or sum unique use
   await expect(users.locator("[data-kpi-value]")).toHaveText("۱٬۲۳۴");
   await page.getByRole("button", { name: "اعمال بازه", exact: true }).click();
   await expect(users.locator("[data-kpi-value]")).toHaveText("۷۷۷");
-  await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("۵٪");
+  await expect(page.locator('[data-search-metric="ctr"] [data-search-value]')).toHaveText("۵٪");
   await page.getByRole("textbox", { name: "تا تاریخ شمسی", exact: true }).fill("۱۴۰۵/۰۷/۱۷");
   await page.getByRole("button", { name: "اعمال بازه", exact: true }).click();
   await expect(users.locator("[data-kpi-value]")).toHaveText("—");
   await expect(users).toContainText("مقدار معتبر برای این سایت، منبع و بازه موجود نیست");
-  await expect(page.locator("[data-kpi-comparison]")).toHaveCount(4);
+  await expect(page.locator("[data-kpi-comparison]")).toHaveCount(3);
   const compare = page.getByRole("checkbox", { name: "مقایسه با بازهٔ قبلی هم‌اندازه", exact: true });
   await compare.focus(); await page.keyboard.press("Space");
   await expect(page.locator("[data-kpi-comparison]")).toHaveCount(0);
@@ -138,14 +138,14 @@ test("source permission and receipt failure do not turn missing metrics into zer
     await expect(card.locator("[data-kpi-value]")).toHaveText("—");
     await expect(card).toContainText("مجوز این منبع در دسترس نیست");
   }
-  await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("۲٫۴٪");
+  await expect(page.locator('[data-search-metric="ctr"] [data-search-value]')).toHaveText("۲٫۴٪");
   await page.goto("/ui-review/websites/dashboard?ga4=retry-failed&gsc=ready&ads=disconnected");
   await expect(page.locator('[data-kpi-card="users"] [data-kpi-value]')).toHaveText("۱٬۲۳۴");
-  await expect(page.locator('[data-source-freshness="ga4"]')).toContainText("دریافت ناموفق");
+  await expect(page.locator('[data-dashboard-source="ga4"]')).toContainText("دریافت ناموفق");
   await page.goto("/ui-review/websites/dashboard?site=report-empty");
   await expect(page.locator('[data-kpi-card="users"] [data-kpi-value]')).toHaveText("۰");
-  await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("—");
-  await expect(page.locator('[data-kpi-card="ctr"]')).toContainText("تعداد نمایش صفر است");
+  await expect(page.locator('[data-search-metric="ctr"] [data-search-value]')).toHaveText("—");
+  await expect(page.locator('[data-search-metric="ctr"]')).toContainText("تعداد نمایش صفر است");
 });
 
 test("site and scenario changes reset safely and repeated selectors cannot supply measurement data", async ({ page }) => {
@@ -158,10 +158,10 @@ test("site and scenario changes reset safely and repeated selectors cannot suppl
   await expect(page.locator('[data-kpi-card="users"] [data-kpi-value]')).toHaveText("۱٬۲۳۴");
   if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی شاخص‌ها", { exact: true }).selectOption("zero");
-  await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("۰٪");
+  await expect(page.locator('[data-search-metric="ctr"] [data-search-value]')).toHaveText("۰٪");
   await page.reload();
   await expect(page.getByLabel("سناریوی شاخص‌ها", { exact: true })).toHaveValue("zero");
-  await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("۰٪");
+  await expect(page.locator('[data-search-metric="ctr"] [data-search-value]')).toHaveText("۰٪");
 });
 
 test("KPI review makes no requests, cookie or storage changes and stays out of the public guest route", async ({ page, context }) => {
@@ -174,22 +174,22 @@ test("KPI review makes no requests, cookie or storage changes and stays out of t
   await expect(page.locator('[data-kpi-card="users"] [data-kpi-value]')).toHaveText("—");
   await page.goto("/websites/arbitrary-id?kpi=valid&value=1234&ga4=ready&role=admin");
   await expect(page.getByText("برای مشاهده داشبورد سایت، وارد شوید.", { exact: true })).toBeVisible();
-  await expect(page.locator("[data-kpi-overview], [data-source-freshness], [data-kpi-card], input, select")).toHaveCount(0);
+  await expect(page.locator("[data-ga4-performance], [data-source-freshness], [data-kpi-card], input, select")).toHaveCount(0);
   expect(requests).toEqual([]); expect(errors).toEqual([]); expect(await context.cookies()).toEqual([]);
   expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: {}, session: {} });
 });
 
 test("KPI cards retain Persian RTL semantics and fit mobile, desktop, dark and enlarged text", async ({ page }) => {
   await page.goto("/ui-review/websites/dashboard?kpi=mixed");
-  await expect(page.getByRole("heading", { name: "نمای کلی عملکرد", exact: true })).toBeVisible();
+  await expect(page.locator("[data-ga4-performance]").getByRole("heading", { name: "Google Analytics 4", exact: true })).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "fa"); await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   await expect(page.locator("body")).toHaveCSS("font-family", /Vazirmatn/);
-  await expect(page.locator('[data-kpi-card="ctr"]').getByText("Search Console", { exact: true })).toHaveCSS("direction", "ltr");
+  await expect(page.locator('[data-search-metric="ctr"]').getByText("Search Console", { exact: true })).toHaveCSS("direction", "ltr");
   for (const width of [320, 390, 768, 1440]) for (const dark of [false, true]) {
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate((value) => document.documentElement.classList.toggle("dark", value), dark);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.locator("[data-kpi-overview]").screenshot({ path: `/private/tmp/datano-fe-020-${width}-${dark ? "dark" : "light"}.png`, animations: "disabled" });
+    await page.locator("[data-ga4-performance]").screenshot({ path: `/private/tmp/datano-fe-020-${width}-${dark ? "dark" : "light"}.png`, animations: "disabled" });
   }
   await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
   await page.setViewportSize({ width: 390, height: 900 });

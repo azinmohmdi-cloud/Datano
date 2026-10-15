@@ -33,7 +33,7 @@ export default function SearchPerformanceUI({ chart, id, source, resource, timez
       </dl>
     </div>
     <div className="grid min-w-0 items-start gap-3 min-[380px]:grid-cols-2 lg:grid-cols-4">{metrics.map((metric) => <MetricCard key={metric.id} metric={metric} source={source} translations={t} />)}</div>
-    <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">{chart}
+    <div className="grid min-w-0 items-start gap-4">{chart}
     <Card data-search-top-rows data-search-top-state={top.state} className="min-w-0 rounded-2xl border-brand-blue/10 shadow-sm">
       <CardHeader><h3 className="text-lg leading-8 font-semibold">{t.topTitle}</h3><p className="text-sm leading-7 text-brand-muted">{t.topHint}</p></CardHeader>
       <CardContent className="min-w-0 space-y-4">
