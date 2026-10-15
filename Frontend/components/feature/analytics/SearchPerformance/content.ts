@@ -1,4 +1,5 @@
 export const searchTranslations = {
+  details: "جزئیات شاخص", recent: "به‌روز",
   title: "عملکرد جست‌وجو", description: "شاخص‌های تجمیعی بازه از Search Console؛ مستقل از نشست‌های GA4.", source: "منبع", resource: "منبع منتخب", timezone: "منطقهٔ زمانی منبع",
   unit: "واحد", window: "بازهٔ مقدار", coverage: "پوشش مقدار", lastSuccess: "آخرین دریافت موفق، به وقت تهران", comparison: "مقدار بازهٔ مقایسه", comparisonWindow: "بازهٔ مقایسه",
   aggregate: "گزارش تجمیعی بازه", unknown: "—", join: "تا", topTitle: "عبارت‌های برتر جست‌وجو", query: "عبارت جست‌وجو",

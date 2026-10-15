@@ -1,5 +1,7 @@
 "use client";
 
+import DatanoSourceTrend from "../SourceTrend/DatanoSourceTrend";
+import type { SourceTrendSnapshot } from "../SourceTrend/series";
 import { useId } from "react";
 import { formatReceiptDay, formatReceiptTime } from "@/components/feature/websites/DataReceipt/readiness";
 import { getSourcePeriod, type DashboardPeriod } from "../DashboardShell/periods";
@@ -8,7 +10,8 @@ import AdsPerformanceUI from ".";
 import { adsDefinitions, adsReasonLabels, adsTranslations as t, adsUnits } from "./content";
 import { formatAdsAmount, getAdsReading, validAdsCurrency, type AdsMetric, type AdsObservationInput, type AdsSourceInput } from "./measurements";
 
-export default function DatanoAdsPerformance({ websiteId, source, observations, period, comparison, nowUTC }: {
+export default function DatanoAdsPerformance({ websiteId, source, observations, trendSnapshots = [], period, comparison, nowUTC }: {
+  trendSnapshots?: readonly SourceTrendSnapshot[];
   websiteId: string; source: AdsSourceInput | undefined; observations: readonly AdsObservationInput[];
   period: DashboardPeriod; comparison: boolean; nowUTC: string;
 }) {
@@ -21,5 +24,5 @@ export default function DatanoAdsPerformance({ websiteId, source, observations, 
     return { kind: value.kind, value: formatAdsAmount(metric, value.value, value.currency), label: value.kind === "unavailable" || value.kind === "zero-denominator" ? adsReasonLabels[value.reason] : kpiValueLabels[value.kind], quality: value.quality, qualityLabel: kpiQualityLabels[value.quality], freshness: value.freshness, freshnessLabel: kpiFreshnessLabels[value.freshness], window: formatWindow(window), coverage: formatWindow(value.coverage), lastSuccess: value.lastSuccessUTC ? formatReceiptTime(value.lastSuccessUTC) : t.unknown };
   }
   const cards = metrics.map((metric) => ({ id: metric, ...adsDefinitions[metric], monetary: metric === "cost" || metric === "cpc", unit: metric === "cost" || metric === "cpc" ? currency : adsUnits[metric], current: reading(metric, windows?.requested ?? null), previous: comparison ? reading(metric, windows?.comparison ?? null) : null }));
-  return <AdsPerformanceUI id={id} source="Google Ads" account={source?.connected && source.permitted ? source.resourceLabel || t.unknown : t.unknown} timezone={source?.connected ? source.sourceTimezone || t.unknown : t.unknown} currency={currency} sourceState={source?.stateLabel ?? t.unknown} metrics={cards} translations={t} />;
+  return <AdsPerformanceUI chart={<DatanoSourceTrend websiteId={websiteId} source={source} sourceId="ads" currency={currency === t.unknown ? null : currency} snapshots={trendSnapshots} period={period} comparison={comparison} nowUTC={nowUTC} />} id={id} source="Google Ads" account={source?.connected && source.permitted ? source.resourceLabel || t.unknown : t.unknown} timezone={source?.connected ? source.sourceTimezone || t.unknown : t.unknown} currency={currency} sourceState={source?.stateLabel ?? t.unknown} metrics={cards} translations={t} />;
 }

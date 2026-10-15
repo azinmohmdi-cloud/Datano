@@ -84,6 +84,7 @@ test("actual account currency is retained across EUR, JPY and KWD without conver
   await page.goto("/ui-review/websites/dashboard");
   const ads = page.locator("[data-ads-performance]");
   for (const [scenario, currency, cpc] of [["eur", "EUR", "۲٫۵"], ["jpy", "JPY", "۳"], ["kwd", "KWD", "۲٫۵"]]) {
+    if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
     await page.getByLabel("سناریوی عملکرد تبلیغات", { exact: true }).selectOption(scenario);
     await expect(ads.locator("[data-ads-account-currency]")).toHaveText(currency);
     await expect(ads.locator('[data-ads-metric="cost"] [data-ads-currency]')).toHaveText(currency);
@@ -98,6 +99,7 @@ test("missing or incompatible ROAS inputs never conceal cost, clicks or independ
   await page.goto("/ui-review/websites/dashboard?adsMetric=missing-value");
   const ads = page.locator("[data-ads-performance]"), roas = ads.locator('[data-ads-metric="roas"]');
   for (const scenario of ["missing-value", "currency-mismatch", "basis-mismatch", "coverage-mismatch"]) {
+    if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
     await page.getByLabel("سناریوی عملکرد تبلیغات", { exact: true }).selectOption(scenario);
     await expect(roas.locator("[data-ads-value]")).toHaveText("—");
     await expect(ads.locator('[data-ads-metric="cost"] [data-ads-value]')).toHaveText("۱٬۰۰۰");
@@ -105,6 +107,7 @@ test("missing or incompatible ROAS inputs never conceal cost, clicks or independ
     await expect(ads.locator('[data-ads-metric="conversions"] [data-ads-value]')).toHaveText("۲۵٫۵");
   }
   await expect(roas).toContainText("گزارش، پوشش یا مبنای اندازه‌گیری ورودی‌ها سازگار نیست");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی عملکرد تبلیغات", { exact: true }).selectOption("unknown-currency");
   await expect(ads.locator('[data-ads-metric="cost"] [data-ads-value]')).toHaveText("—");
   await expect(ads.locator('[data-ads-metric="clicks"] [data-ads-value]')).toHaveText("۴۰۰");
@@ -117,6 +120,7 @@ test("zero clicks and zero cost are undefined denominators while zero conversion
   await expect(ads.locator('[data-ads-metric="cpc"] [data-ads-value]')).toHaveText("—");
   await expect(ads.locator('[data-ads-metric="cpc"]')).toContainText("تعداد کلیک صفر است");
   await expect(ads.locator('[data-ads-metric="roas"] [data-ads-value]')).toHaveText("۳");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی عملکرد تبلیغات", { exact: true }).selectOption("zero-value");
   await expect(ads.locator('[data-ads-metric="roas"]')).toHaveAttribute("data-ads-kind", "zero");
   await expect(ads.locator('[data-ads-metric="roas"] [data-ads-value]')).toHaveText("۰");
@@ -131,12 +135,15 @@ test("loading, error, partial and stale Ads states preserve other source metrics
   const ads = page.locator("[data-ads-performance]");
   for (const metric of ["cost", "cpc", "roas"]) await expect(ads.locator(`[data-ads-metric="${metric}"]`).getByRole("status")).toHaveText("در حال دریافت مقدار");
   await expect(ads.locator('[data-ads-metric="conversions"] [data-ads-value]')).toHaveText("۲۵٫۵");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی عملکرد تبلیغات", { exact: true }).selectOption("error");
   await expect(ads.locator('[data-ads-metric="conversions"]').getByRole("alert")).toHaveText("دریافت مقدار ناموفق بود");
   await expect(ads.locator('[data-ads-metric="roas"] [data-ads-value]')).toHaveText("۳");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی عملکرد تبلیغات", { exact: true }).selectOption("partial");
   await expect(ads.locator('[data-ads-metric="cpc"]')).toHaveAttribute("data-ads-quality", "partial");
   await expect(ads.locator('[data-ads-metric="roas"] [data-ads-value]')).toHaveText("۳");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی عملکرد تبلیغات", { exact: true }).selectOption("stale");
   await expect(ads.locator('[data-ads-metric="cost"]')).toHaveAttribute("data-ads-freshness", "stale");
   await expect(ads.locator('[data-ads-metric="cost"] [data-ads-value]')).toHaveText("۱٬۰۰۰");
@@ -175,6 +182,7 @@ test("permission, selector reset and public access cannot create data or auth ef
   await page.goto("/ui-review/websites/dashboard?adsMetric=eur&adsMetric=zero&cost=999999&currency=IRR&role=admin");
   await expect(page.getByLabel("سناریوی عملکرد تبلیغات", { exact: true })).toHaveValue("valid");
   await expect(ads.locator('[data-ads-account-currency]')).toHaveText("USD");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی عملکرد تبلیغات", { exact: true }).selectOption("eur");
   await expect.poll(() => new URL(page.url()).searchParams.getAll("adsMetric")).toEqual(["eur"]); await page.reload();
   await expect(ads.locator('[data-ads-account-currency]')).toHaveText("EUR");

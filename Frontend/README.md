@@ -979,3 +979,18 @@ auth interceptors, and automatic refresh are not implemented.
 The target product uses email login and a revocable server-side session with a
 secure cookie. Current backend JWT/refresh behavior is a separate implementation
 baseline; do not invent endpoints or treat generation as completed integration.
+
+### Dashboard redesign: FE-019–FE-023 (2026-10-15)
+
+The opted-in development page `/ui-review/websites/dashboard` now contains three
+independent metric-selectable Recharts plots, compact expandable KPIs, a combined
+site/period toolbar and the preserved top-query table. Review tools are initially
+collapsed under «ابزار بررسی خصوصی UI». Existing scenario selectors remain.
+`?trend=empty`, `?trend=gaps`, `?trend=loading`, and `?trend=error` exercise daily
+GSC/Ads states independently of their KPI aggregates. Existing `traffic`, `search`,
+`adsMetric` scenarios and custom exact-window fixtures remain available.
+
+Public product pages still require a trusted session/report integration. No API
+endpoint or backend code is introduced. Data requirements are recorded in MVP
+and BE-024/026/027/029/030/032/033, FE-037/039/041; fixtures stay excluded from
+production. See `docs/validation/dashboard-redesign.md` for current validation.

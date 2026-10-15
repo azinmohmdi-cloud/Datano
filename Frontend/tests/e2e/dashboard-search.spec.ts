@@ -80,6 +80,7 @@ test("independent zero, partial, missing and ratio states retain consistent over
   await expect(search.locator('[data-search-metric="ctr"] [data-search-value]')).toHaveText("۰٪");
   await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("۰٪");
   await expect(search.locator('[data-search-row="search-review-first"] [data-search-cell="clicks"]')).toContainText("۰");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی عملکرد جست‌وجو", { exact: true }).selectOption("zero-denominator");
   await expect(search.locator('[data-search-metric="impressions"] [data-search-value]')).toHaveText("۰");
   await expect(search.locator('[data-search-metric="ctr"]')).toHaveAttribute("data-search-kind", "zero-denominator");
@@ -93,9 +94,11 @@ test("metric loading or failure and top-row failure do not conceal successful me
   await expect(search.locator('[data-search-metric="ctr"]').getByRole("status")).toHaveText("در حال دریافت مقدار");
   await expect(search.locator('[data-search-metric="clicks"] [data-search-value]')).toHaveText("۱۲۰");
   await expect(search.locator('[data-search-metric="position"] [data-search-value]')).toHaveText("۷٫۳۵");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی عملکرد جست‌وجو", { exact: true }).selectOption("error");
   await expect(search.locator('[data-search-metric="position"]').getByRole("alert")).toHaveText("دریافت مقدار ناموفق بود");
   await expect(search.locator('[data-search-metric="ctr"] [data-search-value]')).toHaveText("۲٫۴٪");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی عملکرد جست‌وجو", { exact: true }).selectOption("rows-error");
   await expect(search.locator('[data-search-top-rows]').getByRole("alert")).toHaveText("دریافت عبارت‌های برتر ناموفق بود");
   await expect(search.locator('[data-search-metric="position"] [data-search-value]')).toHaveText("۷٫۳۵");
@@ -108,6 +111,7 @@ test("top queries remain a subset even when there is no aggregate or no returned
   await expect(search.locator('[data-search-value]')).toHaveText(["—", "—", "—", "—"]);
   await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("—");
   await expect(search).toContainText("شاخص‌های بالا از جمع یا میانگین این ردیف‌ها محاسبه نمی‌شوند");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی عملکرد جست‌وجو", { exact: true }).selectOption("empty-rows");
   await expect(search.getByRole("table")).toHaveCount(0);
   await expect(search).toContainText("عبارت برتری برای این بازه دریافت نشده است");
@@ -125,6 +129,7 @@ test("stale and partial source reports preserve values, coverage and independent
   await expect(search.locator('[data-search-metric="clicks"]')).toContainText("۱۴۰۵/۰۷/۱۹, ۱۱:۳۰");
   await expect(page.locator('[data-source-freshness="gsc"]')).toContainText("داده قدیمی");
   await expect(page.locator('[data-kpi-card="sessions"]')).toHaveAttribute("data-kpi-freshness", "recent");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی عملکرد جست‌وجو", { exact: true }).selectOption("partial");
   await expect(search.locator('[data-search-metric="position"]')).toHaveAttribute("data-search-quality", "partial");
   await expect(search.locator('[data-search-metric="position"] [data-search-value]')).toHaveText("۷٫۳۵");
@@ -163,6 +168,7 @@ test("source permissions, review selectors and public access never grant data or
   await expect(page.locator('[data-kpi-card="sessions"] [data-kpi-value]')).toHaveText("۲٬۴۶۸");
   await page.goto("/ui-review/websites/dashboard?search=mixed&search=error&clicks=999999&role=admin");
   await expect(page.getByLabel("سناریوی عملکرد جست‌وجو", { exact: true })).toHaveValue("valid");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی عملکرد جست‌وجو", { exact: true }).selectOption("mixed");
   await expect.poll(() => new URL(page.url()).searchParams.getAll("search")).toEqual(["mixed"]);
   await expect(search.locator('[data-search-metric="clicks"] [data-search-value]')).toHaveText("۰");

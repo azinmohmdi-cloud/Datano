@@ -1,4 +1,5 @@
 export const kpiTranslations = {
+  details: "جزئیات شاخص", recent: "به‌روز",
   title: "نمای کلی عملکرد", description: "هر شاخص به منبع و بازهٔ خودش مربوط است؛ دادهٔ منابع مختلف با هم جمع نمی‌شود.",
   source: "منبع", unit: "واحد", resource: "منبع انتخاب‌شده", window: "بازهٔ مقدار", coverage: "پوشش مقدار",
   comparison: "مقدار بازهٔ مقایسه", comparisonWindow: "بازهٔ مقایسه", lastSuccess: "آخرین دریافت موفق مقدار، به وقت تهران",

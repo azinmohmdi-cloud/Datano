@@ -612,3 +612,26 @@ One abstract UI component (`index.tsx`) can have many concrete injectors (`Admin
 
 **7. No mega components — component per feature.**  
 A component directory owns one coherent feature. If a component grows to handle multiple unrelated concerns, split it into separate feature component directories. Each directory should answer "what feature does this deliver?" — not "what type of UI is this?".
+
+## Dashboard adapters and composition — 2026-10-15
+
+`analytics/DashboardReport/index.tsx` composes the overview/GA4, Search and Ads
+slots without domain dependencies. The existing concrete injectors own period,
+metric selection and presentation mapping. `TrafficOverview/index.tsx` is the
+shared source-aware Recharts presentation; `SourceTrend/series.ts` validates
+GSC/Ads daily snapshot inputs independently from KPI totals and top rows.
+These TypeScript inputs are presentation contracts, not a proposed HTTP schema.
+
+Future FE-037/039/041 hooks consume the actual generated client and adapt its
+report to exact website/source/property/metric/window snapshots. Preserve query
+filters, aggregation/attribution basis, source timezone, coverage, finality,
+receipt time and currency; refuse incompatible comparisons. Source daily rows
+and whole-window aggregates remain separate, especially unique GA4 users and
+GSC top rows. The adapter must not synthesize daily values from totals, infer
+zero for missing dates, or fetch in pure UI. Provider compatibility and real
+OpenAPI are validated in the corresponding backend/integration tasks.
+
+Private daily fixtures and their illustrative distribution helpers live only in
+`feature/internal/DashboardReview`; product modules never import them. Native
+metric disclosures are presentation state and do not refetch, mutate observations,
+create routes, or erase details when collapsed.

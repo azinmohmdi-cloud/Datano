@@ -6,7 +6,7 @@ export interface TrafficSnapshotInput {
   websiteId: string;
   sourceId: "ga4";
   resourceId: string;
-  metric: "sessions";
+  metric: "sessions" | "totalUsers";
   window: DayWindow;
   coverage: DayWindow | null;
   state: "ready" | "loading" | "error" | "unavailable";
@@ -22,16 +22,16 @@ export function civilDays(window: DayWindow): string[] {
   return Array.from({ length }, (_, index) => shiftDay(window.from, index));
 }
 
-export function getTrafficSeries({ websiteId, source, window, snapshots, nowUTC }: {
+export function getTrafficSeries({ websiteId, source, window, snapshots, nowUTC, metric = "sessions" }: {
   websiteId: string; source: KPIOverviewSourceInput | undefined; window: DayWindow | null;
-  snapshots: readonly TrafficSnapshotInput[]; nowUTC: string;
+  snapshots: readonly TrafficSnapshotInput[]; nowUTC: string; metric?: "sessions" | "totalUsers";
 }) {
   const base = { state: "unavailable" as TrafficState, quality: "partial" as KPIQuality, freshness: getKPIFreshness(null, nowUTC), lastSuccessUTC: null as string | null, coverage: null as DayWindow | null, days: [] as { day: string; value: number | null }[] };
   if (!source?.connected || source.id !== "ga4") return { ...base, state: "disconnected" as const };
   if (!source.permitted) return { ...base, state: "permission" as const };
   const ceiling = sourceCeiling(nowUTC, source.sourceTimezone);
   if (!validWindow(window) || !source.resourceId || !ceiling || window.to > ceiling) return base;
-  const matches = snapshots.filter((snapshot) => snapshot.websiteId === websiteId && snapshot.sourceId === source.id && snapshot.resourceId === source.resourceId && snapshot.metric === "sessions" && snapshot.window.from === window.from && snapshot.window.to === window.to);
+  const matches = snapshots.filter((snapshot) => snapshot.websiteId === websiteId && snapshot.sourceId === source.id && snapshot.resourceId === source.resourceId && snapshot.metric === metric && snapshot.window.from === window.from && snapshot.window.to === window.to);
   // Never select an arbitrary duplicate snapshot or fabricate a subset of another query.
   if (matches.length !== 1) return base;
   const snapshot = matches[0];

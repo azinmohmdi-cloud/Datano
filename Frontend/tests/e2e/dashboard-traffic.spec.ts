@@ -74,6 +74,7 @@ test("real zeros draw a baseline while empty daily data draws no chart", async (
   expect(zeroHeights).toHaveLength(28); expect(new Set(zeroHeights).size).toBe(1);
   await traffic.getByText("جدول روزانهٔ نشست‌ها", { exact: true }).click();
   await expect(traffic.locator("[data-daily-current]").first()).toHaveText("۰ صفر ثبت‌شده");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی روند ترافیک", { exact: true }).selectOption("empty");
   await expect(traffic.locator("[data-traffic-plot]")).toHaveCount(0);
   await expect(traffic).toContainText("دادهٔ روزانه‌ای برای این بازه موجود نیست");
@@ -143,8 +144,10 @@ test("loading, failure, permission and stale readings stay truthful and independ
   const traffic = page.locator("[data-traffic-overview]");
   await expect(traffic.getByRole("status")).toHaveText("در حال دریافت روند ترافیک");
   await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("۲٫۴٪");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی شاخص‌ها", { exact: true }).selectOption("error");
   await expect(traffic.getByRole("alert")).toHaveText("دریافت روند ترافیک ناموفق بود");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی شاخص‌ها", { exact: true }).selectOption("stale");
   await expect(traffic.locator('[data-traffic-series="current"]')).toContainText("داده قدیمی");
   await expect(traffic.locator("[data-traffic-plot]")).toBeVisible();
@@ -160,6 +163,7 @@ test("traffic review allowlists selectors, resets on site changes and has no aut
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/ui-review/websites/dashboard?traffic=gaps&traffic=empty&sessions=999999&role=admin");
   await expect(page.getByLabel("سناریوی روند ترافیک", { exact: true })).toHaveValue("valid");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی روند ترافیک", { exact: true }).selectOption("comparison");
   await expect(page).toHaveURL(/traffic=comparison/);
   await page.reload(); await expect(page.getByLabel("سناریوی روند ترافیک", { exact: true })).toHaveValue("comparison");
@@ -199,7 +203,7 @@ test("chart remains chronological at narrow sizes, dark themes, enlarged text an
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(traffic.locator(".recharts-surface")).toHaveCSS("font-family", /Vazirmatn/);
   await traffic.screenshot({ path: "/private/tmp/datano-fe-021-enlarged.png", animations: "disabled" });
-  await traffic.locator("summary").focus(); await page.keyboard.press("Enter");
+  await traffic.getByText("جدول روزانهٔ نشست‌ها", { exact: true }).focus(); await page.keyboard.press("Enter");
   await expect(traffic.getByRole("table")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

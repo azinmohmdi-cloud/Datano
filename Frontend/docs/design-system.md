@@ -107,7 +107,7 @@ controls, cards, the shared header/footer, or the homepage hero.
 | Login | Very pale icy blue `#f2f8fd` → lavender `#f7f4fd`, 135° linear gradient | Applied to `/login` in FE-010 and its private form review; header/footer unchanged |
 | Signup | Same quiet icy-blue/lavender gradient as Login | Applied only to `/signup` and its private form review in FE-011 using the existing login backdrop tokens |
 | Recovery | Same quiet icy-blue/lavender gradient as Login | Applied to `/forgot-password` and its private form review in FE-012 using the existing login backdrop tokens |
-| Dashboard | Very light blue `#f3f7ff`; dark adaptation `#171e2b` | FE-019 applies central `--page-dashboard` via `.page-surface-dashboard` only |
+| Dashboard | Very light blue → lavender using `--page-dashboard` and `--page-login-end`, with existing dark adaptations | Dashboard-only gradient approved 2026-10-15; header/footer and other pages unchanged |
 | Profile | Very pale icy blue → lavender, matching the current auth gradient | Applied to `/profile` and its private review in FE-013; the user's gradient request supersedes the earlier flat-blue profile proposal |
 | Homepage and other current pages | Existing background | Unchanged |
 
@@ -403,7 +403,7 @@ Purposeful visualization is a core Datano design principle:
 
 ## 8. Spacing, surfaces, layout, and navigation
 
-FE-021 TrafficOverview uses one rounded-2xl shared Card below the KPI block, with
+The initial FE-021 recipe (composition superseded by the 2026-10-15 dashboard revision below) uses one rounded-2xl shared Card with
 the existing Activity symbol, source/property/timezone context and two responsive
 series summaries. Recharts draws a solid blue current curve with a subtle area
 and a dashed purple comparison. Scoped series variables map to existing brand-ink
@@ -619,7 +619,7 @@ animation limited to motion-safe. Cards stack below lg, all controls keep 48px
 minimum height and wrap, and errors use existing destructive tokens. No gradient,
 new status palette, percentage/ETA, chart, global primitive or shell change.
 
-FE-019 Dashboard Shell uses the existing SiteLayout's 1280px cap in a pathless
+The initial FE-019–FE-023 recipes below record their task baselines; dashboard composition and disclosure follow the 2026-10-15 revision after them. FE-019 Dashboard Shell uses the existing SiteLayout's 1280px cap in a pathless
 `(workspace)` route group for `/websites/[websiteId]`. Existing account onboarding
 routes and the older `/sites/[siteId]` scaffold retain their shells. The page-only
 `.page-surface-dashboard` opt-in applies the approved `--page-dashboard` blue
@@ -677,6 +677,41 @@ brand-ink/brand-soft, semantic headings/dl, textual independent states, reduced-
 motion loading and comparison metadata are preserved. Missing currency, incompatible
 ratio inputs and zero denominators show `—` with a reason. No new palette, token,
 font, shell or primitive; the fifth review selector and all Ads fixtures are private.
+
+### Dashboard composition revision — 2026-10-15
+
+This authorized redesign supersedes the initial dashboard composition above,
+while preserving all source definitions, states, controls and metadata. Use the
+product `DashboardReport` composition: a two-column overview/GA4 workspace at xl;
+Search KPI row followed by chart/table columns; Ads five-metric row including
+ROAS followed by its bar chart. Smaller widths stack in DOM reading order.
+Metric grids allow two columns from 380px and one at 320px; all text can wrap
+and grow at 200%. Cards align at the start so expanding one does not stretch
+unrelated cards. No fixed card height, clipping, modal or extra route.
+
+Cards have compact icon/title/source, prominent value and unit. Zero, unavailable,
+loading/error, non-complete quality and stale/unknown freshness stay visible.
+Healthy-state detail, coverage, receipt timestamp and definitions live in native
+`details`/`summary`, with a 44px minimum focusable trigger. The previous value
+remains visible when comparison is enabled; full previous metadata is retained.
+Source freshness is a compact independent list. Site, identity, period and
+comparison form one toolbar; custom-date validation and applied-vs-draft behavior
+are unchanged. Private review tools are a separate, initially collapsed panel.
+
+Every source has a dedicated Recharts plot with a metric selector: GA4 area for
+sessions/daily users; GSC line for clicks/impressions; Ads bars for cost/clicks/
+conversions. Shared TrafficOverview presentation accepts source-aware text and
+line/area/bar variants; SourceTrend injectors supply independent daily snapshots.
+One unit per plot; no dual-axis scaling or cross-source overlays. Linear segments,
+null gaps, exact source-day chronology and dashed same-metric comparisons remain.
+Persian tooltip/table preserve actual dates, units and original currency. Exact
+micros formatting is retained outside floating-point plot coordinates. Daily
+users are never summed into the whole-window users KPI. Charts have reserved
+20rem height, low-opacity grid, scoped blue/purple tokens and dark brand-ink/lilac.
+
+The page-only background now uses a 135-degree blue/lavender gradient from existing
+`--page-dashboard` / `--page-login-end`; no new palette or global shell change.
+Vazirmatn, product mark, header/footer and approved public pages are unchanged.
 
 Current header: max-w-7xl, `min-h-22` (88px), `px-4 sm:px-6 lg:px-8 py-4`,
 `gap-4`, border-bottom, background, relative z-20. Brand sits on the right.

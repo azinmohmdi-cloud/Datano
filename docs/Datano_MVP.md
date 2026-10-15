@@ -62,6 +62,22 @@ GA4/Ads/GSC داده‌های attribution و پوشش متفاوت دارند. �
 
 تعریف فیلدها با [GA4 Data API](https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema)، [Search Analytics](https://developers.google.com/webmaster-tools/v1/searchanalytics/query) و [Google Ads Metrics](https://developers.google.com/google-ads/api/reference/rpc/v22/Metrics) تطبیق داده شده است؛ هنگام پیاده‌سازی، نسخه واقعاً انتخاب‌شده API و metadata همان property/account دوباره بررسی شود. این لینک‌ها نسخه SDK پروژه را تعیین نمی‌کنند.
 
+### تکمیل مصوب نمودارهای سه منبع — ۲۰۲۶-۱۰-۱۵
+
+هر سه بخش GA4، Search Console و Google Ads در همان داشبورد، علاوه بر KPI، نمودار تحلیلی مستقل Recharts دارند. هر بار یک شاخص با واحد روشن نمایش داده می‌شود؛ مقایسه فقط در همان منبع/حساب/شاخص و با فیلتر و مبنای زمانی سازگار است. نمایش شمسی، ترتیب قدیم به جدید و تاریخ واقعی هر دو بازه حفظ می‌شوند. جزئیات KPI و پوشش در کارت‌های بازشوندهٔ همان صفحه‌اند؛ مسیر یا modal جدید لازم نیست.
+
+| منبع | نیاز داده‌ای نمودار و مرز صحت |
+|---|---|
+| GA4 | dimension `date` همراه `sessions` و `totalUsers`؛ کاربران هر روز مستقل‌اند و جمع آن‌ها تعداد کاربران یکتای کل بازه نیست. KPI کل بازه query جدا دارد. |
+| Search Console | query روزانه با `date`، clicks/impressions و aggregate معتبر property، با metadata نوع جست‌وجو، فیلتر و finality؛ مستقل از top query/page rows. CTR/position بازه از تعریف قبلی پیروی می‌کنند. |
+| Ads | `segments.date` و `metrics.cost_micros`، `metrics.clicks`، `metrics.conversions`؛ currency و timezone حساب، مبنای attribution/تاریخ تبدیل و مقادیر کسری حفظ شوند. |
+
+روز مفقود/حذف‌شده به‌صورت خودکار صفر نیست؛ صفر به شواهد معتبر منبع نیاز دارد. داده ناقص، محدودشده، موقت و قدیمی همراه سری باقی می‌ماند. هزینهٔ micros برای متن/جدول دقیق نگه‌داری می‌شود؛ مختصات نمودار تبدیل عددی دارد و مرجع محاسبات مالی نیست. هموارسازی یا توزیع مجموع KPI روی روزها در مسیر محصول ممنوع است.
+
+Backend فعلی هنوز مدل AnalyticsData یا endpoint گزارش ندارد. این بند نیاز محصول و ورودی adapter نمایشی است، نه قرارداد API. در BE-024، BE-026/027، BE-029/030 و BE-032/033 قرارداد واقعی و آزمون provider نگاشت می‌شود؛ FE-037/039/041 داده را به UI وصل می‌کنند. نصب SDK، endpoint، schema و migration در این بازطراحی انجام نمی‌شود.
+
+شواهد رسمی: [ابعاد و شاخص‌های GA4](https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema)، [Search Analytics و محدودیت ردیف‌ها/روزها](https://developers.google.com/webmaster-tools/v1/searchanalytics/query)، [تقسیم روزانهٔ Ads](https://developers.google.com/google-ads/api/docs/reporting/segmentation) و [تعریف شاخص‌های Ads](https://developers.google.com/google-ads/api/fields/v23/metrics). نسخهٔ واقعی SDK و سازگاری query با metadata حساب هنگام اتصال دوباره بررسی می‌شود.
+
 ### قواعد اولیه و اعتبار پیشنهاد
 
 **انتخاب فنی با اختیار کاربر:** قواعد آغازین زیر پیشنهاد بررسی و اقدام انسانی می‌دهند؛ تشخیص قطعی علت، تضمین رشد یا تغییر خودکار کمپین نیستند. اعداد، پیش‌فرض نسخه اول موتورند و از پروپوزال اولیه منتسب نشده‌اند. تغییر آن‌ها در تنظیمات نسخه‌دار بک‌اند، با تست و وظیفه مجاز انجام می‌شود؛ UI مدیریت قواعد نداریم.

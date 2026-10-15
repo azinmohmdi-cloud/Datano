@@ -1,6 +1,7 @@
 import { getSourcePeriod, type DayWindow } from "@/components/feature/analytics/DashboardShell/periods";
 import { civilDays, type TrafficSnapshotInput } from "@/components/feature/analytics/TrafficOverview/series";
 import type { KPIOverviewSourceInput, KPIObservationInput } from "@/components/feature/analytics/KPIOverview/measurements";
+import { distributeReviewTotal } from "./trend-fixtures";
 import { dashboardReviewClock } from "./fixtures";
 
 export const trafficReviewScenarios = [
@@ -18,14 +19,8 @@ export function getTrafficReviewData(websiteId: string, sources: readonly KPIOve
   const snapshots: TrafficSnapshotInput[] = [];
   if (!source) return { sources: contexts, snapshots };
   function daily(window: DayWindow, total: number | null) {
-    const days = civilDays(window), weights = days.map((_, index) => index % 7 + 1);
-    const sum = weights.reduce((a, b) => a + b, 0);
-    let remaining = total ?? 0;
-    return days.map((day, index) => {
-      const value = total === null ? null : index === days.length - 1 ? remaining : Math.floor(total * weights[index] / sum);
-      remaining -= value ?? 0;
-      return { day, value };
-    });
+    const days = civilDays(window), values = distributeReviewTotal(total ?? 0, days.length);
+    return days.map((day, index) => ({ day, value: total === null ? null : values[index] }));
   }
   for (const observation of observations.filter((item) => item.metric === "sessions" && item.sourceId === "ga4")) {
     const total = observation.measurement.kind === "count" ? observation.measurement.value : null;
@@ -42,5 +37,6 @@ export function getTrafficReviewData(websiteId: string, sources: readonly KPIOve
       if (previous && !snapshots.some((snapshot) => snapshot.window.from === previous.from && snapshot.window.to === previous.to)) snapshots.push({ websiteId, sourceId: "ga4", resourceId: source.resourceId, metric: "sessions", window: previous, coverage: previous, state: "ready", quality: "complete", lastSuccessUTC: source.lastSuccessUTC, days: daily(previous, 2100) });
     }
   }
-  return { sources: contexts, snapshots };
+  const users = snapshots.map(snapshot => ({ ...snapshot, metric: 'totalUsers' as const, days: snapshot.days.map(point => ({ ...point, value: point.value === null ? null : Math.floor(point.value * 0.72) })) }));
+  return { sources: contexts, snapshots: [...snapshots, ...users] };
 }

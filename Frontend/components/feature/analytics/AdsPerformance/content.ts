@@ -1,4 +1,5 @@
 export const adsTranslations = {
+  details: "جزئیات شاخص", recent: "به‌روز",
   title: "عملکرد تبلیغات", description: "هزینه و نتیجهٔ تبلیغات در Google Ads؛ مستقل از رویدادهای کلیدی GA4.", source: "منبع", account: "حساب منتخب", timezone: "منطقهٔ زمانی حساب", currency: "ارز حساب",
   unit: "واحد", window: "بازهٔ مقدار", coverage: "پوشش مقدار", lastSuccess: "آخرین دریافت موفق، به وقت تهران", comparison: "مقدار بازهٔ مقایسه", comparisonWindow: "بازهٔ مقایسه", unknown: "—", join: "تا",
   currencyHint: "مبالغ با ارز اصلی حساب نمایش داده می‌شوند؛ تبدیل خودکار ارز یا جمع ارزهای متفاوت انجام نمی‌شود.",

@@ -76,14 +76,17 @@ test("partial, thresholded, loading and failed metrics preserve other sources an
   await page.goto("/ui-review/websites/dashboard?kpi=thresholded");
   await expect(page.locator('[data-kpi-card="users"]')).toContainText("محدودیت نمایش منبع");
   await expect(page.locator('[data-kpi-card="users"] [data-kpi-value]')).toHaveText("۱٬۲۳۴");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی شاخص‌ها", { exact: true }).selectOption("loading");
   const sessions = page.locator('[data-kpi-card="sessions"]');
   await expect(sessions.getByRole("status")).toContainText("در حال دریافت مقدار");
   await expect(sessions.locator("[data-kpi-value]")).toHaveText("—");
   await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("۲٫۴٪");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی شاخص‌ها", { exact: true }).selectOption("error");
   await expect(sessions.getByRole("alert")).toContainText("دریافت مقدار ناموفق بود");
   await expect(page.locator('[data-kpi-card="users"] [data-kpi-value]')).toHaveText("۱٬۲۳۴");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی شاخص‌ها", { exact: true }).selectOption("partial");
   await expect(sessions).toContainText("داده ناقص");
   await expect(sessions).not.toContainText("داده کامل و نهایی");
@@ -99,6 +102,7 @@ test("stale values remain visible and timestamps are independent per source", as
   await expect(page.locator('[data-kpi-card="users"]')).toContainText("۱۴۰۵/۰۶/۲۲ تا ۱۴۰۵/۰۷/۱۸");
   await expect(page.locator('[data-dashboard-source="ga4"] [data-requested-range]')).toContainText("۱۴۰۵/۰۶/۲۲ تا ۱۴۰۵/۰۷/۱۸");
   await expect(page.getByLabel("نوع بازه", { exact: true })).toBeEnabled();
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی شاخص‌ها", { exact: true }).selectOption("unknown-time");
   await expect(ga4).toContainText("زمان دریافت موفق مشخص نیست");
   await expect(page.locator('[data-kpi-card="users"] [data-kpi-value]')).toHaveText("۱٬۲۳۴");
@@ -152,6 +156,7 @@ test("site and scenario changes reset safely and repeated selectors cannot suppl
   await page.goto("/ui-review/websites/dashboard?kpi=mixed&kpi=missing&value=999999&role=admin");
   await expect(page.getByLabel("سناریوی شاخص‌ها", { exact: true })).toHaveValue("valid");
   await expect(page.locator('[data-kpi-card="users"] [data-kpi-value]')).toHaveText("۱٬۲۳۴");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی شاخص‌ها", { exact: true }).selectOption("zero");
   await expect(page.locator('[data-kpi-card="ctr"] [data-kpi-value]')).toHaveText("۰٪");
   await page.reload();
@@ -164,6 +169,7 @@ test("KPI review makes no requests, cookie or storage changes and stays out of t
   page.on("request", (request) => { if (request.method() !== "GET" || new URL(request.url()).pathname.startsWith("/api/")) requests.push(request.url()); });
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/ui-review/websites/dashboard?kpi=mixed");
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی شاخص‌ها", { exact: true }).selectOption("missing");
   await expect(page.locator('[data-kpi-card="users"] [data-kpi-value]')).toHaveText("—");
   await page.goto("/websites/arbitrary-id?kpi=valid&value=1234&ga4=ready&role=admin");

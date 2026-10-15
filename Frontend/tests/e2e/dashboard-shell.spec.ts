@@ -113,6 +113,7 @@ test("ownership, missing reports, loading and failure remain separate, and selec
   await page.goto("/ui-review/websites/dashboard?view=loading");
   await expect(page.getByRole("status").filter({ hasText: "در حال آماده‌سازی بازه‌های گزارش" })).toBeVisible();
   await expect(page.locator("[data-dashboard-source]")).toHaveCount(0);
+  if (await page.locator("[data-review-tools]").getAttribute("open") === null) await page.locator("[data-review-tools] > summary").click();
   await page.getByLabel("سناریوی پوسته", { exact: true }).selectOption("error");
   await expect(page.getByText("اطلاعات بازه‌ها در دسترس نیست.", { exact: true })).toBeVisible();
   await expect(page.getByLabel("نوع بازه", { exact: true })).toBeDisabled();

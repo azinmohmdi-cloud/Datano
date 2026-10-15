@@ -172,7 +172,7 @@
 /* Static illustration surfaces: no movement, including reduced-motion mode. */
 @layer components {
   main:has(.page-surface-dashboard) {
-    background: var(--page-dashboard);
+    background: linear-gradient(135deg, var(--page-dashboard), var(--page-login-end));
   }
   /* Page-owned opt-in keeps the shared header/footer and other routes unchanged. */
   main:has(.page-surface-editorial) {
