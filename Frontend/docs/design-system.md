@@ -678,6 +678,28 @@ motion loading and comparison metadata are preserved. Missing currency, incompat
 ratio inputs and zero denominators show `—` with a reason. No new palette, token,
 font, shell or primitive; the fifth review selector and all Ads fixtures are private.
 
+### FE-024 independent recommendations list — 2026-10-15
+
+The user's final placement decision puts recommendations on a site-scoped page,
+`/websites/[websiteId]/recommendations`, inside the existing SiteLayout/ProductLayout.
+Do not add recommendation lists or buttons to the approved FE-019–FE-023 dashboard.
+Use a compact Compass heading, selected-domain panel and one central rounded-2xl
+Card with a labeled native source filter and an ordered list. Each row shows its
+source, title, short action summary, textual priority and read-only status. Existing
+brand-soft/ink accents, Flag/source icons and borders supplement text; color alone
+never conveys priority/status. Tied priorities preserve supplied order. Counts
+describe supplied rows, not a required output quota. No new palette, font, shell,
+global stylesheet or dependency is introduced; Vazirmatn and Persian RTL are inherited.
+The page uses the normal neutral site surface rather than changing dashboard CSS.
+
+Separate source evaluation panels explain why rows may be absent. Filtering selects
+both rows and relevant source explanations. List failure/loading/access states do
+not masquerade as a successful empty evaluation. Product access remains guarded by
+the existing access-state pattern pending FE-044. Explicitly labeled fixtures and
+scenario/site selectors live only in the opt-in private development review graph.
+Detail navigation is reserved for FE-025; there are no inactive detail links,
+evidence/history disclosures or tracking controls in FE-024.
+
 ### Dashboard composition revision — 2026-10-15
 
 This authorized redesign supersedes the initial dashboard composition above,
