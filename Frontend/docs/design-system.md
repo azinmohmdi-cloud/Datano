@@ -830,6 +830,51 @@ stacked on mobile, row at sm; quick links home/services/about; exact copyright
 `© 2026 Datano. تمامی حقوق محفوظ است.`. No unverified contact/social content.
 Product route groups already supply the outer shell: do not repeat its landmarks.
 
+### FE-026 admin summaries — 2026-10-16
+
+The admin entry `/admin/users` uses the existing ProductLayout/AccountLayout and
+neutral account background, with a compact ShieldCheck heading. Three shared
+rounded-2xl Cards show all accounts, active accounts and valid active integrations.
+UsersRound, UserCheck and Link2 use the existing 20px symbol inside a 44px
+brand-soft rounded-xl wrapper. Persian values use the existing 30px/40px metric
+scale and tabular numerals, with explicit account/connection units and concise
+definitions. Cards stack on mobile and use three columns from md; their contents
+wrap and grow intrinsically without a fixed height or clipped text.
+
+Ready zero, loading, failure and unknown counts have distinct textual states;
+missing values use `—`. Loading uses motion-safe animation and status semantics;
+failure uses an alert. No status relies on color. The private review notice is
+always visible, independently of the initially collapsed tools. Selects use the
+existing 48px minimum/control focus recipe. The product entry retains a login
+access state until trusted integration is available. No user table, chart, new
+palette/token, gradient, font, shell, public navigation change or dependency is
+introduced. Earlier pages and the shared primitives remain unchanged.
+
+### FE-027 read-only users and site connections — 2026-10-16
+
+Keep the approved FE-026 summary, its equal card dimensions and AccountLayout
+unchanged. Append one existing rounded-2xl Card for the user list, with a compact
+UsersRound title and a quiet count of displayed rows. One outer table row owns
+each account; its site table aligns hostname/ownership and the three independent
+source columns. Accounts without sites remain visible. Local horizontal scrolling
+keeps the document within narrow viewports, and a focusable outer Table supports
+keyboard scrolling. Table headers use logical alignment and explicit scopes;
+email/hostname values use LTR bdi isolation and long text wraps naturally.
+
+Names, email, account status and a native «اطلاعات حساب» disclosure occupy the
+account cell. The disclosure expands read-only metadata inside that same row;
+it adds no route, modal or mutation control. Registration time uses Persian
+calendar/numerals and Tehran time. Missing metadata stays `—`.
+
+Connection text/icon remains distinct from sync text: a valid connection plus
+failed sync shows both states. Existing brand-ink/soft, muted and destructive
+tokens, Lucide symbols and textual labels convey unselected/valid/disconnected/
+revoked/unknown states without a new semantic palette. Empty/loading/error and
+unavailable lists reuse shared state components, independent of the summary.
+Private fixture tools gain one list selector and retain their collapsed default;
+the visible private note includes sample identities/sites. No shared primitive,
+font, global CSS, shell, approved earlier page or product navigation changes.
+
 ## 9. RTL, responsiveness, and accessibility
 
 Existing Tailwind breakpoints (no project override):

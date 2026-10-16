@@ -896,6 +896,98 @@ determinism, keyboard, responsive/theme, and product-isolation checks. Project
 Playwright infrastructure is documented below; FE-005 itself added no browser
 dependency or test runner.
 
+## Admin summary UI — FE-026
+
+The single product admin entry is `/admin/users`, under the existing product/account
+route groups. It inherits ProductLayout and AccountLayout without another shell,
+sidebar, header or footer. Until FE-030/FE-046 provide trusted session/admin data,
+the route shows the existing login access-state pattern. Query parameters never
+grant access or activate sample counts. FE-027 adds the read-only user table below
+these unchanged cards in the same private review.
+
+`components/feature/admin/AdminSummary/` separates the pure three-card UI,
+presentation controller, Persian content and product injector. Its view input is
+a complete aggregate snapshot, not a proposed API schema or a count of paginated
+rows. Total Users counts all accounts; Active Users counts `is_active=true`, not
+recent logins or GA4 users. Connections counts active integrations with valid
+authorization without counting a property twice. A sync failure alone does not
+mean the integration is disconnected or its authorization revoked. The real
+aggregation/authorization contract belongs to BE-041 and FE-046.
+
+Each count independently supports ready, loading, error and unavailable inputs.
+Explicit zero is displayed as zero; null, negative, fractional or unsafe integer
+counts display `—`. An error in one count preserves the others. No fetching,
+polling, fake retry, mutation, browser storage or dependency is introduced.
+
+With the existing `UI_REVIEW_ENABLED=1` development opt-in, open
+`/ui-review/admin/users` (also linked from the private review catalogue). Its
+always-visible note labels sample numbers and roles. Collapsed private tools
+select `persona=admin|user|guest` and
+`scenario=ready|zero|no-connections|loading|error|partial|unavailable|invalid`.
+The default private persona is admin; invalid/repeated persona values fall back
+to guest. Unknown/repeated scenarios use ready. Only the private injector reads
+these values; they create no session or permission. Private user/guest scenarios
+render no summary counts. Fixtures live exclusively under `feature/internal/AdminReview`;
+the guarded `.review.tsx` entry and fixture graph are excluded from production.
+
+Validation commands, from Frontend with the project runtime selected:
+
+```sh
+PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e admin-summary.spec.ts ui-review.spec.ts
+UI_REVIEW_ENABLED=1 pnpm build
+PLAYWRIGHT_CHANNEL=chrome node tests/production/admin-summary.mjs
+```
+
+The production check scans the route manifest and server/client JavaScript,
+verifies private HTML/RSC routes remain 404 even with the flag set, and checks
+product access/login with and without JavaScript. It stops its own temporary
+port-3102 server. See [FE-026 validation](docs/validation/FE-026-admin-summary.md)
+for executed results and limitations.
+
+## Admin user list and details UI — FE-027
+
+The existing `/ui-review/admin/users` now composes `AdminUserListController` below
+the unchanged FE-026 summary. No product/private route, shell or parallel admin
+screen is introduced. `/admin/users` keeps its existing access state until FE-046
+integrates trusted session/BE-041 data.
+
+`components/feature/admin/AdminUserList/` separates the pure UI, Persian content,
+view inputs and presentation controller. One outer table row represents each
+account, including accounts with no websites. Each account's nested site table
+has Website, GA4, Search Console and Ads columns so multiple sites and their
+independent states stay aligned. Explicit no-sites and unknown-sites inputs are
+different. Native account disclosures show supplied names, email, account status
+and registration time in the same row, with Persian dates/times in Asia/Tehran.
+Missing/invalid registration metadata displays `—`.
+
+Connection validity is separate from sync outcome. A valid connection can show
+a sync failure without becoming disconnected; revoked, disconnected, unselected
+and unknown states retain independent text/icons. The UI exposes no user edits,
+activation/blocking, role/rule management, connection operations, private analytics,
+credentials, or links into another user's website dashboard.
+
+The list has ready/empty/loading/error/unavailable states independently of the
+summary. The displayed-row count is not a complete account total; real aggregation
+and pagination remain BE-041/FE-046. Fixtures exist only in
+`feature/internal/AdminReview/user-fixtures.ts`. The private selector accepts
+`users=ready|empty|loading|error|unavailable|long`; repeated/unknown values use the
+summary-compatible preset. Summary zero defaults to an empty list, loading/error
+to the matching list state, unavailable/invalid to unavailable; other summaries
+use ready. An explicit valid list selector can exercise independent states.
+Changing the summary resets the list to its preset. No-connections samples never
+display a valid connection. Sample user/guest personas hide both summaries/list.
+
+The shared Table supplies local horizontal scrolling; its outer table is keyboard
+focusable. Native disclosures work with Enter/Space. RTL, LTR email/hostname
+isolation, mobile/tablet/desktop, theme tokens and 200% text retain existing recipes.
+No fetching, mutation, storage, API schema, dependency or backend change is added.
+
+Run `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e admin-users.spec.ts admin-summary.spec.ts`
+and the existing `tests/production/admin-summary.mjs` check after building. The
+production check now includes user/site fixture markers and table absence at the
+product access boundary. See [FE-027 validation](docs/validation/FE-027-admin-users.md)
+for executed checks, preservation evidence and scope limits.
+
 ## Browser tests
 
 The repository pins `@playwright/test` 1.62.1 in devDependencies. From `Frontend/`,

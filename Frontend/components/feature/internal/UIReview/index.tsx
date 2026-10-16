@@ -47,6 +47,7 @@ export interface UIReviewUIProps {
     profileReview: string;
     websitesReview: string;
     dashboardReview: string;
+    adminReview: string;
   };
   callbacks: {
     onChangeSelection: (key: keyof UIReviewUIProps["selection"], value: string) => void;
@@ -77,6 +78,7 @@ export default function UIReviewUI(props: UIReviewUIProps) {
         <Link href="/ui-review/profile" prefetch={false} className={buttonVariants({ variant: "link" })}>{translations.profileReview}</Link>
         <Link href="/ui-review/websites" prefetch={false} className={cn(buttonVariants({ variant: "link" }), "text-brand-ink")}>{translations.websitesReview}</Link>
         <Link href="/ui-review/websites/dashboard" prefetch={false} className={cn(buttonVariants({ variant: "link" }), "text-brand-ink")}>{translations.dashboardReview}</Link>
+        <Link href="/ui-review/admin/users" prefetch={false} className={cn(buttonVariants({ variant: "link" }), "text-brand-ink")}>{translations.adminReview}</Link>
       </div>
       <div id="review-preview" tabIndex={-1} data-review-preview data-review-state={selection.state} data-review-persona={selection.persona} className="space-y-6 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/30">
         <p className="text-sm">{translations.personaPrefix}{props.personaLabel}</p>
