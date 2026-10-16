@@ -158,14 +158,15 @@ test("detail destinations remain site-scoped and encode identifiers", () => {
   expect(recommendationDetailsHref("site/one", "rule?#1")).toBe("/websites/site%2Fone/recommendations/rule%3F%231");
 });
 
-test("new-page navigation retains the selected site and leaves the approved dashboard without recommendation UI", async ({ page }) => {
+test("list navigation retains the selected site and the dashboard offers only a list entry", async ({ page }) => {
   await page.goto(`${review}?site=report-empty`);
   await expect(page.getByRole("link", { name: "مدیریت اتصال منابع", exact: true })).toHaveAttribute("href", "/ui-review/websites/connect?site=report-empty");
   await expect(page.getByRole("link", { name: "وضعیت دریافت داده", exact: true })).toHaveAttribute("href", "/ui-review/websites/receive?site=report-empty");
   await page.getByRole("link", { name: "داشبورد سایت", exact: true }).click();
   await expect(page).toHaveURL("/ui-review/websites/dashboard?site=report-empty");
   await expect(page.getByLabel("انتخاب سایت", { exact: true })).toHaveValue("report-empty");
-  await expect(page.locator('[data-recommendations], a[href*="recommendations"], [data-recommendation-row]')).toHaveCount(0);
+  await expect(page.locator('[data-recommendations], [data-recommendation-row]')).toHaveCount(0);
+  await expect(page.locator('[data-dashboard-recommendations-entry] a')).toHaveAttribute("href", "/ui-review/websites/recommendations?site=report-empty");
 });
 
 test("without JavaScript review data stays behind Suspense and product login remains usable", async ({ browser, baseURL }) => {

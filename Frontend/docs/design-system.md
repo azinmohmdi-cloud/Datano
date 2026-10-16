@@ -682,7 +682,8 @@ font, shell or primitive; the fifth review selector and all Ads fixtures are pri
 
 The user's final placement decision puts recommendations on a site-scoped page,
 `/websites/[websiteId]/recommendations`, inside the existing SiteLayout/ProductLayout.
-Do not add recommendation lists or buttons to the approved FE-019–FE-023 dashboard.
+Do not add recommendation lists to the approved FE-019–FE-023 dashboard. The
+2026-10-16 entry amendment below supersedes the original prohibition on an entry button.
 Use a compact Compass heading, selected-domain panel and one central rounded-2xl
 Card with a labeled native source filter and an ordered list. Each row shows its
 source, title, short action summary, textual priority and read-only status. Existing
@@ -749,6 +750,17 @@ The pre-amendment card articles are recorded in the browser-test baseline at
 390/1440px (content, classes, dimensions, surfaces and SVG markup). Closed cards
 must preserve that baseline except for the additive trigger and its necessary
 vertical space. This is an extension of the approved composition, not a redesign.
+
+### Dashboard recommendations entry — 2026-10-16
+
+Append one compact Card after the complete Ads section (including its currency/ROAS
+disclosure) and before source coverage. Use the existing rounded-2xl Card, a very
+quiet brand-blue/purple gradient, Lightbulb icon, existing Persian typography and
+one prominent brand-blue Link styled through buttonVariants. Its short copy and
+action identify the independent site-scoped list; do not show counts or rows.
+At sm and wider text and action share a row; mobile stacks them with a full-width
+action. Keep all existing charts, metric Cards, layouts and source information
+unchanged. The list retains inline FE-025 details and its existing dashboard return.
 
 ### Dashboard composition revision — 2026-10-15
 

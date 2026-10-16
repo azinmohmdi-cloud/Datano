@@ -7,6 +7,7 @@ import DatanoAdsPerformance from "@/components/feature/analytics/AdsPerformance/
 import DatanoKPIOverview from "@/components/feature/analytics/KPIOverview/DatanoKPIOverview";
 import DatanoSearchPerformance from "@/components/feature/analytics/SearchPerformance/DatanoSearchPerformance";
 import DatanoTrafficOverview from "@/components/feature/analytics/TrafficOverview/DatanoTrafficOverview";
+import DatanoRecommendationEntry from "@/components/feature/recommendations/RecommendationEntry/DatanoRecommendationEntry";
 import ProductLayout from "@/components/layout/ProductLayout";
 import SiteLayout from "@/components/layout/SiteLayout";
 import DashboardReviewUI from ".";
@@ -16,6 +17,7 @@ import { getTrafficReviewData, trafficReviewScenarios } from "./traffic-fixtures
 import { getSearchReviewData, searchReviewScenarios } from "./search-fixtures";
 import { getTrendReviewSnapshots } from "./trend-fixtures";
 import { getAdsReviewData, adsReviewScenarios } from "./ads-fixtures";
+import { recommendationReviewSites } from "../RecommendationListReview/fixtures";
 
 export default function DevelopmentDashboardReview() {
   const router = useRouter(), params = useSearchParams();
@@ -58,6 +60,7 @@ export default function DevelopmentDashboardReview() {
         chart={<DatanoTrafficOverview websiteId={siteId} sources={adsData.sources} snapshots={trafficData.snapshots} period={period} comparison={comparison} nowUTC={dashboardReviewClock} />} />}
       search={<DatanoSearchPerformance trendSnapshots={trendSnapshots} websiteId={siteId} sources={adsData.sources} observations={searchData.observations} topRows={searchData.topRows} period={period} comparison={comparison} nowUTC={dashboardReviewClock} />}
       advertising={<DatanoAdsPerformance trendSnapshots={trendSnapshots} websiteId={siteId} source={adsData.source} observations={adsData.observations} period={period} comparison={comparison} nowUTC={dashboardReviewClock} />}
+      recommendations={<DatanoRecommendationEntry websiteId={siteId} href={recommendationReviewSites.some(site => site.value === siteId) ? `/ui-review/websites/recommendations?site=${encodeURIComponent(siteId)}` : undefined} />}
     />} />
   </DashboardReviewUI></SiteLayout></ProductLayout>;
 }
