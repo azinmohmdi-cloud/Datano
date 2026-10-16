@@ -697,8 +697,58 @@ both rows and relevant source explanations. List failure/loading/access states d
 not masquerade as a successful empty evaluation. Product access remains guarded by
 the existing access-state pattern pending FE-044. Explicitly labeled fixtures and
 scenario/site selectors live only in the opt-in private development review graph.
-Detail navigation is reserved for FE-025; there are no inactive detail links,
-evidence/history disclosures or tracking controls in FE-024.
+The FE-024 baseline contained no inactive detail links, evidence/history disclosures
+or tracking controls. FE-025 extends this list with title links as described below.
+
+### FE-025 recommendation details and preview tracking — 2026-10-15
+
+This standalone composition is the historical FE-025 baseline; the user's
+2026-10-16 amendment below supersedes its navigation and presentation placement.
+
+Use the existing site shell for `/websites/[websiteId]/recommendations/[recommendationId]`.
+The list title is a native Next Link with visible keyboard focus. Detail pages
+start with a clearly labeled back-to-list link, Compass heading and a quiet
+domain/source/recorded-status strip. A responsive 1.6:1 grid pairs reason/evidence
+Cards with rule metadata and tracking Cards; it stacks in DOM reading order on
+mobile. Recorded history spans the content width below them. Shared rounded-2xl
+Cards, restrained blue/purple tokens, explicit textual states, Vazirmatn and RTL
+continue FE-024 without a global style, shell or dashboard change.
+
+Evidence uses a semantic table with local scrolling and explicit source civil
+windows, timezone/resource/scope, receipt time and quality. Missing data stays
+unknown; absent evidence/rules/history have separate states. UTC event timestamps
+are displayed in Tehran; rule versions/identifiers retain canonical LTR values.
+Historical evidence is a snapshot, not a claim about current source freshness.
+
+The read-only recorded status/history remain separate from a clearly labeled,
+unsaved tracking preview. Only the private review injector enables this preview;
+there is no persisted-mutation mode or invented backend contract. Controls wait
+for hydration, preserve keyboard use and reset the preview without touching the
+snapshot. An always-visible private fixture note makes non-real detail content
+explicit. No dashboard entry button is added in this task.
+
+### Inline recommendation evidence amendment — 2026-10-16
+
+Preserve the approved FE-024 page, existing card article markup/classes, text,
+icons, source filter, source explanations, states, order and links. Append only
+one shared outline Button, «مشاهده دلیل و شواهد», below each original article.
+The original title link keeps its styling but ordinary activation toggles the
+same panel. Each trigger exposes aria-expanded/aria-controls for a labeled region;
+each card owns independent expansion state. Closing removes the detail body and
+restores the card's closed layout, including the newly approved trigger.
+
+Reuse FE-025's presentation components in embedded mode. Put reason first,
+evidence second, then recorded metadata, rule/tracking and history. Do not duplicate
+the standalone page header or back navigation inside the card. All existing
+missing/error/history states and unsaved private preview semantics are preserved.
+No global style, palette, shell, font, dashboard or backend change is authorized
+by this amendment. Legacy detail URLs redirect to the same site's list with a
+validated target; private fixtures remain excluded from production.
+
+The pre-amendment card articles are recorded in the browser-test baseline at
+390/1440px (content, classes, dimensions, surfaces and SVG markup). Closed cards
+must preserve that baseline except for the additive trigger and its necessary
+vertical space. This is an extension of the approved composition, not a redesign.
 
 ### Dashboard composition revision — 2026-10-15
 

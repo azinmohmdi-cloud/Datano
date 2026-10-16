@@ -6,6 +6,8 @@ export const recommendationTranslations: RecommendationListUIProps["translations
   websites: "سایت‌های من", dashboard: "داشبورد سایت", site: "سایت انتخاب‌شده", verified: "مالکیت تأیید شده",
   list: "فهرست پیشنهادها", filter: "منبع پیشنهادها", total: "پیشنهاد در فهرست", count: "پیشنهاد در این نما",
   order: "به‌ترتیب اولویت؛ از بالا به پایین", priority: "اولویت", status: "وضعیت", source: "منبع",
+  showEvidence: "مشاهده دلیل و شواهد",
+  detailUnavailable: "دلیل و شواهد این پیشنهاد در دسترس نیست.",
   conditions: "وضعیت ارزیابی منابع", conditionsHint: "نبود پیشنهاد همیشه به معنی نبود مسئله نیست؛ وضعیت داده و ارزیابی هر منبع را ببینید.",
   all: "نمایش همهٔ منابع", empty: "پیشنهادی برای بررسی وجود ندارد.", emptyDescription: "در ارزیابی انجام‌شده، شرط هیچ پیشنهادی برقرار نبوده است.",
   unavailable: "هنوز پیشنهادی قابل ارائه نیست.", unavailableDescription: "برای ارائهٔ پیشنهاد، دادهٔ کافی و ارزیابی معتبر لازم است. وضعیت منابع را در پایین ببینید.",

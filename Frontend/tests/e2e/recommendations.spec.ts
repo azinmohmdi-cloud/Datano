@@ -14,7 +14,7 @@ test("central site list shows source, textual priority and read-only status with
   await expect(page.locator(rows).first()).toContainText("Google Analytics 4");
   await expect(page.locator(rows).nth(1)).toContainText("در حال بررسی");
   await expect(page.locator('[data-source-condition="ads"]')).toContainText("متصل نشده");
-  await expect(page.locator('a[href*="/recommendations/"]')).toHaveCount(0);
+  await expect(page.locator('[data-recommendation-row] a[href*="recommendations"]')).toHaveCount(2);
   await expect(page.getByRole("button", { name: /جزئیات|تغییر وضعیت/ })).toHaveCount(0);
 });
 
@@ -153,7 +153,7 @@ test("Persian list fits small wide dark and enlarged layouts with shared site sh
   expect(recommendationOverflow).toBeLessThanOrEqual(sharedShellOverflow);
 });
 
-test("future detail destinations are site-scoped and encode identifiers without implementing FE-025", () => {
+test("detail destinations remain site-scoped and encode identifiers", () => {
   expect(recommendationsHref("site/one")).toBe("/websites/site%2Fone/recommendations");
   expect(recommendationDetailsHref("site/one", "rule?#1")).toBe("/websites/site%2Fone/recommendations/rule%3F%231");
 });

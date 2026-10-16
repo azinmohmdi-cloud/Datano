@@ -9,7 +9,7 @@ const baseURL = "http://127.0.0.1:3101";
 const manifest = JSON.parse(await readFile(".next/server/app-paths-manifest.json", "utf8"));
 assert(Object.keys(manifest).some((key) => key.includes("/websites/[websiteId]/recommendations/page")));
 assert(Object.keys(manifest).every((key) => !key.includes("ui-review")));
-assert(Object.keys(manifest).every((key) => !key.includes("[recommendationId]")));
+assert(Object.keys(manifest).some((key) => key.includes("/recommendations/[recommendationId]/page")));
 
 async function filesIn(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -18,7 +18,7 @@ async function filesIn(directory) {
 const files = (await filesIn(".next/static")).filter((path) => path.endsWith(".js"));
 for (const path of files) {
   const code = await readFile(path, "utf8");
-  for (const marker of ["UI_REVIEW_RECOMMENDATION_", "بررسی افت نشست‌های سایت", "سناریوی پیشنهادها", "getRecommendationReviewInput"]) assert(!code.includes(marker), `Private fixture leaked into ${path}`);
+  for (const marker of ["UI_REVIEW_RECOMMENDATION_", "UI_REVIEW_PROPERTY_", "بررسی افت نشست‌های سایت", "سناریوی پیشنهادها", "getRecommendationReviewInput", "getDetailReviewInput"]) assert(!code.includes(marker), `Private fixture leaked into ${path}`);
 }
 
 const server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", "3101"], { env: { ...process.env, UI_REVIEW_ENABLED: "1" }, stdio: ["ignore", "pipe", "pipe"] });
@@ -36,7 +36,7 @@ try {
     await delay(100);
   }
   assert(ready, `Production server did not become ready: ${output}`);
-  for (const path of ["/ui-review/websites/recommendations", "/ui-review/websites/recommendations?site=report-ready&scenario=all-sources", "/websites/check/recommendations/UI_REVIEW_RECOMMENDATION_GA4"]) {
+  for (const path of ["/ui-review/websites/recommendations", "/ui-review/websites/recommendations?site=report-ready&scenario=all-sources", "/ui-review/websites/recommendations/record-one?site=report-ready&view=ready"]) {
     for (const headers of [{}, { RSC: "1", "Next-Router-Prefetch": "1" }]) {
       const response = await fetch(`${baseURL}${path}`, { headers });
       assert.equal(response.status, 404, path);
@@ -45,12 +45,12 @@ try {
       requests++;
     }
   }
-  for (const path of ["/websites/check/recommendations", "/websites/report-ready/recommendations?scenario=all-sources&role=admin&verified=1"]) {
+  for (const path of ["/websites/check/recommendations", "/websites/report-ready/recommendations?scenario=all-sources&role=admin&verified=1", "/websites/check/recommendations/record-one?view=ready&preview=1&role=admin"]) {
     for (const headers of [{}, { RSC: "1" }]) {
       const response = await fetch(`${baseURL}${path}`, { headers });
       assert.equal(response.status, 200);
       const body = await response.text();
-      for (const marker of ["UI_REVIEW_RECOMMENDATION_", "بررسی افت نشست‌های سایت", "data-review-tools", "data-recommendation-row"]) assert(!body.includes(marker));
+      for (const marker of ["UI_REVIEW_RECOMMENDATION_", "UI_REVIEW_PROPERTY_", "بررسی افت نشست‌های سایت", "ga4-sessions-drop-v1", "data-review-tools", "data-recommendation-row", "data-evidence", "data-tracking"]) assert(!body.includes(marker));
       requests++;
     }
   }
@@ -62,15 +62,25 @@ try {
       const mutations = [], errors = [];
       page.on("request", (request) => { if (request.method() !== "GET" || new URL(request.url()).pathname.startsWith("/api/")) mutations.push(request.url()); });
       page.on("pageerror", (error) => errors.push(error.message));
-      await page.goto("/websites/report-ready/recommendations?role=admin&scenario=all-sources");
-      assert(await page.getByText("برای مشاهدهٔ پیشنهادهای این سایت، وارد شوید.", { exact: true }).isVisible());
-      assert.equal(await page.locator("[data-recommendation-row], select, [data-review-tools]").count(), 0);
-      assert.equal(await page.getByRole("contentinfo").count(), 1);
-      assert.deepEqual(await context.cookies(), []);
-      assert.deepEqual(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } })), { local: {}, session: {} });
-      await page.getByRole("main").getByRole("link", { name: "ورود به حساب", exact: true }).click();
-      await page.waitForURL("/login");
-      assert.equal(new URL(page.url()).pathname, "/login");
+      for (const [path, notice] of [
+        ["/websites/report-ready/recommendations?role=admin&scenario=all-sources", "برای مشاهدهٔ پیشنهادهای این سایت، وارد شوید."],
+        ["/websites/report-ready/recommendations/record-one?role=admin&preview=1&view=ready", "برای مشاهدهٔ پیشنهادهای این سایت، وارد شوید."],
+      ]) {
+        await page.goto(path);
+        assert(await page.getByText(notice, { exact: true }).isVisible());
+        assert.equal(await page.locator("[data-recommendation-row], [data-evidence], [data-tracking], select, [data-review-tools]").count(), 0);
+        assert.equal(await page.getByRole("contentinfo").count(), 1);
+        assert.deepEqual(await context.cookies(), []);
+        assert.deepEqual(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } })), { local: {}, session: {} });
+        if (path.includes("record-one")) {
+          assert.equal(new URL(page.url()).pathname, "/websites/report-ready/recommendations");
+          assert.equal(new URL(page.url()).searchParams.get("recommendation"), "record-one");
+          assert.equal(new URL(page.url()).hash, "#recommendation-record-one");
+        }
+        await page.getByRole("main").getByRole("link", { name: "ورود به حساب", exact: true }).click();
+        await page.waitForURL("/login");
+        assert.equal(new URL(page.url()).pathname, "/login");
+      }
       assert.deepEqual(mutations, []);
       assert.deepEqual(errors, []);
     } finally { await context.close(); }

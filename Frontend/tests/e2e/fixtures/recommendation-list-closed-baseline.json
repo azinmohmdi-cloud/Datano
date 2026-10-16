@@ -1,0 +1,258 @@
+{
+  "390": [
+    {
+      "classes": "min-w-0 rounded-xl border p-4 sm:p-5 border-brand-blue/20 bg-brand-soft/35",
+      "articleClasses": "min-w-0 space-y-3",
+      "text": "منبع: Google Analytics 4اولویت بالابررسی افت نشست‌های سایتتغییرات ترافیک، کانال‌های ورودی و تنظیمات اندازه‌گیری را بررسی کنید.وضعیت: جدید",
+      "width": 290,
+      "height": 205,
+      "padding": "16px",
+      "color": "lab(2.51107 0.242703 -0.886115)",
+      "background": "oklab(0.962507 0.00170705 -0.0134059 / 0.35)",
+      "radius": "14px",
+      "children": [
+        {
+          "tag": "DIV",
+          "classes": "flex flex-wrap items-start justify-between gap-3",
+          "text": "منبع: Google Analytics 4اولویت بالا",
+          "height": 32
+        },
+        {
+          "tag": "H3",
+          "classes": "text-base leading-8 font-semibold wrap-anywhere sm:text-lg",
+          "text": "بررسی افت نشست‌های سایت",
+          "height": 32
+        },
+        {
+          "tag": "P",
+          "classes": "max-w-3xl text-sm leading-8 text-brand-muted wrap-anywhere",
+          "text": "تغییرات ترافیک، کانال‌های ورودی و تنظیمات اندازه‌گیری را بررسی کنید.",
+          "height": 64
+        },
+        {
+          "tag": "P",
+          "classes": "flex items-center gap-2 border-t border-brand-blue/10 pt-3 text-xs leading-7 text-brand-muted",
+          "text": "وضعیت: جدید",
+          "height": 41
+        }
+      ],
+      "icons": [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-activity size-4 shrink-0 text-brand-ink\" aria-hidden=\"true\"><path d=\"M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2\"></path></svg>",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-flag size-3.5 shrink-0\" aria-hidden=\"true\"><path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\"></path></svg>",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-circle-dot size-4 shrink-0 text-brand-ink\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle><circle cx=\"12\" cy=\"12\" r=\"1\"></circle></svg>"
+      ]
+    },
+    {
+      "classes": "min-w-0 rounded-xl border p-4 sm:p-5 bg-background",
+      "articleClasses": "min-w-0 space-y-3",
+      "text": "منبع: Search Consoleاولویت متوسطبررسی نرخ کلیک نتایج جست‌وجوعنوان و توضیحات صفحات مرتبط با عبارت‌های جست‌وجو را بازبینی کنید.وضعیت: در حال بررسی",
+      "width": 290,
+      "height": 205,
+      "padding": "16px",
+      "color": "lab(2.51107 0.242703 -0.886115)",
+      "background": "lab(100 0 0)",
+      "radius": "14px",
+      "children": [
+        {
+          "tag": "DIV",
+          "classes": "flex flex-wrap items-start justify-between gap-3",
+          "text": "منبع: Search Consoleاولویت متوسط",
+          "height": 32
+        },
+        {
+          "tag": "H3",
+          "classes": "text-base leading-8 font-semibold wrap-anywhere sm:text-lg",
+          "text": "بررسی نرخ کلیک نتایج جست‌وجو",
+          "height": 32
+        },
+        {
+          "tag": "P",
+          "classes": "max-w-3xl text-sm leading-8 text-brand-muted wrap-anywhere",
+          "text": "عنوان و توضیحات صفحات مرتبط با عبارت‌های جست‌وجو را بازبینی کنید.",
+          "height": 64
+        },
+        {
+          "tag": "P",
+          "classes": "flex items-center gap-2 border-t border-brand-blue/10 pt-3 text-xs leading-7 text-brand-muted",
+          "text": "وضعیت: در حال بررسی",
+          "height": 41
+        }
+      ],
+      "icons": [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-search size-4 shrink-0 text-brand-ink\" aria-hidden=\"true\"><path d=\"m21 21-4.34-4.34\"></path><circle cx=\"11\" cy=\"11\" r=\"8\"></circle></svg>",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-flag size-3.5 shrink-0\" aria-hidden=\"true\"><path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\"></path></svg>",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-circle-dot size-4 shrink-0 text-brand-ink\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle><circle cx=\"12\" cy=\"12\" r=\"1\"></circle></svg>"
+      ]
+    },
+    {
+      "classes": "min-w-0 rounded-xl border p-4 sm:p-5 bg-background",
+      "articleClasses": "min-w-0 space-y-3",
+      "text": "منبع: Google Adsاولویت متوسطبررسی افزایش هزینهٔ هر کلیکتغییرات کلمات کلیدی، رقابت در مزایده و تنظیمات کمپین را بررسی کنید.وضعیت: بررسی شده",
+      "width": 290,
+      "height": 205,
+      "padding": "16px",
+      "color": "lab(2.51107 0.242703 -0.886115)",
+      "background": "lab(100 0 0)",
+      "radius": "14px",
+      "children": [
+        {
+          "tag": "DIV",
+          "classes": "flex flex-wrap items-start justify-between gap-3",
+          "text": "منبع: Google Adsاولویت متوسط",
+          "height": 32
+        },
+        {
+          "tag": "H3",
+          "classes": "text-base leading-8 font-semibold wrap-anywhere sm:text-lg",
+          "text": "بررسی افزایش هزینهٔ هر کلیک",
+          "height": 32
+        },
+        {
+          "tag": "P",
+          "classes": "max-w-3xl text-sm leading-8 text-brand-muted wrap-anywhere",
+          "text": "تغییرات کلمات کلیدی، رقابت در مزایده و تنظیمات کمپین را بررسی کنید.",
+          "height": 64
+        },
+        {
+          "tag": "P",
+          "classes": "flex items-center gap-2 border-t border-brand-blue/10 pt-3 text-xs leading-7 text-brand-muted",
+          "text": "وضعیت: بررسی شده",
+          "height": 41
+        }
+      ],
+      "icons": [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-megaphone size-4 shrink-0 text-brand-ink\" aria-hidden=\"true\"><path d=\"M11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z\"></path><path d=\"M6 14a12 12 0 0 0 2.4 7.2 2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14\"></path><path d=\"M8 6v8\"></path></svg>",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-flag size-3.5 shrink-0\" aria-hidden=\"true\"><path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\"></path></svg>",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-check-check size-4 shrink-0 text-brand-ink\" aria-hidden=\"true\"><path d=\"M18 6 7 17l-5-5\"></path><path d=\"m22 10-7.5 7.5L13 16\"></path></svg>"
+      ]
+    }
+  ],
+  "1440": [
+    {
+      "classes": "min-w-0 rounded-xl border p-4 sm:p-5 border-brand-blue/20 bg-brand-soft/35",
+      "articleClasses": "min-w-0 space-y-3",
+      "text": "منبع: Google Analytics 4اولویت بالابررسی افت نشست‌های سایتتغییرات ترافیک، کانال‌های ورودی و تنظیمات اندازه‌گیری را بررسی کنید.وضعیت: جدید",
+      "width": 1124,
+      "height": 173,
+      "padding": "20px",
+      "color": "lab(2.51107 0.242703 -0.886115)",
+      "background": "oklab(0.962507 0.00170705 -0.0134059 / 0.35)",
+      "radius": "14px",
+      "children": [
+        {
+          "tag": "DIV",
+          "classes": "flex flex-wrap items-start justify-between gap-3",
+          "text": "منبع: Google Analytics 4اولویت بالا",
+          "height": 32
+        },
+        {
+          "tag": "H3",
+          "classes": "text-base leading-8 font-semibold wrap-anywhere sm:text-lg",
+          "text": "بررسی افت نشست‌های سایت",
+          "height": 32
+        },
+        {
+          "tag": "P",
+          "classes": "max-w-3xl text-sm leading-8 text-brand-muted wrap-anywhere",
+          "text": "تغییرات ترافیک، کانال‌های ورودی و تنظیمات اندازه‌گیری را بررسی کنید.",
+          "height": 32
+        },
+        {
+          "tag": "P",
+          "classes": "flex items-center gap-2 border-t border-brand-blue/10 pt-3 text-xs leading-7 text-brand-muted",
+          "text": "وضعیت: جدید",
+          "height": 41
+        }
+      ],
+      "icons": [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-activity size-4 shrink-0 text-brand-ink\" aria-hidden=\"true\"><path d=\"M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2\"></path></svg>",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-flag size-3.5 shrink-0\" aria-hidden=\"true\"><path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\"></path></svg>",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-circle-dot size-4 shrink-0 text-brand-ink\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle><circle cx=\"12\" cy=\"12\" r=\"1\"></circle></svg>"
+      ]
+    },
+    {
+      "classes": "min-w-0 rounded-xl border p-4 sm:p-5 bg-background",
+      "articleClasses": "min-w-0 space-y-3",
+      "text": "منبع: Search Consoleاولویت متوسطبررسی نرخ کلیک نتایج جست‌وجوعنوان و توضیحات صفحات مرتبط با عبارت‌های جست‌وجو را بازبینی کنید.وضعیت: در حال بررسی",
+      "width": 1124,
+      "height": 173,
+      "padding": "20px",
+      "color": "lab(2.51107 0.242703 -0.886115)",
+      "background": "lab(100 0 0)",
+      "radius": "14px",
+      "children": [
+        {
+          "tag": "DIV",
+          "classes": "flex flex-wrap items-start justify-between gap-3",
+          "text": "منبع: Search Consoleاولویت متوسط",
+          "height": 32
+        },
+        {
+          "tag": "H3",
+          "classes": "text-base leading-8 font-semibold wrap-anywhere sm:text-lg",
+          "text": "بررسی نرخ کلیک نتایج جست‌وجو",
+          "height": 32
+        },
+        {
+          "tag": "P",
+          "classes": "max-w-3xl text-sm leading-8 text-brand-muted wrap-anywhere",
+          "text": "عنوان و توضیحات صفحات مرتبط با عبارت‌های جست‌وجو را بازبینی کنید.",
+          "height": 32
+        },
+        {
+          "tag": "P",
+          "classes": "flex items-center gap-2 border-t border-brand-blue/10 pt-3 text-xs leading-7 text-brand-muted",
+          "text": "وضعیت: در حال بررسی",
+          "height": 41
+        }
+      ],
+      "icons": [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-search size-4 shrink-0 text-brand-ink\" aria-hidden=\"true\"><path d=\"m21 21-4.34-4.34\"></path><circle cx=\"11\" cy=\"11\" r=\"8\"></circle></svg>",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-flag size-3.5 shrink-0\" aria-hidden=\"true\"><path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\"></path></svg>",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-circle-dot size-4 shrink-0 text-brand-ink\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle><circle cx=\"12\" cy=\"12\" r=\"1\"></circle></svg>"
+      ]
+    },
+    {
+      "classes": "min-w-0 rounded-xl border p-4 sm:p-5 bg-background",
+      "articleClasses": "min-w-0 space-y-3",
+      "text": "منبع: Google Adsاولویت متوسطبررسی افزایش هزینهٔ هر کلیکتغییرات کلمات کلیدی، رقابت در مزایده و تنظیمات کمپین را بررسی کنید.وضعیت: بررسی شده",
+      "width": 1124,
+      "height": 173,
+      "padding": "20px",
+      "color": "lab(2.51107 0.242703 -0.886115)",
+      "background": "lab(100 0 0)",
+      "radius": "14px",
+      "children": [
+        {
+          "tag": "DIV",
+          "classes": "flex flex-wrap items-start justify-between gap-3",
+          "text": "منبع: Google Adsاولویت متوسط",
+          "height": 32
+        },
+        {
+          "tag": "H3",
+          "classes": "text-base leading-8 font-semibold wrap-anywhere sm:text-lg",
+          "text": "بررسی افزایش هزینهٔ هر کلیک",
+          "height": 32
+        },
+        {
+          "tag": "P",
+          "classes": "max-w-3xl text-sm leading-8 text-brand-muted wrap-anywhere",
+          "text": "تغییرات کلمات کلیدی، رقابت در مزایده و تنظیمات کمپین را بررسی کنید.",
+          "height": 32
+        },
+        {
+          "tag": "P",
+          "classes": "flex items-center gap-2 border-t border-brand-blue/10 pt-3 text-xs leading-7 text-brand-muted",
+          "text": "وضعیت: بررسی شده",
+          "height": 41
+        }
+      ],
+      "icons": [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-megaphone size-4 shrink-0 text-brand-ink\" aria-hidden=\"true\"><path d=\"M11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z\"></path><path d=\"M6 14a12 12 0 0 0 2.4 7.2 2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14\"></path><path d=\"M8 6v8\"></path></svg>",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-flag size-3.5 shrink-0\" aria-hidden=\"true\"><path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\"></path></svg>",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-check-check size-4 shrink-0 text-brand-ink\" aria-hidden=\"true\"><path d=\"M18 6 7 17l-5-5\"></path><path d=\"m22 10-7.5 7.5L13 16\"></path></svg>"
+      ]
+    }
+  ]
+}

@@ -10,7 +10,7 @@ export interface RecommendationListItem {
   title: string;
   summary: string;
   priority: "high" | "medium" | "low";
-  // Read-only display vocabulary; persistence/status transitions belong to FE-025/045.
+  // Display vocabulary only; persisted status transitions belong to FE-045.
   status: "new" | "reviewing" | "reviewed";
 }
 
