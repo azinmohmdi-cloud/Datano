@@ -14,10 +14,16 @@ const users: User[] = [
 let nextId = 3;
 
 export async function GET() {
+  if (process.env.NODE_ENV === "production") {
+    return new NextResponse(null, { status: 404 });
+  }
   return NextResponse.json(users);
 }
 
 export async function POST(request: NextRequest) {
+  if (process.env.NODE_ENV === "production") {
+    return new NextResponse(null, { status: 404 });
+  }
   const body = await request.json();
   const { name, email } = body;
 

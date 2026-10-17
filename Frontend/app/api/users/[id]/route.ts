@@ -15,6 +15,9 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  if (process.env.NODE_ENV === "production") {
+    return new NextResponse(null, { status: 404 });
+  }
   const { id } = await params;
   const user = users.find((u) => u.id === Number(id));
 
