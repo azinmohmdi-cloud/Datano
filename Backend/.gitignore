@@ -4,6 +4,8 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .pdm-python
+# Local development tooling (separate from the locked application environment)
+.tools/
 # Testing artifacts
 .coverage
 htmlcov/

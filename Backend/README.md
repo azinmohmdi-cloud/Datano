@@ -41,15 +41,43 @@ output paths and schema assumptions; inspect the backend guide before running it
 
 ## Development and validation
 
-Run commands from `Backend/` with Python 3.12 and PDM available:
+Run commands from `Backend/` with Python **3.12** (the project requires
+`==3.12.*`). BE-001 was validated with Python **3.12.14** and PDM **2.29.2**.
+Select an installed Python 3.12 interpreter before setup; Python 3.13 is not a
+substitute. If PDM is not already available, install the tested tool version in
+a separate local environment:
 
 ```sh
-pdm install
+python3.12 -m venv .tools/pdm
+.tools/pdm/bin/python -m pip install 'pdm==2.29.2'
+export PATH="$PWD/.tools/pdm/bin:$PATH"
+```
+
+Keep this tool environment separate from the application's `.venv`. Both are
+Git-ignored. Select Python explicitly, check the lockfile, then install the
+locked default and development dependencies without resolving new versions:
+
+```sh
+pdm use --first --no-version-file python3.12
+pdm lock --check
+pdm sync -dG dev
+pdm run python --version
+```
+
+PDM records the selected application interpreter in the ignored `.pdm-python`.
+Use `pdm run` for all application commands. A lock-check failure needs investigation;
+do not use `pdm update` or regenerate dependency versions merely to bypass it.
+The example `.env` is optional for this development baseline because settings
+have development defaults; it does not provide production configuration.
+
+Once installed:
+
+```sh
 make dev
 pdm run pytest
-pdm run pytesttests/unit/
-pdm run pytesttests/integration/
-pdm run pytest --cov=.
+pdm run pytest tests/unit/
+pdm run pytest tests/integration/
+pdm run pytest --cov=app
 make lint
 ```
 
@@ -64,3 +92,7 @@ The development seed, default signing key, cookie flags, and local-only CORS
 settings require security work before production; see the guide for exact gaps.
 Never commit environment secrets or report the current auth flow as a finished
 product registration/session architecture.
+
+See [the BE-001 baseline report](docs/validation/BE-001-baseline.md) for the
+executed setup, lock metadata correction, startup checks, test results and
+remaining limitations. No application behavior or API contract changed in BE-001.
