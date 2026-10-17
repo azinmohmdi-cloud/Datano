@@ -15,7 +15,7 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
 - Process-local users, roles, and refresh-token dictionaries; no database or migrations.
 - DTO/mapping and use-case/repository separation. Domain errors still depend on
   FastAPI status values and pagination types cross layer boundaries; isolation is partial.
-- Pytest entity/repository/HTTP tests; fixtures have known shared-state limitations.
+- Pytest entity/repository/HTTP tests with per-test clients, cookies and in-memory state.
 
 These are template/development capabilities, not a completed marketing backend.
 The approved target is PostgreSQL/SQLAlchemy 2/Alembic, Celery/Redis, email login,
@@ -96,3 +96,29 @@ product registration/session architecture.
 See [the BE-001 baseline report](docs/validation/BE-001-baseline.md) for the
 executed setup, lock metadata correction, startup checks, test results and
 remaining limitations. No application behavior or API contract changed in BE-001.
+
+## Test isolation
+
+The `test_client` fixture starts lifespan for each test with a reset in-memory
+registry. It clears cookies and resets the registry after shutdown, including
+when a test fails. `admin_token` and `admin_auth` belong to that same test
+lifetime; do not retain them across tests or reset storage while they are in use.
+The development seed supplies authentication only. User/role CRUD and assignment
+tests create their own targets through `created_user` and `created_role` rather
+than changing the seeded admin or selecting the first global list item.
+
+`tests/test_fixture_isolation.py` uses pytest's bundled `pytester` plugin to
+exercise the actual fixtures across test-item boundaries in temporary
+subprocesses. It checks user/role/token and cookie leakage in both orders,
+cleanup after an intentional failed child test, and duplicate test names.
+No new test dependency or random-order plugin is required. The parent cleanup
+test passes only when its child run has exactly the intentional failure and a
+passing cleanup observer.
+
+```sh
+pdm run pytest tests/test_fixture_isolation.py
+pdm run pytest
+```
+
+See [BE-002 validation](docs/validation/BE-002-fixture-isolation.md) for TDD
+evidence, full-suite order checks and the limits of this in-memory isolation.

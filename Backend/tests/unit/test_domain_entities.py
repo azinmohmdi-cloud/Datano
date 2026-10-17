@@ -176,28 +176,13 @@ class TestRefreshTokenEntity:
         assert token.revoked is True
         assert token.is_valid() is False
 
-    def test_blacklist(self):
+    def test_is_not_blacklisted_by_default(self):
         token = RefreshTokenEntity.create(
             user_id=str(uuid4()),
             expires_at=datetime.now(UTC) + timedelta(days=1),
         )
+        assert token.blacklisted is False
         assert token.is_valid() is True
-
-    def test_is_expired(self):
-        token = RefreshTokenEntity.create(
-            user_id=str(uuid4()),
-            expires_at=datetime.now(UTC) - timedelta(days=1),
-        )
-        assert token.is_valid() is False
-
-    def test_revoke(self):
-        token = RefreshTokenEntity.create(
-            user_id=str(uuid4()),
-            expires_at=datetime.now(UTC) + timedelta(days=1),
-        )
-        token.revoke()
-        assert token.revoked is True
-        assert token.is_valid() is False
 
     def test_blacklist(self):
         token = RefreshTokenEntity.create(
