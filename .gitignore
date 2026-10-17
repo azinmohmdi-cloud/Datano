@@ -16,3 +16,5 @@ __pycache__/
 
 # System
 .DS_Store
+
+/.pnpm-store/
