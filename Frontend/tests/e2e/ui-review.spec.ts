@@ -165,7 +165,7 @@ test("shared header navigation remains usable in public, account and site shells
     for (const [index, href] of [
       "/services",
       "/about",
-      "/account",
+      "/profile",
       "/login",
     ].entries()) {
       await expect(links.nth(index)).toHaveAttribute("href", href);
@@ -181,3 +181,25 @@ test("shared header navigation remains usable in public, account and site shells
     ).toBe(true);
   }
 });
+
+for (const javaScriptEnabled of [false, true]) {
+  test.describe(`account navigation with JavaScript ${javaScriptEnabled ? "enabled" : "disabled"}`, () => {
+    test.use({ javaScriptEnabled });
+
+    test("account link opens the existing guarded profile", async ({ page }) => {
+      await page.goto("/");
+      const menu = page.getByRole("button", { name: "منوی اصلی", exact: true });
+      if (await menu.isVisible()) await menu.click();
+
+      await page.getByRole("navigation", { name: "ناوبری اصلی" })
+        .getByRole("link", { name: "حساب کاربری", exact: true }).click();
+
+      await expect(page).toHaveURL("/profile");
+      await expect(page).toHaveTitle("پروفایل | دیتانو");
+      const main = page.getByRole("main");
+      await expect(main.getByText("برای مشاهده و ویرایش اطلاعات حساب، وارد شوید.", { exact: true })).toBeVisible();
+      await expect(main.getByRole("link", { name: "ورود به حساب", exact: true })).toHaveAttribute("href", "/login");
+      await expect(main.locator("input")).toHaveCount(0);
+    });
+  });
+}
