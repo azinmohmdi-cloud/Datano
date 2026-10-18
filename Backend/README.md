@@ -12,15 +12,17 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
 - Username/password login, bearer JWT access tokens, and HTTP-only refresh cookie.
 - Role permission checks; JSON permission/policy catalogs. Policy evaluation is
   a placeholder, not a delivered ABAC engine.
-- Process-local users, roles, and refresh-token dictionaries.
-- PostgreSQL infrastructure with SQLAlchemy 2 async sessions/transactions and
-  Alembic baseline history; no persistent repositories or product tables yet.
+- PostgreSQL-backed users, roles and assignments through the existing repository
+  contracts, with SQLAlchemy 2 async transactions and Alembic migrations.
+- Refresh-token dictionaries remain process-local pending the session tasks.
 - DTO/mapping and use-case/repository separation. Domain errors still depend on
   FastAPI status values and pagination types cross layer boundaries; isolation is partial.
-- Pytest entity/repository/HTTP tests with per-test clients, cookies and in-memory state.
+- Pytest entity/repository/HTTP tests, including real PostgreSQL constraints,
+  rollback and application process restart checks. Legacy HTTP tests explicitly
+  inject in-memory adapters with per-test clients, cookies and state.
 
 These are template/development capabilities, not a completed marketing backend.
-The approved target also includes persistent repositories, Celery/Redis, email
+The approved target also includes Celery/Redis, email
 login, opaque server-side sessions, and the five-domain-entity product model.
 Those changes require their own authorized implementation tasks and mandatory
 red–green–refactor.
@@ -72,8 +74,10 @@ pdm run python --version
 PDM records the selected application interpreter in the ignored `.pdm-python`.
 Use `pdm run` for all application commands. A lock-check failure needs investigation;
 do not use `pdm update` or regenerate dependency versions merely to bypass it.
-The example `.env` is optional for this development baseline because settings
-have development defaults; it does not provide production configuration.
+Settings can be loaded offline, but serving the app now requires `DATABASE_URL`
+in the environment or private `.env` and the current Alembic revision. Configure
+PostgreSQL and run `pdm run alembic upgrade head` as described below before
+`make dev`. There is no silent in-memory fallback or startup schema creation.
 
 Once installed:
 
@@ -95,12 +99,15 @@ execution branch in `app/main.py` uses 8004. `make run` starts Uvicorn without
 reload; it does not establish production readiness. `make lint` only compiles
 `app/main.py`, not a full lint/type-check suite.
 
-Lifespan seeds the serving process. A separate seed command cannot populate
-another process, and in-memory data is lost at restart or isolated between workers.
-The development seed, default signing key, cookie flags, and local-only CORS
-settings require security work before production; see the guide for exact gaps.
-Never commit environment secrets or report the current auth flow as a finished
-product registration/session architecture.
+Lifespan owns/disposes the database pool and idempotently creates missing `User`
+and `Admin` role records. It preserves existing role IDs, permissions and status.
+It creates **no user or password** and never grants Admin based on a supplied
+email. The old fixed-password seed and `scripts/seed_in_memory.py` remain only
+for explicitly isolated in-memory tests/examples; they cannot provision the
+persistent app. Valid administrator provisioning/email proof is BE-014.
+The default signing key, cookie flags, refresh-token memory and local CORS still
+need their authorized auth/security tasks. Never commit environment secrets or
+describe the current JWT flow as the finished product session architecture.
 
 See [the BE-001 baseline report](docs/validation/BE-001-baseline.md) for the
 executed setup, lock metadata correction, startup checks, test results and
@@ -131,8 +138,8 @@ postgresql+psycopg://datano:YOUR_URL_ENCODED_PASSWORD@127.0.0.1:55432/datano
 ```
 
 The URL is represented as `SecretStr` in settings and is never stored in
-`alembic.ini`. The current in-memory app can start without it; constructing
-`Database.from_config(config)` or invoking migrations requires it. PostgreSQL
+`alembic.ini`. The serving app, `Database.from_config(config)` and migrations
+require it. PostgreSQL
 with the explicit psycopg driver, host and database is required; SQLite fallback
 is not supported. Run from `Backend/` against the intended database:
 
@@ -143,14 +150,20 @@ pdm run alembic history
 pdm run alembic upgrade head --sql
 ```
 
-Revision `0001_database_baseline` establishes history. On an empty target only
-Alembic's `alembic_version` table is created; there are no user/role or analytics
-tables. `pdm run alembic downgrade base` removes this revision marker and leaves
-the empty version table. Upgrade/downgrade do not touch existing application
-data. Re-upgrade with `pdm run alembic upgrade head`. Later revisions must define
-their own schema/data recovery behavior. No migration or `create_all` runs during
-application startup. Future model tasks must register their metadata imports in
-the Alembic environment before using autogeneration and review generated changes.
+Revision `0001_database_baseline` establishes history without domain tables.
+Revision **`0002_users_roles`** adds `users`, `roles` and the `user_roles`
+assignment table. `alembic upgrade head` works from an empty target or BE-003's
+baseline and preserves unrelated tables/data. No analytics or session tables are
+introduced. No migration or `create_all` runs during application startup.
+Identity ORM metadata is registered for autogeneration; generated revisions still
+need review.
+
+Downgrading to `0001_database_baseline` **drops all three identity tables and
+their data**. This destructive reversal was tested only on disposable schemas;
+back up and verify restoration of the target database before intentionally using
+it on real records. Re-upgrading recreates the schema, not deleted records.
+Prefer forward corrective migrations when retaining identity data is required.
+Downgrading the baseline itself to `base` only removes its revision marker.
 
 `app.infra.database.connection.Database` owns a lazy connection pool with
 pre-ping, hidden SQL parameters and a five-second connection timeout. Each
@@ -158,9 +171,27 @@ pre-ping, hidden SQL parameters and a five-second connection timeout. Each
 commits on success, rolls back on exceptions/cancellation and closes the session.
 Pass that session through repositories for one operation; do not share a session
 between concurrent tasks or commit independently inside participating repositories.
-The pool owner must `await database.dispose()` on shutdown. Alembic uses a
-separate `NullPool` engine and disposes it after execution. Wiring persistent
-repositories and the application pool lifecycle belongs to BE-004.
+The application lifespan calls `dispose()` on shutdown, including startup errors.
+User and role HTTP dependencies share one transaction for the complete request;
+repositories flush but never commit independently. FastAPI 0.115.6 completes
+this yield dependency before sending the response. Alembic uses a separate
+`NullPool` engine and disposes it after execution.
+
+IDs remain strings, so unknown non-UUID IDs return the existing missing-record
+behavior. Email/username and role names have exact-value unique constraints;
+email canonicalization and username migration belong to BE-005. The assignment
+primary key rejects duplicates, and foreign keys prevent orphan assignments.
+Deleting a user or role cascades only to its assignment rows; it never deletes
+the opposite parent record. Role permission IDs persist as a PostgreSQL text
+array matching the existing contract; catalog validation stays in the use cases.
+Lists use SQL pagination ordered by `(created_at, id)` with compatible empty-page
+metadata, and roles for a user page are loaded together. Returned domain entities
+are detached values, not live mutable ORM references.
+
+Refresh-token persistence, email login, registration/activation policy, admin
+verification and analytics are later tasks. Existing in-memory user/role data is
+not imported automatically into PostgreSQL. The HTTP/DTO/OpenAPI contract remains
+unchanged in BE-004.
 
 Create a separate test database, for example on this local development instance:
 
@@ -182,11 +213,15 @@ PostgreSQL via `pdm run pytest tests/unit/`.
 
 See [BE-003 validation](docs/validation/BE-003-postgresql.md) for executed
 Red/Green checks, migration/data-preservation evidence and full-suite results.
+See [BE-004 validation](docs/validation/BE-004-persistent-identities.md) for the
+persistent repositories, migration constraints, real process/container restart
+checks and the current full-suite result.
 
 ## Test isolation
 
-The `test_client` fixture starts lifespan for each test with a reset in-memory
-registry. It clears cookies and resets the registry after shutdown, including
+The legacy `test_client` fixture explicitly creates a test application with
+in-memory repository overrides and the isolated development seed. It clears
+cookies and resets the registry before startup and after shutdown, including
 when a test fails. `admin_token` and `admin_auth` belong to that same test
 lifetime; do not retain them across tests or reset storage while they are in use.
 The development seed supplies authentication only. User/role CRUD and assignment
@@ -208,3 +243,13 @@ pdm run pytest
 
 See [BE-002 validation](docs/validation/BE-002-fixture-isolation.md) for TDD
 evidence, full-suite order checks and the limits of this in-memory isolation.
+
+The BE-004 integration tests use real per-test PostgreSQL schemas and the normal
+persistent application lifecycle. They provision test actors through repositories
+only inside those disposable schemas. The process restart helper under
+`tests/support/` contains test-only credentials and is not an administrator
+provisioning command. Run the affected checks with:
+
+```sh
+pdm run pytest tests/integration/test_persistent_repositories.py tests/integration/test_persistence_migrations.py tests/integration/test_persistent_http.py
+```

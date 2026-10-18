@@ -3,6 +3,7 @@ User-related dependencies and dependency injection logic.
 """
 
 from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.use_cases.auth.interfaces import IPasswordService
 from app.application.use_cases.user import (
@@ -14,12 +15,9 @@ from app.application.use_cases.user import (
     RemoveRoleFromUserUseCase,
     UpdateUserUseCase,
 )
-from app.infra.repositories.in_memory.registry import (
-    role_repository as _in_memory_role_repository,
-)
-from app.infra.repositories.in_memory.registry import (
-    user_repository as _in_memory_user_repository,
-)
+from app.infra.repositories.postgres.user_repository import SQLUserRepository
+from app.interface.dependencies.database_dependencies import get_database_session
+from app.interface.dependencies.role_dependencies import get_role_repository
 from app.interface.repository.role_repository_interface import IRoleRepository
 from app.interface.repository.user_repository_interface import IUserRepository
 
@@ -30,14 +28,11 @@ def get_password_service() -> IPasswordService:
     return BcryptPasswordService()
 
 
-async def get_user_repository() -> IUserRepository:
+async def get_user_repository(
+    session: AsyncSession = Depends(get_database_session),
+) -> IUserRepository:
     """Dependency to provide UserRepository instance."""
-    return _in_memory_user_repository
-
-
-async def get_role_repository() -> IRoleRepository:
-    """Dependency to provide RoleRepository instance."""
-    return _in_memory_role_repository
+    return SQLUserRepository(session)
 
 
 async def get_get_all_users_usecase(

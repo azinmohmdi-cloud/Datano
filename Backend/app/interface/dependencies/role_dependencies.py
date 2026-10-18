@@ -3,6 +3,7 @@ Role-related dependencies and dependency injection logic.
 """
 
 from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.use_cases.role import (
     AssignPermissionToRoleUseCase,
@@ -13,9 +14,8 @@ from app.application.use_cases.role import (
     RemovePermissionFromRoleUseCase,
     UpdateRoleUseCase,
 )
-from app.infra.repositories.in_memory.registry import (
-    role_repository as _in_memory_role_repository,
-)
+from app.infra.repositories.postgres.role_repository import SQLRoleRepository
+from app.interface.dependencies.database_dependencies import get_database_session
 from app.infra.repositories.in_memory.registry import (
     permission_repository as _in_memory_permission_repository,
 )
@@ -25,9 +25,11 @@ from app.interface.repository.permission_repository_interface import (
 from app.interface.repository.role_repository_interface import IRoleRepository
 
 
-async def get_role_repository() -> IRoleRepository:
+async def get_role_repository(
+    session: AsyncSession = Depends(get_database_session),
+) -> IRoleRepository:
     """Dependency to provide RoleRepository instance."""
-    return _in_memory_role_repository
+    return SQLRoleRepository(session)
 
 
 async def get_permission_repository() -> IPermissionRepository:

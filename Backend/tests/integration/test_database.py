@@ -129,7 +129,7 @@ def _migrate(connection: Connection, direction: str, revision: str) -> None:
 async def test_migration_upgrades_an_empty_postgresql_schema(database: Database) -> None:
     async with database.engine.begin() as connection:
         assert await connection.run_sync(lambda sync: inspect(sync).get_table_names()) == []
-        await connection.run_sync(_migrate, "upgrade", "head")
+        await connection.run_sync(_migrate, "upgrade", "0001_database_baseline")
         tables = await connection.run_sync(lambda sync: inspect(sync).get_table_names())
         assert tables == ["alembic_version"]
     async with database.engine.connect() as reader:
@@ -140,15 +140,15 @@ async def test_migration_replay_and_downgrade_preserve_existing_data(database: D
     async with database.engine.begin() as connection:
         await connection.execute(text("CREATE TABLE preservation_probe (id integer PRIMARY KEY)"))
         await connection.execute(text("INSERT INTO preservation_probe VALUES (42)"))
-        await connection.run_sync(_migrate, "upgrade", "head")
-        await connection.run_sync(_migrate, "upgrade", "head")
+        await connection.run_sync(_migrate, "upgrade", "0001_database_baseline")
+        await connection.run_sync(_migrate, "upgrade", "0001_database_baseline")
     async with database.engine.begin() as connection:
         await connection.run_sync(_migrate, "downgrade", "base")
     async with database.engine.connect() as reader:
         assert await reader.scalar(text("SELECT id FROM preservation_probe")) == 42
         assert await reader.scalar(text("SELECT count(*) FROM alembic_version")) == 0
     async with database.engine.begin() as connection:
-        await connection.run_sync(_migrate, "upgrade", "head")
+        await connection.run_sync(_migrate, "upgrade", "0001_database_baseline")
     async with database.engine.connect() as reader:
         assert await reader.scalar(text("SELECT id FROM preservation_probe")) == 42
         assert await reader.scalar(text("SELECT version_num FROM alembic_version")) == "0001_database_baseline"

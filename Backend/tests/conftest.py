@@ -1,5 +1,6 @@
 import sys
 import warnings
+from contextlib import asynccontextmanager
 from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -20,7 +21,19 @@ if TYPE_CHECKING:
 @pytest.fixture
 def test_client() -> Iterator[TestClient]:
     from app.infra.repositories.in_memory import registry
-    from app.main import app
+    from app.main import create_app
+    from app.infra.core.seed import seed
+    from app.interface.dependencies.user_dependencies import get_user_repository
+    from app.interface.dependencies.role_dependencies import get_role_repository
+
+    @asynccontextmanager
+    async def memory_lifespan(application):
+        await seed()
+        yield
+
+    app = create_app(lifespan_handler=memory_lifespan)
+    app.dependency_overrides[get_user_repository] = lambda: registry.user_repository
+    app.dependency_overrides[get_role_repository] = lambda: registry.role_repository
 
     # Reset before lifespan seeds this test, and after shutdown even on failure.
     registry.reset()

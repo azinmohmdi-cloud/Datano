@@ -11,7 +11,7 @@ from pydantic_settings import BaseSettings
 class Config(BaseSettings):
     """Application configuration settings."""
 
-    # Optional until persistent repositories are wired in BE-004.
+    # Settings can be loaded offline; the serving lifespan requires DATABASE_URL.
     database_url: SecretStr | None = Field(default=None, alias="DATABASE_URL")
 
     # JWT Configuration
