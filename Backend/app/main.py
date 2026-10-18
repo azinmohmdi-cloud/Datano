@@ -16,6 +16,8 @@ from app.infra.database.connection import Database
 from app.infra.database.models import RegistrationAttemptRow, SessionRow
 from app.interface.controller import api_router
 from app.interface.dependencies.session_dependencies import session_policy
+from app.infra.services.csrf_service import CsrfService
+from app.interface.csrf import document_csrf
 
 
 def create_app(
@@ -26,6 +28,7 @@ def create_app(
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         session_policy(application.state.settings)
+        CsrfService.from_config(application.state.settings)
         database = Database.from_config(settings if settings is not None else config)
         application.state.database = database
         try:
@@ -54,6 +57,7 @@ def create_app(
     register_all_exception_handlers(application)
     add_pagination(application)
     application.include_router(api_router)
+    document_csrf(application)
     return application
 
 

@@ -11,7 +11,7 @@ class TestLogin:
         data = response.json()
         assert data["success"] is True
         assert data["message"] == "Login successful"
-        assert "token" in data["payload"]
+        assert set(data["payload"]) == {"user","effective_role","csrf_token"}
 
     def test_login_wrong_password(self, test_client):
         response = test_client.post(
@@ -34,10 +34,10 @@ class TestLogin:
 
 
 class TestMe:
-    def test_get_me_authenticated(self, test_client, admin_token):
+    def test_get_me_authenticated(self, test_client, admin_session):
         response = test_client.get(
             "/api/auth/me",
-            headers={"Authorization": f"Bearer {admin_token}"},
+            headers={"Cookie": f"__Host-datano_session={admin_session}"},
         )
         assert response.status_code == 200
         data = response.json()

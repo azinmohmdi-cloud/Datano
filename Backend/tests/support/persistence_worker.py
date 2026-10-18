@@ -4,7 +4,7 @@ import json
 import os
 import sys
 
-from fastapi.testclient import TestClient
+from tests.support.browser_client import BrowserClient as TestClient
 
 from app.domain.entities import UserEntity
 from app.infra.core.config import Config
@@ -42,7 +42,7 @@ def run(phase: str) -> dict:
             asyncio.run(provision_test_actor(url))
         response = client.post("/api/auth/login", json={"username":"test-actor","password":PASSWORD})
         assert response.status_code == 200
-        headers = {"Authorization": "Bearer " + response.json()["payload"]["token"]}
+        headers = {"Cookie": "__Host-datano_session=" + client.cookies["__Host-datano_session"]}
         if phase == "write":
             response = client.post("/api/users/", headers=headers, json={"first_name":"پایدار","last_name":"آزمون",
                 "email":"persisted@example.test","username":"persisted","password":PASSWORD})
@@ -75,7 +75,7 @@ def run(phase: str) -> dict:
         assert response.status_code == 409
         response = client.post("/api/auth/login", json={"username":"persisted","password":PASSWORD})
         assert response.status_code == 200
-        restricted = {"Authorization":"Bearer " + response.json()["payload"]["token"]}
+        restricted = {"Cookie":"__Host-datano_session=" + client.cookies["__Host-datano_session"]}
         assert client.get("/api/users/", headers=restricted).status_code == 200
         assert client.delete(f"/api/roles/{manifest['role_id']}", headers=restricted).status_code == 403
     return manifest

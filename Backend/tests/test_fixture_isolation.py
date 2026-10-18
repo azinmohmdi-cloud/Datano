@@ -25,7 +25,7 @@ def test_test_names_are_unique() -> None:
     assert not duplicates, duplicates
 
 
-@pytest.mark.parametrize("resource", ["users", "roles", "cookies", "refresh_tokens"])
+@pytest.mark.parametrize("resource", ["users", "roles", "cookies", "sessions"])
 @pytest.mark.parametrize("order", [("alpha", "beta"), ("beta", "alpha")])
 def test_http_fixture_lifecycles_are_independent(
     pytester: Pytester, resource: str, order: tuple[str, str]
@@ -34,7 +34,7 @@ def test_http_fixture_lifecycles_are_independent(
     backend_root = Path(__file__).resolve().parents[1]
     pytester.makeconftest(
         f"import sys\nsys.path.insert(0, {str(backend_root)!r})\n"
-        "from tests.conftest import admin_token, test_client\n"
+        "from tests.conftest import admin_session, test_client\n"
     )
     pytester.makepyfile(
         test_lifecycle=f'''
@@ -42,30 +42,25 @@ from pathlib import Path
 
 import pytest
 
-from app.infra.repositories.in_memory.registry import refresh_token_repository
 
 RESOURCE = {resource!r}
 
 
 async def exercise(client, token, label):
-    headers = {{"Authorization": f"Bearer {{token}}"}}
+    headers = {{"Cookie": f"__Host-datano_session={{token}}"}}
     if RESOURCE == "cookies":
         marker_present = "isolation-marker" in client.cookies
         assert marker_present is False
         client.cookies.set("isolation-marker", label)
-    elif RESOURCE == "refresh_tokens":
-        previous = Path("previous-refresh-token")
+    elif RESOURCE == "sessions":
+        previous = Path("previous-session")
         if previous.exists():
             old_token = previous.read_text()
-            previous_token_present = (
-                await refresh_token_repository.get_refresh_token_by_token(old_token)
-            ) is not None
-            assert previous_token_present is False
-            response = client.post(
-                "/api/auth/refresh", headers={{"Cookie": f"refresh_token={{old_token}}"}}
+            response = client.get(
+                "/api/auth/me", headers={{"Cookie": f"__Host-datano_session={{old_token}}"}}
             )
             assert response.status_code == 401
-        previous.write_text(client.cookies["refresh_token"])
+        previous.write_text(client.cookies["__Host-datano_session"])
     elif RESOURCE == "users":
         response = client.get("/api/users/", params={{"size": 100}}, headers=headers)
         assert response.status_code == 200
@@ -91,13 +86,13 @@ async def exercise(client, token, label):
 
 
 @pytest.mark.asyncio
-async def test_alpha(test_client, admin_token):
-    await exercise(test_client, admin_token, "alpha")
+async def test_alpha(test_client, admin_session):
+    await exercise(test_client, admin_session, "alpha")
 
 
 @pytest.mark.asyncio
-async def test_beta(test_client, admin_token):
-    await exercise(test_client, admin_token, "beta")
+async def test_beta(test_client, admin_session):
+    await exercise(test_client, admin_session, "beta")
 '''
     )
     result = pytester.runpytest_subprocess(
@@ -111,24 +106,27 @@ def test_http_fixtures_clean_up_after_a_failed_test(pytester: Pytester) -> None:
     backend_root = Path(__file__).resolve().parents[1]
     pytester.makeconftest(
         f"import sys\nsys.path.insert(0, {str(backend_root)!r})\n"
-        "from tests.conftest import (admin_auth, admin_token, created_role, created_user, test_client)\n"
+        "from tests.conftest import (admin_auth, admin_session, created_role, created_user, test_client)\n"
     )
     pytester.makepyfile(
         test_teardown='''
 import pytest
 
 from app.infra.repositories.in_memory.registry import (
-    refresh_token_repository, role_repository, user_repository,
+    role_repository, user_repository,
 )
 
+from app.interface.dependencies.session_dependencies import get_session_repository
+from app.infra.services.session_token_service import OpaqueSessionTokens
+
 previous_client = None
-previous_refresh_token = None
+previous_session = None
 
 
 def test_failure(test_client, admin_auth, created_user, created_role):
-    global previous_client, previous_refresh_token
+    global previous_client, previous_session
     previous_client = test_client
-    previous_refresh_token = test_client.cookies["refresh_token"]
+    previous_session = test_client.cookies["__Host-datano_session"]
     response = test_client.post(
         f"/api/users/{created_user.id}/roles/{created_role.id}", headers=admin_auth,
     )
@@ -145,8 +143,9 @@ async def test_after_failure():
     assert cookie_count == 0
     assert await user_repository.get_by_username("fixture-user") is None
     assert await role_repository.get_by_name("Fixture role") is None
+    repository = previous_client.app.dependency_overrides[get_session_repository]()
     previous_token_present = (
-        await refresh_token_repository.get_refresh_token_by_token(previous_refresh_token)
+        await repository.resolve(OpaqueSessionTokens().digest(previous_session))
     ) is not None
     assert previous_token_present is False
 '''

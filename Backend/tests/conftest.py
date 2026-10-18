@@ -1,4 +1,5 @@
 import sys
+import os
 import warnings
 from contextlib import asynccontextmanager
 from collections.abc import Iterator
@@ -6,11 +7,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from fastapi.testclient import TestClient
+from tests.support.browser_client import BrowserClient as TestClient
 
 pytest_plugins = ["pytester"]
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+# Synthetic test configuration only. Serving configuration has no secret/origin fallback.
+os.environ.setdefault("PUBLIC_ORIGIN", "https://testserver")
+os.environ.setdefault("CSRF_SECRET_KEY", "test-only-csrf-key-never-for-deployment-0001")
 
 warnings.filterwarnings("ignore", message="I/O operation on closed file")
 
@@ -33,7 +38,7 @@ def test_client() -> Iterator[TestClient]:
     from app.interface.login_route import get_login_limiter
     from app.application.use_cases.auth.interfaces import RegistrationLimitDecision
 
-    # Legacy bearer/CRUD characterization remains isolated in memory. Product
+    # CRUD characterization remains isolated in memory. Product
     # session behavior and persistence are tested separately with real PostgreSQL.
     records = {}
     session_repository = AsyncMock(spec=ISessionRepository)
@@ -87,19 +92,18 @@ def test_client() -> Iterator[TestClient]:
 
 
 @pytest.fixture
-def admin_token(test_client: TestClient) -> str:
+def admin_session(test_client: TestClient) -> str:
     response = test_client.post(
         "/api/auth/login",
         json={"username": "admin", "password": "FixtureAdmin123!"},
     )
     assert response.status_code == 200, response.text
-    data = response.json()
-    return data["payload"]["token"]
+    return test_client.cookies["__Host-datano_session"]
 
 
 @pytest.fixture
-def admin_auth(admin_token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {admin_token}"}
+def admin_auth(admin_session: str) -> dict[str, str]:
+    return {"Cookie": f"__Host-datano_session={admin_session}"}
 
 
 @pytest.fixture

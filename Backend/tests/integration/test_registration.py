@@ -2,7 +2,7 @@ import json
 from datetime import UTC, datetime
 
 import pytest
-from fastapi.testclient import TestClient
+from tests.support.browser_client import BrowserClient as TestClient
 from sqlalchemy import func, select
 
 from app.infra.core.config import Config
@@ -56,7 +56,7 @@ async def test_public_registration_creates_active_user_and_survives_restart(pers
     with TestClient(application(isolated_postgres_url)) as client:
         response = client.post("/api/auth/login", json={"email":" new+TAG@example.test ","password":PASSWORD})
         assert response.status_code == 200
-        headers = {"Authorization":"Bearer " + response.json()["payload"]["token"]}
+        headers = {"Cookie":"__Host-datano_session=" + client.cookies["__Host-datano_session"]}
         assert client.get("/api/auth/me", headers=headers).json()["payload"]["id"] == user["id"]
         assert client.get("/api/users/", headers=headers).status_code == 403
     assert PASSWORD not in caplog.text

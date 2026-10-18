@@ -1,20 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.interface.csrf import CsrfMiddleware
+from app.infra.services.csrf_service import canonical_origin
 
 
 def add_middlewares(app: FastAPI):
+    settings = app.state.settings
+    origins = ([canonical_origin(settings.public_origin, allow_local_http=settings.session_allow_insecure_local_http)]
+        if settings.public_origin is not None else [])
+    app.add_middleware(CsrfMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",  # React dev server
-            "http://localhost:5173",  # Vite dev server
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:5173",
-            # Add your production domain later
-        ],
-        allow_credentials=True,  # Required for cookies/auth
-        allow_methods=["*"],  # Or specify: ["GET", "POST", "PUT", "DELETE"]
-        allow_headers=["*"],  # Or specify headers you need
-        expose_headers=["*"],  # Expose custom headers to browser
-        max_age=600,  # Cache preflight requests for 10 minutes
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"],
+        allow_headers=["Content-Type", "X-CSRF-Token"],
+        expose_headers=["Retry-After"],
+        max_age=600,
     )

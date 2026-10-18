@@ -2,10 +2,9 @@
 Authentication-related dependencies and dependency injection logic.
 """
 
-from typing import List, Optional
+from collections.abc import Sequence
 
 from fastapi import Cookie, Depends
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.application.use_cases.auth import (
     AuthenticateUserUseCase,
@@ -13,14 +12,11 @@ from app.application.use_cases.auth import (
     LogoutUseCase,
     RefreshAccessTokenUseCase,
 )
-from app.domain.entities import RoleEntity
 from app.domain.error.exceptions import (
     CredentialsValidationException,
     ForbiddenException,
-    InactiveUserException,
 )
 from app.infra.services import Argon2PasswordService, JoseTokenService
-from app.infra.utils.auth.jwt import verify_token
 from app.infra.utils.auth.permission import Permission
 from app.interface.dependencies.refresh_token_dependencies import (
     get_refresh_token_repository,
@@ -36,10 +32,6 @@ from app.application.use_cases.auth.current_identity_use_case import CurrentIden
 from app.application.use_cases.auth.session_service import SessionService
 from app.interface.dependencies.session_dependencies import get_session_service
 from app.interface.session_cookie import SessionCredential, read_session_cookie
-
-
-security = HTTPBearer(auto_error=False)
-
 
 def get_refresh_token_from_cookie(
     refresh_token: str = Cookie(None, alias="refresh_token"),
@@ -60,104 +52,18 @@ def get_token_service() -> JoseTokenService:
     return JoseTokenService()
 
 
-async def authorize(
-    required_permissions: List[Permission] = [],
-    access_token: HTTPAuthorizationCredentials = Depends(security),
-    user_repository: IUserRepository = Depends(get_user_repository),
-    role_repository: IRoleRepository = Depends(get_role_repository),
-) -> Optional[User]:
-    """
-    Get the current user from the token in the request and check required permissions.
-
-    Args:
-        required_permissions: List of permissions required to access the resource
-        credentials: HTTP authorization credentials from the request
-        user_repository: User repository for database access
-        role_repository: Role repository for database access
-
-    Returns:
-        UserEntity object if token is valid and user has required permissions, raises HTTPException otherwise
-    """
-    # Authentication --------------------
-    if not access_token.credentials:
-        raise CredentialsValidationException("No access token provided")
-
-    token_data = verify_token(access_token.credentials)
-
-    if token_data is None or token_data.username is None:
-        raise CredentialsValidationException()
-
-    # Get user entity from the database using the username from the token
-    # We use the entity method to get the full user with hashed password for domain creation
-    user_domain = await user_repository.get_by_username(token_data.username)
-    if user_domain is None:
-        raise CredentialsValidationException()
-
-    if not user_domain.is_active:
-        raise InactiveUserException()
-
-    # Convert entity to DTO
-    user_dto = UserMapper.to_dto(user_domain)
-    # -------------------- Authentication
-
-    # Authorization --------------------
-
-    # If required permissions are specified, check if the user has them
-    if required_permissions:
-        # Get all roles assigned to the user
-        user_role_ids = [role.id for role in user_dto.roles] if user_dto.roles else []
-
-        # Fetch all user roles with their permission_ids
-        user_roles: list[RoleEntity] = []
-        for role_id in user_role_ids:
-            role = await role_repository.get_by_id(role_id)
-            if role:
-                user_roles.append(role)
-
-        # Collect all permissions from all user roles
-        all_user_permission_ids = set()
-        for role in user_roles:
-            if role.permission_ids:
-                all_user_permission_ids.update(role.permission_ids)
-
-        # Skip permissions check for super users
-        if Permission.Super_User.value not in all_user_permission_ids:
-            # Check if user has all required permissions
-            required_permission_ids = [perm.value for perm in required_permissions]
-            for perm_id in required_permission_ids:
-                if perm_id not in all_user_permission_ids:
-                    raise ForbiddenException()
-    # -------------------- Authorization
-
-    return user_dto
+async def authorize(identity: CurrentIdentity, required_permissions: Sequence[Permission] = ()) -> User:
+    permission_ids = {permission for role in identity.user.roles or [] if role.is_active
+                      for permission in role.permission_ids or []}
+    if (Permission.Super_User.value not in permission_ids
+            and any(permission.value not in permission_ids for permission in required_permissions)):
+        raise ForbiddenException()
+    return UserMapper.to_dto(identity.user)
 
 
-def get_authorized_user(required_permissions: List[Permission] = []):
-    """
-    Factory function to create a permission checker with specific permissions.
-
-    Args:
-        required_permissions: List of permissions required for the endpoint
-
-    Returns:
-        A function that can be used with FastAPI's Depends
-    """
-
-    async def authorize_dependency(
-        access_token: Optional[HTTPAuthorizationCredentials] = Depends(security),
-        user_repository: IUserRepository = Depends(get_user_repository),
-        role_repository: IRoleRepository = Depends(get_role_repository),
-    ) -> Optional[User]:
-        if access_token is None:
-            raise CredentialsValidationException()
-
-        return await authorize(
-            access_token=access_token,
-            required_permissions=required_permissions,
-            user_repository=user_repository,
-            role_repository=role_repository,
-        )
-
+def get_authorized_user(required_permissions: Sequence[Permission] = ()):
+    async def authorize_dependency(identity: CurrentIdentity = Depends(get_current_identity)) -> User:
+        return await authorize(identity, required_permissions)
     return authorize_dependency
 
 
@@ -173,37 +79,26 @@ async def get_login_usecase(
     authenticate_usecase: AuthenticateUserUseCase = Depends(
         get_authenticate_user_usecase
     ),
-    token_service: JoseTokenService = Depends(get_token_service),
-    refresh_token_repository=Depends(get_refresh_token_repository),
     sessions: SessionService = Depends(get_session_service),
     users: IUserRepository = Depends(get_user_repository),
     roles: IRoleRepository = Depends(get_role_repository),
 ) -> LoginUseCase:
     """Dependency to provide LoginUseCase instance."""
-    return LoginUseCase(authenticate_usecase, token_service, refresh_token_repository,
-        sessions, GetCurrentIdentityUseCase(users, roles))
+    return LoginUseCase(authenticate_usecase, sessions, GetCurrentIdentityUseCase(users, roles))
 
 
 async def get_current_identity(
     credential: SessionCredential = Depends(read_session_cookie),
-    access_token: Optional[HTTPAuthorizationCredentials] = Depends(security),
     users: IUserRepository = Depends(get_user_repository),
     roles: IRoleRepository = Depends(get_role_repository),
     sessions: SessionService = Depends(get_session_service),
 ) -> CurrentIdentity:
-    if credential.present:
-        record = await sessions.resolve(credential.token)
-        if record is None:
-            raise CredentialsValidationException()
-        user_id = record.user_id
-    else:
-        # Explicit temporary compatibility until BE-009 migrates JWT consumers.
-        # A supplied invalid cookie must never fall back to a bearer credential.
-        if access_token is None:
-            raise CredentialsValidationException()
-        legacy = await authorize(access_token=access_token, user_repository=users, role_repository=roles)
-        user_id = legacy.id
-    return await GetCurrentIdentityUseCase(users, roles).execute(user_id)
+    if not credential.present:
+        raise CredentialsValidationException()
+    record = await sessions.resolve(credential.token)
+    if record is None:
+        raise CredentialsValidationException()
+    return await GetCurrentIdentityUseCase(users, roles).execute(record.user_id)
 
 
 async def get_refresh_access_token_usecase(

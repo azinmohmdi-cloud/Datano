@@ -2,14 +2,14 @@ from datetime import UTC, datetime, timedelta
 from http.cookies import SimpleCookie
 
 import pytest
-from fastapi.testclient import TestClient
+from tests.support.browser_client import BrowserClient as TestClient
 from sqlalchemy import text
 
 from app.domain.entities import RoleEntity, UserEntity
 from app.infra.core.config import Config
 from app.infra.repositories.postgres.role_repository import SQLRoleRepository
 from app.infra.repositories.postgres.user_repository import SQLUserRepository
-from app.infra.services import Argon2PasswordService
+from app.infra.services import Argon2PasswordService, JoseTokenService
 from app.infra.services.session_token_service import OpaqueSessionTokens
 from app.main import create_app
 from tests.postgres import isolated_postgres_url, persistent_database
@@ -64,9 +64,8 @@ async def test_login_sets_secure_cookie_and_returns_server_identity(persistent_d
         assert cookie["samesite"].lower() == "lax" and cookie["path"] == "/" and not cookie["domain"]
         assert cookie["max-age"] == ("2592000" if remember else "")
         assert not cookie["expires"]
-        assert cookies["refresh_token"]["secure"] and cookies["refresh_token"]["httponly"]
-        if not remember:
-            assert not cookies["refresh_token"]["max-age"]
+        assert "refresh_token" not in cookies
+        assert cookies["__Host-datano_csrf"]["secure"] and cookies["__Host-datano_csrf"]["httponly"]
         payload = response.json()["payload"]
         assert payload["user"]["id"] == account.id and payload["effective_role"] == "User"
         assert cookie.value not in response.text
@@ -154,7 +153,8 @@ async def test_invalid_credentials_never_issue_sessions(persistent_database, iso
 async def test_bad_session_never_falls_back_to_valid_bearer(persistent_database, isolated_postgres_url, account, cookie):
     with TestClient(application(isolated_postgres_url),base_url="https://datano.test") as client:
         response=client.post("/api/auth/login",json=BODY)
-        legacy=response.json()["payload"]["token"]
+        from app.infra.services import JoseTokenService
+        legacy=JoseTokenService().generate_access_token({"sub":account.id,"username":account.username})
         current=client.get("/api/auth/me",headers={"Authorization":f"Bearer {legacy}","Cookie":f"{COOKIE}={cookie}"})
         assert current.status_code == 401
 
@@ -249,7 +249,7 @@ async def test_unusable_session_is_denied_even_with_valid_legacy_token(persisten
                     {"d":OpaqueSessionTokens().digest(token)})
             else:
                 await session.execute(text("DELETE FROM users WHERE id=:id"),{"id":account.id})
-        response=client.get("/api/auth/me",headers={"Authorization":"Bearer "+response.json()["payload"]["token"]})
+        response=client.get("/api/auth/me",headers={"Authorization":"Bearer "+JoseTokenService().generate_access_token({"sub":account.id,"username":account.username})})
         assert response.status_code == 401 and token not in response.text
 
 

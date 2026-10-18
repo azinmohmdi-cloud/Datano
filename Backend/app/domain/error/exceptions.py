@@ -197,3 +197,9 @@ class ServiceUnavailableException(DomainException):
             message, error_code="SERVICE_UNAVAILABLE",
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
+
+
+class LegacyAuthenticationRetiredException(DomainException):
+    def __init__(self):
+        super().__init__("Legacy token authentication is retired; sign in again",
+            error_code="AUTH_MIGRATION_REQUIRED", status_code=status.HTTP_410_GONE)

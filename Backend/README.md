@@ -10,7 +10,7 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
 
 - Auth, users, and roles routes under `/api`; OpenAPI at `/openapi.json`.
 - Email/password login with canonical email lookup; deprecated username login
-  remains for compatibility. Bearer JWT access tokens and HTTP-only refresh cookie.
+  remains for compatibility. Product authentication uses only an opaque session cookie.
 - Argon2id for new passwords and verified legacy hash upgrades; exact Unicode
   passwords and an explicit recovery response for bcrypt inputs over 72 bytes.
 - Public registration creates an active ordinary `User` atomically. Registration
@@ -19,10 +19,12 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
   a placeholder, not a delivered ABAC engine.
 - PostgreSQL-backed users, roles and assignments through the existing repository
   contracts, with SQLAlchemy 2 async transactions and Alembic migrations.
-- Refresh-token dictionaries remain process-local pending the session tasks.
+- Historical JWT/refresh utilities remain unmounted; public legacy refresh/logout
+  endpoints return 410 pending credential migration / BE-010 logout.
 - A digest-only, revocable opaque-session store is available in PostgreSQL.
   Login issues its secure cookie and `/auth/me` reads current server identity.
-  Legacy JWT compatibility remains temporarily until BE-009.
+  Every protected route reloads session identity and active role permissions.
+  All unsafe `/api` operations require trusted Origin and a signed CSRF token.
 - DTO/mapping and use-case/repository separation. Domain errors still depend on
   FastAPI status values and pagination types cross layer boundaries; isolation is partial.
 - Pytest entity/repository/HTTP tests, including real PostgreSQL constraints,
@@ -30,7 +32,7 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
   inject in-memory adapters with per-test clients, cookies and state.
 
 These are template/development capabilities, not a completed marketing backend.
-The approved target also includes Celery/Redis, full session authorization/CSRF,
+The approved target also includes Celery/Redis, session logout,
 email recovery, and the five-domain-entity product model.
 Those changes require their own authorized implementation tasks and mandatory
 red–green–refactor.
@@ -83,7 +85,8 @@ PDM records the selected application interpreter in the ignored `.pdm-python`.
 Use `pdm run` for all application commands. A lock-check failure needs investigation;
 do not use `pdm update` or regenerate dependency versions merely to bypass it.
 Settings can be loaded offline, but serving the app now requires `DATABASE_URL`
-in the environment or private `.env` and the current Alembic revision. Configure
+in the environment or private `.env`, the current Alembic revision, and explicit
+`PUBLIC_ORIGIN` / `CSRF_SECRET_KEY` (see BE-009 below). Configure
 PostgreSQL and run `pdm run alembic upgrade head` as described below before
 `make dev`. There is no silent in-memory fallback or startup schema creation.
 
@@ -113,9 +116,9 @@ It creates **no user or password** and never grants Admin based on a supplied
 email. The old fixed-password seed and `scripts/seed_in_memory.py` remain only
 for explicitly isolated in-memory tests/examples; they cannot provision the
 persistent app. Valid administrator provisioning/email proof is BE-014.
-The default signing key, cookie flags, refresh-token memory and local CORS still
-need their authorized auth/security tasks. Never commit environment secrets or
-describe the current JWT flow as the finished product session architecture.
+The historical JWT key is not used by product authentication or CSRF. Use a
+private independent CSRF key; there is no serving fallback. Logout, recovery and
+deployment hardening retain their separate authorized tasks.
 
 See [the BE-001 baseline report](docs/validation/BE-001-baseline.md) for the
 executed setup, lock metadata correction, startup checks, test results and
@@ -419,11 +422,10 @@ revocation for one account until commit. Bulk revocation covers sessions ordered
 before it; a subsequent authorized issuance can create a new session. Keep these
 transactions short; this correctness choice is not a throughput benchmark.
 
-BE-008 below now consumes these providers for login and current identity. A valid
-record alone is **not** an authorization decision: activation and current roles
-are reloaded. General permission enforcement/CSRF and the final JWT transition
-remain BE-009. Logout/recovery flows, Redis, an expiry-cleanup job and a session
-retention policy are not added by these storage/login tasks.
+BE-008 consumes these providers for login and current identity; BE-009 now uses
+them for every protected route and reloads activation and active role permissions.
+Logout/recovery flows, Redis, an expiry-cleanup job and a session retention policy
+are not added by these storage/login/authorization tasks.
 
 See [BE-007 validation](docs/validation/BE-007-opaque-sessions.md) for real
 PostgreSQL boundaries, concurrency, rollback, process persistence, migration
@@ -449,13 +451,12 @@ deprecated username compatibility field is accepted; unknown fields, including
 caller-selected roles/activation, return 422. Email lookup and password/hash
 compatibility reuse BE-005 rather than reimplementing identity rules.
 
-A successful response keeps the existing envelope and temporarily retains
-`payload.title`, `token`, `type` and `expires_at` for existing JWT consumers.
-It adds `payload.user` (the existing public User DTO) and `payload.effective_role`
-(`Admin`, `User` or null). The token field is marked deprecated in OpenAPI.
-The new opaque identifier appears only in Set-Cookie, never the JSON body.
-Do not persist credentials in browser storage. FE-029/030 will connect the
-approved UI after BE-009 establishes the final authentication/CSRF contract.
+The current response keeps the envelope with `payload.user` (the existing public
+User DTO), `payload.effective_role` (`Admin`, `User` or null) and `payload.csrf_token`.
+BE-009 removed the temporary JWT fields `title`, `token`, `type` and `expires_at`.
+The opaque identifier appears only in Set-Cookie, never the JSON body. Do not
+persist credentials in browser storage. FE-029/030 will connect the approved UI
+to the session/CSRF contract below.
 
 The normal cookie is **`__Host-datano_session`**, `HttpOnly`, `Secure`,
 `SameSite=Lax`, `Path=/`, without Domain. Without remember-me it has no Max-Age
@@ -471,8 +472,8 @@ host `localhost`, `127.0.0.1` or `::1` and uses **`datano_session_dev`** instead
 It is false by default. HTTPS and non-local URLs still use the secure cookie
 even when that flag is true. Do not enable the exception for deployment or use
 an untrusted proxy Host/scheme as a substitute for a local environment. The target
-deployment remains browser and `/api` on one HTTPS origin; production CORS/proxy
-configuration is not introduced here.
+deployment remains browser and `/api` on one HTTPS origin; CORS accepts only configured `PUBLIC_ORIGIN`; trusted proxy/TLS deployment
+configuration remains operational work.
 
 Each successful login generates a fresh server identifier and atomically revokes
 the previous browser cookie's session, including account switches. Unknown or
@@ -486,7 +487,7 @@ order. Concurrent deletion, activation/password changes and same-secret rehashes
 are handled using current server state. No sleep or retry loop hides a deadlock.
 
 `GET /api/auth/me` keeps the public User fields and adds `effective_role`. It
-prefers the opaque cookie, validates/touches the stored session, reloads the
+requires the opaque cookie, validates/touches the stored session, reloads the
 account and assigned role records, and rejects inactive/deleted accounts.
 Active `Admin` wins over active `User`; inactive, deleted or custom roles cannot
 invent either product role. Without an active product role the value is null.
@@ -494,18 +495,9 @@ No email or client header/storage value grants Admin. Administrator provisioning
 and ownership proof remain BE-014. Successful login/current-identity responses
 carry `Cache-Control: no-store`.
 
-For this explicit intermediate phase only, `/me` still accepts its existing
-bearer credential **when no session cookie is present**. A present empty,
-malformed, unknown, revoked or expired cookie returns 401 even with a valid
-bearer; it never falls back. Other protected routes and `/auth/refresh` retain
-their JWT behavior pending BE-009. The legacy refresh cookie remains for those
-consumers, now follows the same Secure/local policy and has no Max-Age without
-remember-me; its server expiry is still the legacy configured lifetime.
-`/auth/logout` still handles that legacy cookie and does **not** yet revoke the
-opaque session: the public opaque logout flow is BE-010. These intermediate
-capabilities are not a complete production authentication rollout. No global
-session permission migration, Origin/CSRF-token enforcement or logout/recovery
-flow was implemented in BE-008.
+BE-009 retires the intermediate JWT path described in the historical BE-008
+validation report. There is no Bearer fallback, including when a session cookie
+is absent, malformed, expired or revoked. See the migration contract below.
 
 Login uses the existing bounded credential-body guard and PostgreSQL counter
 implementation with an independent `login` namespace. The historical table name
@@ -519,7 +511,7 @@ keys and defaults are unchanged. Login's configurable technical defaults are:
 | `LOGIN_WINDOW_SECONDS` | 600 seconds |
 | `LOGIN_MAX_BODY_BYTES` | 8192 bytes for the complete body |
 
-Attempts are recorded before JSON parsing/password work in an independent short
+After BE-009 Origin/CSRF validation, attempts are recorded before JSON parsing/password work in an independent short
 transaction, so malformed credentials, failure or account rollback cannot refund
 them. Quota state survives app lifetimes. HTTP 429 includes Retry-After; oversized
 fixed/chunked bodies yield 413; unavailable counter storage yields 503 without
@@ -531,15 +523,89 @@ See [BE-008 validation](docs/validation/BE-008-session-login.md) for actual TDD,
 PostgreSQL concurrency/rollback evidence, API compatibility changes and full-suite
 results. No Frontend file, approved page design or generated client was changed.
 
+## Session authorization, CSRF and JWT cutover (BE-009)
+
+Every protected user, role and permission operation now uses the same opaque
+session authority as `/api/auth/me`. Current account activation and assigned
+role records are read from PostgreSQL on each request. Only active roles grant
+permissions; the existing permission IDs and Super_User semantics are preserved.
+A valid session with insufficient permissions returns 403; missing/unusable
+sessions and inactive accounts return 401. Caller-provided roles and Bearer
+headers never select identity or permissions.
+
+Serving requires **PUBLIC_ORIGIN** (one exact HTTPS origin, no path/trailing slash)
+and **CSRF_SECRET_KEY** (a private, independently generated secret of at least
+32 UTF-8 bytes). There is no production default. All workers must share the key
+and origin. Offline OpenAPI export remains possible without serving configuration.
+Use `secrets.token_urlsafe(32)` in a private environment to generate the key.
+`http://localhost:3000` or another explicit loopback port is allowed only with
+`SESSION_ALLOW_INSECURE_LOCAL_HTTP=true`. CORS allows credentials for that one
+origin and the Content-Type/X-CSRF-Token headers; it does not use wildcard origins.
+The Origin decision uses configuration rather than caller Host/forwarding headers.
+
+Browser/consumer sequence:
+
+1. Fetch **GET /api/auth/csrf** with credentials. Its envelope contains
+   `payload.csrf_token`; it also sets an HTTP-only nonce cookie. Bootstrap does
+   not authenticate or grant permissions. A supplied Origin must be trusted.
+2. Send **Origin: <PUBLIC_ORIGIN>** and **X-CSRF-Token: <payload.csrf_token>**
+   together with cookies on every POST/PUT/PATCH/DELETE under `/api`, including
+   anonymous login and registration. Browsers supply Origin automatically;
+   non-browser clients must set it explicitly. Tokens belong in headers, not URLs.
+3. On successful login, replace the in-memory CSRF token with the returned
+   `payload.csrf_token`. Login rotates both the opaque session and the nonce.
+   Its previous CSRF token cannot authorize the new session.
+4. Bootstrap again after a page reload or cookie/key change. Keep the token in
+   memory; do not store session credentials in localStorage or readable cookies.
+
+The nonce cookie is **__Host-datano_csrf**, HttpOnly/Secure/SameSite=Lax/Path=/,
+without Domain, Max-Age or Expires. Explicit local HTTP uses **datano_csrf_dev**.
+It is a random 256-bit nonce, not the header token. The header is HMAC-SHA256 over
+a versioned message containing a fixed-size digest of the current opaque cookie
+and the nonce. PostgreSQL stores only the session digest; neither the raw session
+nor the signing secret is returned in JSON. Constant-time comparison rejects forged,
+missing, malformed, duplicate or cross-session header tokens. Bootstrap reuses a
+valid nonce to avoid parallel-request rotation races. Bootstrap/login responses
+are `Cache-Control: no-store`, with Cookie/Origin variation where tokens appear.
+The signature design follows OWASP's
+[signed double-submit guidance](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html).
+
+Unsafe requests with a missing/untrusted Origin or invalid CSRF pair return
+403 with `payload.error_code=CSRF_FAILED`, before body parsing, quota consumption,
+authentication or mutation. GET/HEAD/OPTIONS remain safe; CORS preflight is handled
+without a CSRF token. Existing registration/login quotas apply after this boundary.
+A valid CSRF pair never substitutes for authentication or permissions. Signing
+key rotation invalidates CSRF tokens; bootstrap recovers without changing stored
+opaque sessions. All workers must deploy the key consistently.
+
+**Breaking JWT migration:** deploy this backend and consumers using the above
+contract together. Already-issued opaque sessions remain valid under BE-007
+limits; bootstrap supplies their CSRF token. JWT-only clients must sign in again
+with credentials; no JWT-to-session exchange is offered. New login no longer
+issues JWTs or refresh tokens and removes the four deprecated JSON fields.
+Any old refresh cookie presented on successful login is expired. Public
+**POST /api/auth/refresh** and the legacy **POST /api/auth/logout** return
+**410 AUTH_MIGRATION_REQUIRED** after Origin/CSRF checks (403 without them).
+They neither mint credentials nor revoke an opaque session. Opaque logout and
+cookie clearing remain **BE-010**. Historical JWT/refresh utilities are retained
+but have no mounted product authentication path; the historical JWT secret
+cannot sign CSRF tokens or authorize requests.
+
+Revision **0005_opaque_sessions** remains head: no migration, dependency, lifetime
+or identity/hash policy change is needed. No Frontend file or approved page design
+was changed or regenerated. FE-029/030 must adopt these API changes; browser UI
+integration, deployment proxy/TLS validation and complete production security
+certification are not claimed. See [BE-009 validation](docs/validation/BE-009-session-authorization-csrf.md).
+
 ## Test isolation
 
 The legacy `test_client` fixture explicitly creates a test application with
 in-memory repository overrides and the isolated development seed. It clears
 cookies and resets the registry before startup and after shutdown, including
-when a test fails. `admin_token` and `admin_auth` belong to that same test
+when a test fails. `admin_session` and `admin_auth` belong to that same test
 lifetime; do not retain them across tests or reset storage while they are in use.
 It explicitly overrides the session repository and login limiter for these
-legacy bearer/CRUD characterization tests; product cookie/storage/rate behavior
+isolated CRUD characterization tests; product cookie/storage/rate behavior
 uses real PostgreSQL in `test_session_login.py` and `test_sessions.py`.
 The development seed supplies authentication only. User/role CRUD and assignment
 tests create their own targets through `created_user` and `created_role` rather

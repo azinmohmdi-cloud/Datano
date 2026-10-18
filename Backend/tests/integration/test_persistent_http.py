@@ -1,4 +1,4 @@
-from fastapi.testclient import TestClient
+from tests.support.browser_client import BrowserClient as TestClient
 from fastapi_pagination import Params
 from pydantic import SecretStr
 

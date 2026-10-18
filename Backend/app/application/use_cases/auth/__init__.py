@@ -4,7 +4,8 @@ Auth Use Cases module - Clean Architecture implementation.
 
 from .authenticate_use_case import AuthenticateUserUseCase
 from .interfaces import IPasswordService, ITokenService
-from .login_use_case import LoginRequest, LoginResponse, LoginUseCase, TokenResponse
+from .login_use_case import LoginRequest, LoginResponse, LoginUseCase
+from .models import TokenResponse
 from .logout_use_case import LogoutRequest, LogoutResponse, LogoutUseCase
 from .refresh_token_use_case import (
     RefreshAccessTokenUseCase,

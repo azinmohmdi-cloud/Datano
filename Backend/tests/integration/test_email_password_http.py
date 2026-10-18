@@ -1,6 +1,6 @@
 import bcrypt
 import pytest
-from fastapi.testclient import TestClient
+from tests.support.browser_client import BrowserClient as TestClient
 
 from app.domain.entities import UserEntity
 from app.infra.core.config import Config
@@ -29,9 +29,9 @@ async def test_email_login_upgrades_legacy_hash_and_survives_new_app(persistent_
     with TestClient(application(isolated_postgres_url)) as client:
         response = client.post("/api/auth/login", json={"email":" \u2003LEGACY@example.test\u00a0", "password":"Secret123"})
         assert response.status_code == 200
-        assert set(response.json()["payload"]) == {"title", "token", "type", "expires_at", "user", "effective_role"}
+        assert set(response.json()["payload"]) == {"user", "effective_role", "csrf_token"}
         assert "HttpOnly" in response.headers["set-cookie"]
-        headers = {"Authorization": "Bearer " + response.json()["payload"]["token"]}
+        headers = {"Cookie":"__Host-datano_session=" + client.cookies["__Host-datano_session"]}
         current = client.get("/api/auth/me", headers=headers)
         assert current.status_code == 200
         assert "hashed_password" not in current.text and "email_key" not in current.text
@@ -87,7 +87,7 @@ def test_create_without_username_and_canonical_conflict(test_client, admin_auth)
     assert test_client.post("/api/users/", headers=admin_auth, json={**body,"email":"first.last+tag@EXAMPLE.test"}).status_code == 409
     # Activation/public registration belongs to BE-006; existing creation remains protected/inactive.
     assert public["is_active"] is False
-    assert test_client.post("/api/users/", json=body).status_code == 401
+    assert test_client.post("/api/users/", headers={"Cookie":""}, json=body).status_code == 401
 
 
 @pytest.mark.parametrize("password", ["x" * 14, "x" * 129, "😀" * 14])
@@ -138,7 +138,7 @@ async def test_persistent_creation_without_username_and_full_unicode_login(persi
     password = "😀" * 128
     with TestClient(application(isolated_postgres_url)) as client:
         login = client.post("/api/auth/login", json={"email":actor.email,"password":"Secret123"})
-        headers = {"Authorization":"Bearer " + login.json()["payload"]["token"]}
+        headers = {"Cookie":"__Host-datano_session=" + client.cookies["__Host-datano_session"]}
         response = client.post("/api/users/", headers=headers, json={"first_name":"Unicode", "last_name":"User", "email":"  NEW+Tag@Example.TEST  ", "password":password})
         assert response.status_code == 200
         identifier = response.json()["payload"]["id"]
@@ -147,7 +147,7 @@ async def test_persistent_creation_without_username_and_full_unicode_login(persi
     with TestClient(application(isolated_postgres_url)) as client:
         response = client.post("/api/auth/login", json={"email":" new+TAG@example.test ","password":password})
         assert response.status_code == 200
-        headers = {"Authorization":"Bearer " + response.json()["payload"]["token"]}
+        headers = {"Cookie":"__Host-datano_session=" + client.cookies["__Host-datano_session"]}
         assert client.get("/api/auth/me", headers=headers).json()["payload"]["id"] == identifier
         assert client.post("/api/auth/login", json={"email":"new+tag@example.test","password":"😀" * 18}).status_code == 401
     async with persistent_database.transaction() as session:

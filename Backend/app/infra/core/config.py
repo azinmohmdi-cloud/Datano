@@ -13,6 +13,8 @@ class Config(BaseSettings):
 
     # Settings can be loaded offline; the serving lifespan requires DATABASE_URL.
     database_url: SecretStr | None = Field(default=None, alias="DATABASE_URL")
+    public_origin: str | None = Field(default=None, alias="PUBLIC_ORIGIN")
+    csrf_secret_key: SecretStr | None = Field(default=None, alias="CSRF_SECRET_KEY")
 
     # Opaque session policy. Existing sessions retain their issued lifetimes.
     session_idle_seconds: int = Field(default=1800, gt=0, le=2147483647, alias="SESSION_IDLE_SECONDS")

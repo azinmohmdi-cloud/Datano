@@ -30,8 +30,6 @@ class TokenResponse:
 @dataclass(frozen=True)
 class LoginResponse:
     """Output port for login."""
-    access_token: TokenResponse
-    refresh_token: TokenResponse
     identity: CurrentIdentity
     session: IssuedSession
 

@@ -1,31 +1,21 @@
 import json
-from datetime import timedelta
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Request, Response
 
 from app.application.use_cases import (
     GetAllPermissionsRequest,
     LoginUseCase,
-    LogoutUseCase,
-    RefreshAccessTokenUseCase,
 )
 from app.application.use_cases.auth import (
     LoginRequest,
-    LogoutRequest,
-    RefreshTokenRequest,
-    TokenResponse,
 )
 from app.application.use_cases.permission import GetAllPermissionsUseCase
-from app.domain.error.exceptions import CredentialsValidationException
+from app.domain.error.exceptions import ForbiddenException, LegacyAuthenticationRetiredException
 from app.infra.core.config import config
 from app.infra.utils.auth.permission import Permission
 from app.interface.dependencies.auth_dependencies import (
     get_authorized_user,
     get_login_usecase,
-    get_logout_usecase,
-    get_refresh_access_token_usecase,
-    get_refresh_token_from_cookie,
     get_current_identity,
 )
 from app.interface.dependencies.permission_dependencies import (
@@ -36,10 +26,12 @@ from app.interface.dto import User, UserLogin
 from app.interface.dto.responses import StandardResponse, failure, success
 from app.interface.mappers import PermissionMapper
 from app.interface.mappers import UserMapper
-from app.interface.dto.session_dto import CurrentUser, SessionLogin
+from app.interface.dto.session_dto import CurrentUser, SessionLogin, CsrfToken
 from app.application.use_cases.auth.current_identity_use_case import CurrentIdentity
 from app.interface.session_cookie import session_cookie_policy, write_session_cookie
 from app.interface.login_route import LoginRoute
+from app.interface.csrf import issue_csrf
+from app.infra.services.csrf_service import CsrfService
 
 # Create router with prefix and tags
 auth_router = APIRouter(prefix="/auth", tags=["auth"], route_class=LoginRoute)
@@ -60,7 +52,7 @@ async def login(
 ):
     """Authenticate, rotate the opaque session and return current server identity.
 
-    Bearer response fields remain temporarily compatible until BE-009.
+    Only the opaque cookie authenticates product requests.
     """
     result = await usecase.execute(
         LoginRequest(username=user_login.username, email=user_login.email,
@@ -70,56 +62,34 @@ async def login(
 
     write_session_cookie(request, response, result.session)
     response.headers["Cache-Control"] = "no-store"
-    response.set_cookie(
-        key=result.refresh_token.title,
-        value=result.refresh_token.token,
-        httponly=True,
-        secure=session_cookie_policy(request).secure,
-        samesite="strict",
-        max_age=(int(timedelta(days=request.app.state.settings.refresh_token_expire_days).total_seconds())
-                 if user_login.remember_me else None),
-        path="/",
-    )
-
+    csrf_token = issue_csrf(request, response, session_token=result.session.token, rotate=True)
+    if "refresh_token" in request.cookies:
+        response.delete_cookie("refresh_token", path="/", secure=session_cookie_policy(request).secure,
+            httponly=True, samesite="strict")
     return success(message="Login successful", payload=SessionLogin(
-        title=result.access_token.title, token=result.access_token.token,
-        type=result.access_token.type, expires_at=result.access_token.expires_at,
         user=UserMapper.to_dto(result.identity.user), effective_role=result.identity.effective_role,
+        csrf_token=csrf_token,
     ))
 
 
-@auth_router.post("/refresh", response_model=StandardResponse[TokenResponse])
-async def refresh_tokens(
-    usecase: RefreshAccessTokenUseCase = Depends(get_refresh_access_token_usecase),
-    refresh_token: str = Depends(get_refresh_token_from_cookie),
-):
-    """Refresh the access token using the refresh token from HTTP-only cookie."""
-    result = await usecase.execute(RefreshTokenRequest(refresh_token=refresh_token))
+@auth_router.get("/csrf", response_model=StandardResponse[CsrfToken])
+async def csrf_token(request: Request, response: Response):
+    service = CsrfService.from_config(request.app.state.settings)
+    origins = request.headers.getlist("origin")
+    if origins and not service.valid_origin(origins):
+        raise ForbiddenException("CSRF Origin rejected")
+    token = issue_csrf(request, response)
+    return success("CSRF token issued", payload=CsrfToken(csrf_token=token))
 
-    return success(message="Token refreshed successfully", payload=result.access_token)
+
+@auth_router.post("/refresh", deprecated=True, responses={410:{"description":"Legacy token authentication retired; sign in again"}})
+async def refresh_tokens():
+    raise LegacyAuthenticationRetiredException()
 
 
-@auth_router.post("/logout", response_model=StandardResponse[None])
-async def logout(
-    request: Request,
-    response: Response,
-    usecase: LogoutUseCase = Depends(get_logout_usecase),
-):
-    """Logout the user by blacklisting the refresh token."""
-    # Get the refresh token from the cookie
-    refresh_token: Optional[str] = request.cookies.get("refresh_token")
-
-    if refresh_token:
-        # Blacklist the refresh token in the database
-        await usecase.execute(LogoutRequest(refresh_token=refresh_token))
-
-        # Clear the refresh token cookie
-        response.delete_cookie(key="refresh_token", path="/")
-
-        return success(message="Logged out successfully", payload=None)
-
-    else:
-        raise CredentialsValidationException("No refresh token provided")
+@auth_router.post("/logout", deprecated=True, responses={410:{"description":"Legacy logout retired; opaque logout is BE-010"}})
+async def logout():
+    raise LegacyAuthenticationRetiredException()
 
 
 @auth_router.get("/permissions", response_model=StandardResponse[list[PermissionDTO]])
