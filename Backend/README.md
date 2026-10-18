@@ -12,15 +12,18 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
 - Username/password login, bearer JWT access tokens, and HTTP-only refresh cookie.
 - Role permission checks; JSON permission/policy catalogs. Policy evaluation is
   a placeholder, not a delivered ABAC engine.
-- Process-local users, roles, and refresh-token dictionaries; no database or migrations.
+- Process-local users, roles, and refresh-token dictionaries.
+- PostgreSQL infrastructure with SQLAlchemy 2 async sessions/transactions and
+  Alembic baseline history; no persistent repositories or product tables yet.
 - DTO/mapping and use-case/repository separation. Domain errors still depend on
   FastAPI status values and pagination types cross layer boundaries; isolation is partial.
 - Pytest entity/repository/HTTP tests with per-test clients, cookies and in-memory state.
 
 These are template/development capabilities, not a completed marketing backend.
-The approved target is PostgreSQL/SQLAlchemy 2/Alembic, Celery/Redis, email login,
-opaque server-side sessions, and the five-domain-entity product model. Those changes
-require their own authorized implementation tasks and mandatory red–green–refactor.
+The approved target also includes persistent repositories, Celery/Redis, email
+login, opaque server-side sessions, and the five-domain-entity product model.
+Those changes require their own authorized implementation tasks and mandatory
+red–green–refactor.
 
 ## Architecture
 
@@ -30,6 +33,8 @@ app/
   application/use_cases/   # business orchestration
   interface/               # HTTP controllers, DTOs, mappers, contracts, DI
   infra/                   # concrete repositories, services, config, utilities
+    database/              # async PostgreSQL connection, transaction, ORM metadata
+migrations/                # Alembic environment, revision template and history
 statics/                   # JSON permission/policy catalogs
 scripts/                   # catalog management and process-local seed commands
 tests/                    # unit and integration tests
@@ -72,6 +77,10 @@ have development defaults; it does not provide production configuration.
 
 Once installed:
 
+Full-suite and integration commands require `DATANO_TEST_DATABASE_URL` pointing
+to a dedicated real PostgreSQL database; see the setup below. Missing test
+configuration fails explicitly instead of silently skipping database checks.
+
 ```sh
 make dev
 pdm run pytest
@@ -96,6 +105,83 @@ product registration/session architecture.
 See [the BE-001 baseline report](docs/validation/BE-001-baseline.md) for the
 executed setup, lock metadata correction, startup checks, test results and
 remaining limitations. No application behavior or API contract changed in BE-001.
+
+## PostgreSQL infrastructure and migrations
+
+BE-003 locks SQLAlchemy **2.0.55**, Alembic **1.20.0** and psycopg/binary
+**3.3.6**. It was tested against PostgreSQL **17.11**, not SQLite. Provide an
+existing PostgreSQL server or start a local development instance with Docker.
+For example, create a private environment file outside the repository containing
+`POSTGRES_USER=datano`, `POSTGRES_DB=datano` and a private `POSTGRES_PASSWORD`, then:
+
+```sh
+docker run --detach --name datano-postgres \
+  --env-file /absolute/path/to/private-postgres.env \
+  -p 127.0.0.1:55432:5432 \
+  -v datano-postgres-data:/var/lib/postgresql/data postgres:17-alpine
+docker exec datano-postgres pg_isready -U datano -d datano
+```
+
+Wait until the server accepts connections. Set `DATABASE_URL` in the shell or
+private `Backend/.env`, using the actual password (percent-encode reserved URL
+characters). Its required form is:
+
+```text
+postgresql+psycopg://datano:YOUR_URL_ENCODED_PASSWORD@127.0.0.1:55432/datano
+```
+
+The URL is represented as `SecretStr` in settings and is never stored in
+`alembic.ini`. The current in-memory app can start without it; constructing
+`Database.from_config(config)` or invoking migrations requires it. PostgreSQL
+with the explicit psycopg driver, host and database is required; SQLite fallback
+is not supported. Run from `Backend/` against the intended database:
+
+```sh
+pdm run alembic upgrade head
+pdm run alembic current
+pdm run alembic history
+pdm run alembic upgrade head --sql
+```
+
+Revision `0001_database_baseline` establishes history. On an empty target only
+Alembic's `alembic_version` table is created; there are no user/role or analytics
+tables. `pdm run alembic downgrade base` removes this revision marker and leaves
+the empty version table. Upgrade/downgrade do not touch existing application
+data. Re-upgrade with `pdm run alembic upgrade head`. Later revisions must define
+their own schema/data recovery behavior. No migration or `create_all` runs during
+application startup. Future model tasks must register their metadata imports in
+the Alembic environment before using autogeneration and review generated changes.
+
+`app.infra.database.connection.Database` owns a lazy connection pool with
+pre-ping, hidden SQL parameters and a five-second connection timeout. Each
+`async with database.transaction() as session:` creates a fresh `AsyncSession`,
+commits on success, rolls back on exceptions/cancellation and closes the session.
+Pass that session through repositories for one operation; do not share a session
+between concurrent tasks or commit independently inside participating repositories.
+The pool owner must `await database.dispose()` on shutdown. Alembic uses a
+separate `NullPool` engine and disposes it after execution. Wiring persistent
+repositories and the application pool lifecycle belongs to BE-004.
+
+Create a separate test database, for example on this local development instance:
+
+```sh
+docker exec datano-postgres createdb -U datano datano_test
+export DATANO_TEST_DATABASE_URL='postgresql+psycopg://datano:YOUR_URL_ENCODED_PASSWORD@127.0.0.1:55432/datano_test'
+pdm run pytest tests/integration/test_database.py tests/unit/test_database_settings.py tests/unit/test_database_migrations.py
+pdm run pytest --cov=app --cov=migrations
+```
+
+Export the test URL in the shell; tests do not read it from `.env`. The database
+name must start with `datano_test` and the role must have permission to create
+schemas there. Each database test creates its own UUID-named schema, sets its
+connection's `search_path`, and drops only that schema at teardown, including
+after failure. Database URLs and test credentials must remain private. A
+dedicated test database is required because the suite performs real writes and
+DDL; it never uses `DATABASE_URL` as a test fallback. Unit tests can run without
+PostgreSQL via `pdm run pytest tests/unit/`.
+
+See [BE-003 validation](docs/validation/BE-003-postgresql.md) for executed
+Red/Green checks, migration/data-preservation evidence and full-suite results.
 
 ## Test isolation
 
