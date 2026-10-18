@@ -13,6 +13,8 @@
     "lint": "eslint",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
+    "test:transport": "playwright test --config playwright.transport.config.ts",
+    "test:transport:integration": "playwright test --config playwright.transport.integration.config.ts",
     "api:generate": "orval --config orval.config.ts"
   },
   "dependencies": {

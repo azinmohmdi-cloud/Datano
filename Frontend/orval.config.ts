@@ -31,6 +31,7 @@ export default defineConfig({
       target: "./lib/api/v1/hooks.ts",
       schemas: "./lib/api/v1/model",
       client: "react-query",
+      httpClient: "axios",
       clean: false,
       override: {
         mutator: {

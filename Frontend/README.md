@@ -1050,27 +1050,110 @@ be inspected with `pnpm exec playwright show-trace <trace.zip>`.
 See [FE-006 validation](docs/validation/FE-006-playwright.md) for executed results
 and the browser-download limitation on the validation workstation.
 
-## API generation and transport
+## API generation and transport (FE-029)
 
-Set `OPENAPI_JSON_URL` to a reachable backend schema, normally
-`http://localhost:8000/openapi.json`, then run:
+`NEXT_PUBLIC_API_URL_V1` is the public runtime base URL, matching `.env.example`.
+Leave it empty for the browser's own origin, or supply the backend origin without
+an `/api` suffix. An empty value requires deployment ingress to forward `/api`
+to FastAPI; it does not configure a Next.js proxy or turn local mock routes into
+backend routes. Next.js embeds public environment values at build time.
+`OPENAPI_JSON_URL` is generation-only and must reference the trusted backend's
+actual `/openapi.json` or a file exported by its FastAPI app. Neither variable
+contains a private key, database URL or user credential.
+
+Use Node 24.19.0 / pnpm 11.25.0 and generate before TypeScript/build or transport
+tests on a fresh checkout. For example, with the intended backend running:
 
 ```sh
-pnpm api:generate
+OPENAPI_JSON_URL=http://127.0.0.1:8000/openapi.json pnpm api:generate
+pnpm test:transport
+pnpm exec tsc --noEmit --incremental false
+pnpm lint
+pnpm build
 ```
 
-Orval generates functions/hooks/models in Git-ignored `lib/api/v1/`.
-Generated endpoint paths already include `/api`; a runtime base URL should
-normally be `http://localhost:8000`, without duplicating `/api`.
-The fetcher reads `NEXT_PUBLIC_API_URL_V1`; `.env.example` currently lists
-`NEXT_PUBLIC_API_URL` instead. This mismatch remains a scoped implementation gap:
-use the variable actually read by code until an authorized configuration task fixes it.
-The fetcher returns the response body, including its envelope. Credential handling,
-auth interceptors, and automatic refresh are not implemented.
+Orval writes functions to `lib/api/v1/index.ts`, hooks to `lib/api/v1/hooks.ts`
+and their shared models to `lib/api/v1/model/`. They remain Git-ignored and must
+be regenerated, never hand-edited or force-added. Endpoint paths already include
+`/api`. Both targets explicitly use Axios request configurations: the function
+mutator is `customFetcher`, and the React Query mutator is `fetcherHookAdapter`.
+Orval 8's default fetch response wrapper is not this transport's contract; its
+hook target now explicitly selects `httpClient: "axios"`. No existing product
+consumer used the former URL/RequestInit adapter signature.
 
-The target product uses email login and a revocable server-side session with a
-secure cookie. Current backend JWT/refresh behavior is a separate implementation
-baseline; do not invent endpoints or treat generation as completed integration.
+Successful calls return the complete `{success,message,payload}` body, preserving
+nullable payloads and pagination. They return neither an Axios response nor an
+automatically unwrapped payload. Current clients target FastAPI's JSON envelopes;
+unrelated external services, binary downloads and server-side authenticated
+prefetching need separate adapters. Cookie handling here is browser transport;
+Axios on Node does not create a browser cookie jar. A relative base requires a
+browser origin. Do not forward server-user Cookie headers through a global client.
+
+Cookie credentials are always included by the mutators. Before each unsafe
+POST/PUT/PATCH/DELETE, transport fetches `/api/auth/csrf` with credentials and sends
+its validated `payload.csrf_token` as **X-CSRF-Token** on that mutation. Bootstrap
+requests are serialized so the first nonce cookie is established before the next
+bootstrap. Tokens remain local to one operation: no CSRF/session token is cached
+in browser storage, a query key or long-lived transport state. The extra GET per
+mutation is deliberate: HttpOnly session changes, login/logout and other-tab
+changes cannot be detected by reading cookies in JavaScript. This avoids a stale
+CSRF cache and does not replay failed mutations. A concurrent session change can
+still cause 403; the caller receives that error and decides what to do next.
+
+The browser supplies **Origin**. Transport never fabricates it, reads HttpOnly
+cookies, issues Bearer credentials, invokes legacy refresh, retries mutations,
+or decides a user's role/redirect. Requests outside the configured API origin
+are rejected before credentials or CSRF are sent. Caller options cannot disable
+required credentials or replace the signed CSRF header. Use the generated methods
+or mutators for product operations; `AXIOS_INSTANCE` remains a low-level export.
+
+Deployment uses the approved single HTTPS browser/API origin with backend secure
+`__Host-` cookies. Explicit local HTTP development requires matching backend
+`PUBLIC_ORIGIN` and `SESSION_ALLOW_INSECURE_LOCAL_HTTP=true`; use the same hostname
+for both browser and API, for example browser `http://127.0.0.1:3000` and backend
+`http://127.0.0.1:8000`. Do not mix localhost and 127.0.0.1 or weaken backend CORS /
+Secure/SameSite rules. Backend PUBLIC_ORIGIN is the browser origin, not necessarily
+the API port. CSRF_SECRET_KEY remains private on the backend.
+
+`ApiError` from `lib/api-error.ts` distinguishes `http`, `application`, `protocol`,
+`network` and `configuration` failures. It exposes status, backend error code,
+raw response body and Retry-After where available, without retaining Axios request
+config, request bodies, cookies or authorization headers. HTTP errors, including
+FastAPI's non-envelope 422 detail arrays, are rejected. HTTP 200 with
+`success:false` is also rejected; a malformed envelope/bootstrap is a protocol
+error. Treat server response bodies as untrusted data when interpreting details.
+There is no console logging in transport. Cancellation remains recognizable via
+Axios `isCancel` / `ERR_CANCELED`, with private request config removed. AbortSignal
+works before dispatch, while queued/bootstrapping, on the request and through
+generated React Query query options. One canceled caller cannot cancel another
+caller's bootstrap or mutation. Query retry/cache policy still belongs to data
+hooks; the transport itself adds no retries.
+
+`pnpm test:transport` runs deterministic adapter-level tests with the existing
+Playwright runner, without a UI server or browser. The separate real-browser
+integration suite requires a **dedicated disposable backend database**, its normal
+migrations/startup, `PUBLIC_ORIGIN=http://127.0.0.1:3139`, explicit local HTTP
+cookies and suitable test-only registration/login limits. It creates test users;
+never point it at production. With that test backend running on port 8019:
+
+```sh
+DATANO_TRANSPORT_API_URL=http://127.0.0.1:8019 \
+  PLAYWRIGHT_CHANNEL=chrome pnpm test:transport:integration
+```
+
+Repeat with `DATANO_TRANSPORT_SAME_ORIGIN=1` to test an empty public API base.
+That mode forwards `/api` through the temporary harness only, preserving FastAPI
+trailing slashes; it adds no proxy or route to the product application.
+
+The integration runner serves a small temporary Next.js harness outside the
+product route tree on 127.0.0.1:3139. It imports the actual generated clients and
+transport, tests real HttpOnly cookies/Origin/CSRF, registration/login/current
+identity/logout and browser abort, then stops its server. Default bundled Chromium
+also works when installed; this workstation uses the existing Chrome channel.
+It is not a production auth page or FE-030 form integration. Approved pages,
+injectors and UI design remain unchanged. Trusted-role routing, private cache
+clearing and actual form hookup remain FE-030. See
+[FE-029 validation](docs/validation/FE-029-transport.md) for executed checks and limits.
 
 ### Dashboard redesign: FE-019–FE-023 (2026-10-15)
 
