@@ -3,32 +3,23 @@ True Clean Architecture Use Case for User Logout.
 Use case contains business logic and is independent of frameworks and external concerns.
 """
 
-from app.interface.repository.refresh_token_repository_interface import (
-    IRefreshTokenRepository,
-)
-
 from .models import LogoutRequest, LogoutResponse
+from .session_service import SessionService
 
 
 class LogoutUseCase:
-    """Use case for logging out a user."""
+    """Idempotently revoke only the browser's current opaque session."""
 
     def __init__(
         self,
-        refresh_token_repository: IRefreshTokenRepository,
-    ):
-        self._refresh_token_repo = refresh_token_repository
+        sessions: SessionService,
+    ) -> None:
+        self._sessions = sessions
 
     async def execute(self, request: LogoutRequest) -> LogoutResponse:
-        """Execute the use case to logout a user."""
-        refresh_token_entity = await self._refresh_token_repo.get_refresh_token_by_token(
-            request.refresh_token
-        )
-
-        if not refresh_token_entity:
-            return LogoutResponse(success=False)
-
-        success = await self._refresh_token_repo.revoke_refresh_token(
-            refresh_token_entity.id
-        )
-        return LogoutResponse(success=success)
+        # Do not require a live/active identity: expired, revoked and disabled
+        # accounts must still be able to clear their browser credentials. Errors
+        # propagate so a failed transaction cannot be reported as successful logout.
+        if request.session_token is not None:
+            await self._sessions.revoke(request.session_token)
+        return LogoutResponse(success=True)

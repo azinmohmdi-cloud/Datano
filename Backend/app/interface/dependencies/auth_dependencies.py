@@ -113,7 +113,7 @@ async def get_refresh_access_token_usecase(
 
 
 async def get_logout_usecase(
-    refresh_token_repository=Depends(get_refresh_token_repository),
+    sessions: SessionService = Depends(get_session_service),
 ) -> LogoutUseCase:
     """Dependency to provide LogoutUseCase instance."""
-    return LogoutUseCase(refresh_token_repository)
+    return LogoutUseCase(sessions)

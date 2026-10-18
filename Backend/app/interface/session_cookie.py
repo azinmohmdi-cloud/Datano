@@ -39,3 +39,8 @@ def write_session_cookie(request: Request, response: Response, issued: IssuedSes
     maximum = int((issued.record.absolute_expires_at - issued.record.created_at).total_seconds()) if issued.record.remember_me else None
     response.set_cookie(key=policy.name, value=issued.token, secure=policy.secure,
         httponly=True, samesite="lax", path="/", max_age=maximum)
+
+
+def clear_session_cookie(request: Request, response: Response) -> None:
+    policy = session_cookie_policy(request)
+    response.delete_cookie(policy.name, secure=policy.secure, httponly=True, samesite="lax", path="/")

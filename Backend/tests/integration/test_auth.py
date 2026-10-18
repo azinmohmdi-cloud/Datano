@@ -55,3 +55,13 @@ class TestMe:
             headers={"Authorization": "Bearer invalidtoken"},
         )
         assert response.status_code == 401
+
+
+class TestLogout:
+    def test_isolated_client_revokes_captured_session(self, test_client, admin_session):
+        response = test_client.post("/api/auth/logout")
+        assert response.status_code == 200
+        assert "__Host-datano_session" not in test_client.cookies
+        assert test_client.get("/api/auth/me", headers={
+            "Cookie": f"__Host-datano_session={admin_session}",
+        }).status_code == 401

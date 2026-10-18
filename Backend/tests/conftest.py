@@ -61,9 +61,13 @@ def test_client() -> Iterator[TestClient]:
         record = records.get(digest)
         return record if record is not None and record.is_valid_at(datetime.now(UTC)) else None
 
+    async def revoke_session(digest):
+        return records.pop(digest, None) is not None
+
     session_repository.create.side_effect = create_session
     session_repository.rotate.side_effect = rotate_session
     session_repository.resolve.side_effect = resolve_session
+    session_repository.revoke.side_effect = revoke_session
 
     @asynccontextmanager
     async def memory_lifespan(application):

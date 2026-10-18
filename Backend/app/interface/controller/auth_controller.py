@@ -5,9 +5,11 @@ from fastapi import APIRouter, Depends, Request, Response
 from app.application.use_cases import (
     GetAllPermissionsRequest,
     LoginUseCase,
+    LogoutUseCase,
 )
 from app.application.use_cases.auth import (
     LoginRequest,
+    LogoutRequest,
 )
 from app.application.use_cases.permission import GetAllPermissionsUseCase
 from app.domain.error.exceptions import ForbiddenException, LegacyAuthenticationRetiredException
@@ -17,6 +19,7 @@ from app.interface.dependencies.auth_dependencies import (
     get_authorized_user,
     get_login_usecase,
     get_current_identity,
+    get_logout_usecase,
 )
 from app.interface.dependencies.permission_dependencies import (
     get_get_all_permissions_usecase,
@@ -28,9 +31,11 @@ from app.interface.mappers import PermissionMapper
 from app.interface.mappers import UserMapper
 from app.interface.dto.session_dto import CurrentUser, SessionLogin, CsrfToken
 from app.application.use_cases.auth.current_identity_use_case import CurrentIdentity
-from app.interface.session_cookie import session_cookie_policy, write_session_cookie
+from app.interface.session_cookie import (
+    SessionCredential, clear_session_cookie, read_session_cookie, session_cookie_policy, write_session_cookie,
+)
 from app.interface.login_route import LoginRoute
-from app.interface.csrf import issue_csrf
+from app.interface.csrf import clear_csrf_cookie, issue_csrf
 from app.infra.services.csrf_service import CsrfService
 
 # Create router with prefix and tags
@@ -87,9 +92,30 @@ async def refresh_tokens():
     raise LegacyAuthenticationRetiredException()
 
 
-@auth_router.post("/logout", deprecated=True, responses={410:{"description":"Legacy logout retired; opaque logout is BE-010"}})
-async def logout():
-    raise LegacyAuthenticationRetiredException()
+@auth_router.post("/logout", response_model=StandardResponse[None], openapi_extra={"security": [{}]}, responses={
+    200: {"description": "Current opaque session revoked; browser credentials cleared. Safe to repeat."},
+    503: {"description": "Logout storage unavailable; logout did not succeed"},
+    500: {"description": "Logout transaction failed; browser credentials are not cleared"},
+})
+async def logout(
+    request: Request,
+    response: Response,
+    credential: SessionCredential = Depends(read_session_cookie),
+    usecase: LogoutUseCase = Depends(get_logout_usecase),
+):
+    """Revoke only the current cookie's session, then clear its browser cookies.
+
+    Origin and CSRF validation remain mandatory even for absent/stale cookies.
+    No Bearer, body-selected account or active-role permission is used.
+    """
+    await usecase.execute(LogoutRequest(session_token=credential.token))
+    clear_session_cookie(request, response)
+    clear_csrf_cookie(request, response)
+    if "refresh_token" in request.cookies:
+        response.delete_cookie("refresh_token", secure=session_cookie_policy(request).secure,
+            httponly=True, samesite="strict", path="/")
+    response.headers["Cache-Control"] = "no-store"
+    return success(message="Logged out successfully", payload=None)
 
 
 @auth_router.get("/permissions", response_model=StandardResponse[list[PermissionDTO]])

@@ -13,6 +13,11 @@ def csrf_cookie_name(request: Request) -> str:
     return "__Host-datano_csrf" if session_cookie_policy(request).secure else "datano_csrf_dev"
 
 
+def clear_csrf_cookie(request: Request, response: Response) -> None:
+    response.delete_cookie(csrf_cookie_name(request), secure=session_cookie_policy(request).secure,
+        httponly=True, samesite="lax", path="/")
+
+
 def issue_csrf(request: Request, response: Response, *, session_token: str | None = None, rotate: bool = False) -> str:
     service = CsrfService.from_config(request.app.state.settings)
     name = csrf_cookie_name(request)

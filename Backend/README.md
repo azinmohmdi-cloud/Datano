@@ -19,8 +19,8 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
   a placeholder, not a delivered ABAC engine.
 - PostgreSQL-backed users, roles and assignments through the existing repository
   contracts, with SQLAlchemy 2 async transactions and Alembic migrations.
-- Historical JWT/refresh utilities remain unmounted; public legacy refresh/logout
-  endpoints return 410 pending credential migration / BE-010 logout.
+- Historical JWT/refresh utilities remain unmounted; legacy refresh returns 410.
+  Logout revokes only the current opaque session and expires its browser cookies.
 - A digest-only, revocable opaque-session store is available in PostgreSQL.
   Login issues its secure cookie and `/auth/me` reads current server identity.
   Every protected route reloads session identity and active role permissions.
@@ -32,7 +32,7 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
   inject in-memory adapters with per-test clients, cookies and state.
 
 These are template/development capabilities, not a completed marketing backend.
-The approved target also includes Celery/Redis, session logout,
+The approved target also includes Celery/Redis,
 email recovery, and the five-domain-entity product model.
 Those changes require their own authorized implementation tasks and mandatory
 red–green–refactor.
@@ -117,7 +117,7 @@ email. The old fixed-password seed and `scripts/seed_in_memory.py` remain only
 for explicitly isolated in-memory tests/examples; they cannot provision the
 persistent app. Valid administrator provisioning/email proof is BE-014.
 The historical JWT key is not used by product authentication or CSRF. Use a
-private independent CSRF key; there is no serving fallback. Logout, recovery and
+private independent CSRF key; there is no serving fallback. Recovery and
 deployment hardening retain their separate authorized tasks.
 
 See [the BE-001 baseline report](docs/validation/BE-001-baseline.md) for the
@@ -280,7 +280,7 @@ generated internally when omitted. Public `User`/create/login schemas mark the
 legacy username field optional/deprecated. Existing JWT claims still carry the
 internal username, so callers do not need to supply one. Public registration and
 activation are provided separately by BE-006 below; opaque login/current identity
-are provided by BE-008, with full authorization/CSRF migration still pending. Frontend
+are provided by BE-008, authorization/CSRF by BE-009 and logout by BE-010. Frontend
 generation/adapters are deferred to FE-029; approved UI files are unchanged.
 
 New password creation uses **15–128 Unicode codepoints** (Python `len`), including
@@ -424,8 +424,9 @@ transactions short; this correctness choice is not a throughput benchmark.
 
 BE-008 consumes these providers for login and current identity; BE-009 now uses
 them for every protected route and reloads activation and active role permissions.
-Logout/recovery flows, Redis, an expiry-cleanup job and a session retention policy
-are not added by these storage/login/authorization tasks.
+BE-010 below adds current-session logout using the existing revocation provider.
+Recovery flows, Redis, an expiry-cleanup job and a session retention policy remain
+outside these storage/login/authorization/logout tasks.
 
 See [BE-007 validation](docs/validation/BE-007-opaque-sessions.md) for real
 PostgreSQL boundaries, concurrency, rollback, process persistence, migration
@@ -584,11 +585,10 @@ limits; bootstrap supplies their CSRF token. JWT-only clients must sign in again
 with credentials; no JWT-to-session exchange is offered. New login no longer
 issues JWTs or refresh tokens and removes the four deprecated JSON fields.
 Any old refresh cookie presented on successful login is expired. Public
-**POST /api/auth/refresh** and the legacy **POST /api/auth/logout** return
-**410 AUTH_MIGRATION_REQUIRED** after Origin/CSRF checks (403 without them).
-They neither mint credentials nor revoke an opaque session. Opaque logout and
-cookie clearing remain **BE-010**. Historical JWT/refresh utilities are retained
-but have no mounted product authentication path; the historical JWT secret
+**POST /api/auth/refresh** still returns **410 AUTH_MIGRATION_REQUIRED** after
+Origin/CSRF checks (403 without them). It never mints credentials. BE-010 now
+replaces the temporary logout tombstone with the current-session flow below.
+Historical JWT/refresh utilities remain unmounted; the historical JWT secret
 cannot sign CSRF tokens or authorize requests.
 
 Revision **0005_opaque_sessions** remains head: no migration, dependency, lifetime
@@ -596,6 +596,53 @@ or identity/hash policy change is needed. No Frontend file or approved page desi
 was changed or regenerated. FE-029/030 must adopt these API changes; browser UI
 integration, deployment proxy/TLS validation and complete production security
 certification are not claimed. See [BE-009 validation](docs/validation/BE-009-session-authorization-csrf.md).
+
+## Current-session logout (BE-010)
+
+**POST /api/auth/logout** now uses the existing opaque cookie and BE-009 Origin /
+X-CSRF-Token contract. Send credentials and the CSRF header from bootstrap/login.
+No JSON body is required; body-selected session IDs, user IDs, bulk-logout flags,
+Bearer headers and legacy refresh credentials do not select the session to revoke.
+The endpoint's OpenAPI cookie credential is optional because cleanup also works
+for absent/stale cookies; Origin and CSRF remain mandatory in every case.
+
+A successful logout returns HTTP **200** with the existing envelope:
+
+```json
+{"success":true,"message":"Logged out successfully","payload":null}
+```
+
+The existing SessionService/repository marks only the supplied current session's
+digest as revoked in PostgreSQL. Other sessions for the same account and other
+users stay valid. A captured old cookie is denied on protected reads and writes,
+including after a new application instance starts. Logout does not extend idle
+expiry or require an active account/role. Absent, malformed, unknown, expired or
+already revoked cookies receive the same successful cleanup response; network
+retries are idempotent. This is not evidence that those credentials authenticate.
+
+The response expires **__Host-datano_session** and **__Host-datano_csrf** using
+Max-Age=0 and an expired date, preserving HttpOnly/Secure/SameSite=Lax/Path=/ and
+no Domain. The explicit local HTTP profile clears **datano_session_dev** and
+**datano_csrf_dev** with matching local attributes. Both normal and remember-me
+cookies are removed. A presented historical refresh cookie is also expired using
+its original path/security attributes. Responses use `Cache-Control: no-store`.
+No new token, session identifier or account data is returned.
+
+Revocation shares the existing request transaction. Cookie-clearing success is
+sent only after transaction finalization; a failure rolls back the revocation
+and does not send Set-Cookie. It returns the existing sanitized error rather
+than claiming success. Retry or resolve the failure before treating server
+logout as complete. Invalid Origin/CSRF returns 403 without changing sessions
+or browser cookies. After successful logout, discard the in-memory CSRF token
+and **GET /api/auth/csrf** again before anonymous mutation or login. Clearing
+private frontend query caches/navigation remains FE-030, not this backend task.
+
+The route is no longer deprecated and no longer returns BE-009's temporary 410.
+Legacy refresh remains retired and no JWT authentication path is restored.
+No schema, dependency, session lifetime or other auth endpoint changed. Frontend
+transport, approved UI and generated clients remain untouched. See
+[BE-010 validation](docs/validation/BE-010-session-logout.md) for actual tests,
+rollback, cookie profiles, concurrency, coverage and environment results.
 
 ## Test isolation
 

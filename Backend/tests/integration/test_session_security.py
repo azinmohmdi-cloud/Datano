@@ -174,13 +174,12 @@ async def test_mac_is_bound_to_session_even_when_nonce_is_copied(security_app, a
         assert client.post("/api/roles/", json={"name": "Unsigned forgery"}, headers=headers).status_code == 403
 
 
-@pytest.mark.parametrize("path", ["/api/auth/refresh", "/api/auth/logout"])
-async def test_legacy_routes_explicitly_require_credential_migration(security_app, actor, path):
+async def test_legacy_refresh_explicitly_requires_credential_migration(security_app, actor):
     with TestClient(security_app, base_url=ORIGIN) as client:
         client.cookies.set("refresh_token", "old-refresh-token")
         headers = csrf_headers(client)
         headers["Authorization"] = "Bearer " + bearer(actor[0])
-        response = client.post(path, headers=headers)
+        response = client.post("/api/auth/refresh", headers=headers)
         assert response.status_code == 410
         assert response.json()["payload"]["error_code"] == "AUTH_MIGRATION_REQUIRED"
         assert COOKIE not in client.cookies
@@ -309,9 +308,12 @@ async def test_openapi_has_session_only_security_and_all_write_headers(security_
                 assert "403" in operation["responses"]
     for path in ("/api/users/", "/api/roles/", "/api/auth/me", "/api/auth/permissions"):
         assert schema["paths"][path]["get"]["security"] == [{"OpaqueSession": []}]
-    for path in ("/api/auth/refresh", "/api/auth/logout"):
-        assert schema["paths"][path]["post"]["deprecated"] is True
-        assert "410" in schema["paths"][path]["post"]["responses"]
+    refresh = schema["paths"]["/api/auth/refresh"]["post"]
+    assert refresh["deprecated"] is True and "410" in refresh["responses"]
+    logout = schema["paths"]["/api/auth/logout"]["post"]
+    assert not logout.get("deprecated") and "410" not in logout["responses"]
+    assert {"200", "403"} <= set(logout["responses"])
+    assert logout["security"] == [{"OpaqueSession": []}, {}]
 
 
 async def test_login_discards_legacy_refresh_cookie(security_app, actor):

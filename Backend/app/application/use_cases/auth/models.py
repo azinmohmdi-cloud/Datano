@@ -49,7 +49,7 @@ class RefreshTokenResponse:
 @dataclass(frozen=True)
 class LogoutRequest:
     """Input port for logout."""
-    refresh_token: str
+    session_token: str | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True)
