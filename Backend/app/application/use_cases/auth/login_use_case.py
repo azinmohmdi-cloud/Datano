@@ -12,6 +12,9 @@ from app.interface.repository.refresh_token_repository_interface import (
 from .authenticate_use_case import AuthenticateUserUseCase
 from .interfaces import ITokenService
 from .models import LoginRequest, LoginResponse, TokenResponse
+from .session_service import SessionService
+from .current_identity_use_case import GetCurrentIdentityUseCase
+from app.domain.error.exceptions import CredentialsValidationException, ResourceNotFoundException
 
 
 class LoginUseCase:
@@ -22,16 +25,34 @@ class LoginUseCase:
         authenticate_use_case: AuthenticateUserUseCase,
         token_service: ITokenService,
         refresh_token_repository: IRefreshTokenRepository,
-    ):
+        session_service: SessionService,
+        current_identity: GetCurrentIdentityUseCase,
+    ) -> None:
         self._authenticate_use_case = authenticate_use_case
         self._token_service = token_service
         self._refresh_token_repo = refresh_token_repository
+        self._sessions = session_service
+        self._identity = current_identity
 
     async def execute(self, request: LoginRequest) -> LoginResponse:
         """Execute the use case to login a user."""
         user = await self._authenticate_use_case.execute(
-            request.username, request.password, email=request.email
+            request.username, request.password, email=request.email, upgrade_hash=False
         )
+
+        try:
+            issued = await self._sessions.issue(user.id, remember_me=request.remember_me,
+                previous_token=request.previous_session_token)
+        except ResourceNotFoundException:
+            raise CredentialsValidationException() from None
+        # The first verification is read-only: legacy hash CAS must not lock the
+        # target account before rotation orders both account locks. Reverify and
+        # upgrade under those locks so concurrent password/account changes win.
+        identity = await self._identity.execute(user.id)
+        verified = await self._authenticate_use_case.execute(identity.user.username, request.password)
+        if verified.id != user.id:
+            raise CredentialsValidationException()
+        user = identity.user
 
         # Generate access token
         access_token_str = self._token_service.generate_access_token(
@@ -62,4 +83,6 @@ class LoginUseCase:
         return LoginResponse(
             access_token=access_token,
             refresh_token=refresh_token,
+            identity=identity,
+            session=issued,
         )

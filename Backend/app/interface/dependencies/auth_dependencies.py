@@ -32,6 +32,10 @@ from app.interface.repository.role_repository_interface import IRoleRepository
 from app.interface.repository.user_repository_interface import IUserRepository
 
 from .user_dependencies import get_user_repository
+from app.application.use_cases.auth.current_identity_use_case import CurrentIdentity, GetCurrentIdentityUseCase
+from app.application.use_cases.auth.session_service import SessionService
+from app.interface.dependencies.session_dependencies import get_session_service
+from app.interface.session_cookie import SessionCredential, read_session_cookie
 
 
 security = HTTPBearer(auto_error=False)
@@ -171,9 +175,35 @@ async def get_login_usecase(
     ),
     token_service: JoseTokenService = Depends(get_token_service),
     refresh_token_repository=Depends(get_refresh_token_repository),
+    sessions: SessionService = Depends(get_session_service),
+    users: IUserRepository = Depends(get_user_repository),
+    roles: IRoleRepository = Depends(get_role_repository),
 ) -> LoginUseCase:
     """Dependency to provide LoginUseCase instance."""
-    return LoginUseCase(authenticate_usecase, token_service, refresh_token_repository)
+    return LoginUseCase(authenticate_usecase, token_service, refresh_token_repository,
+        sessions, GetCurrentIdentityUseCase(users, roles))
+
+
+async def get_current_identity(
+    credential: SessionCredential = Depends(read_session_cookie),
+    access_token: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    users: IUserRepository = Depends(get_user_repository),
+    roles: IRoleRepository = Depends(get_role_repository),
+    sessions: SessionService = Depends(get_session_service),
+) -> CurrentIdentity:
+    if credential.present:
+        record = await sessions.resolve(credential.token)
+        if record is None:
+            raise CredentialsValidationException()
+        user_id = record.user_id
+    else:
+        # Explicit temporary compatibility until BE-009 migrates JWT consumers.
+        # A supplied invalid cookie must never fall back to a bearer credential.
+        if access_token is None:
+            raise CredentialsValidationException()
+        legacy = await authorize(access_token=access_token, user_repository=users, role_repository=roles)
+        user_id = legacy.id
+    return await GetCurrentIdentityUseCase(users, roles).execute(user_id)
 
 
 async def get_refresh_access_token_usecase(

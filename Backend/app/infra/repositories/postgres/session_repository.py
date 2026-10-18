@@ -99,3 +99,19 @@ class SQLSessionRepository(ISessionRepository):
             .values(revoked_at=func.greatest(now, SessionRow.last_seen_at))
             .execution_options(synchronize_session=False))
         return result.rowcount
+
+    async def rotate(self, previous_digest: bytes, digest: bytes, user_id: str, *,
+                     remember_me: bool, idle_seconds: int, absolute_seconds: int) -> SessionRecord:
+        self._validate_digest(previous_digest)
+        previous_user = await self.session.scalar(
+            select(SessionRow.user_id).where(SessionRow.digest == previous_digest)
+        )
+        # Account switches can involve two users. Lock them in a stable order
+        # before the existing create/revoke methods reacquire their own locks.
+        owners = {user_id} | ({previous_user} if previous_user is not None else set())
+        await self.session.execute(select(UserRow.id).where(UserRow.id.in_(owners))
+            .order_by(UserRow.id).with_for_update())
+        record = await self.create(digest, user_id, remember_me=remember_me,
+            idle_seconds=idle_seconds, absolute_seconds=absolute_seconds)
+        await self.revoke(previous_digest)
+        return record

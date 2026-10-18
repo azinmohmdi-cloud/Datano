@@ -26,6 +26,7 @@ from app.interface.dependencies.auth_dependencies import (
     get_logout_usecase,
     get_refresh_access_token_usecase,
     get_refresh_token_from_cookie,
+    get_current_identity,
 )
 from app.interface.dependencies.permission_dependencies import (
     get_get_all_permissions_usecase,
@@ -34,33 +35,57 @@ from app.interface.dto import Permission as PermissionDTO
 from app.interface.dto import User, UserLogin
 from app.interface.dto.responses import StandardResponse, failure, success
 from app.interface.mappers import PermissionMapper
+from app.interface.mappers import UserMapper
+from app.interface.dto.session_dto import CurrentUser, SessionLogin
+from app.application.use_cases.auth.current_identity_use_case import CurrentIdentity
+from app.interface.session_cookie import session_cookie_policy, write_session_cookie
+from app.interface.login_route import LoginRoute
 
 # Create router with prefix and tags
-auth_router = APIRouter(prefix="/auth", tags=["auth"])
+auth_router = APIRouter(prefix="/auth", tags=["auth"], route_class=LoginRoute)
 
 
-@auth_router.post("/login", response_model=StandardResponse[TokenResponse])
+@auth_router.post("/login", response_model=StandardResponse[SessionLogin], responses={
+    401: {"description":"Invalid credentials, inactive account or legacy password recovery required"},
+    413: {"description":"Credential body exceeds the configured byte limit"},
+    429: {"description":"Login attempt quota exceeded", "headers": {
+        "Retry-After": {"schema":{"type":"integer"}, "description":"Seconds until retry"}}},
+    503: {"description":"Login attempt storage unavailable"},
+})
 async def login(
+    request: Request,
     response: Response,
     user_login: UserLogin,
     usecase: LoginUseCase = Depends(get_login_usecase),
 ):
-    """Authenticate user and return JWT token."""
+    """Authenticate, rotate the opaque session and return current server identity.
+
+    Bearer response fields remain temporarily compatible until BE-009.
+    """
     result = await usecase.execute(
-        LoginRequest(username=user_login.username, email=user_login.email, password=user_login.password.get_secret_value())
+        LoginRequest(username=user_login.username, email=user_login.email,
+            password=user_login.password.get_secret_value(), remember_me=user_login.remember_me,
+            previous_session_token=request.cookies.get(session_cookie_policy(request).name))
     )
 
+    write_session_cookie(request, response, result.session)
+    response.headers["Cache-Control"] = "no-store"
     response.set_cookie(
         key=result.refresh_token.title,
         value=result.refresh_token.token,
         httponly=True,
-        secure=False,  # Set to True in production with HTTPS
+        secure=session_cookie_policy(request).secure,
         samesite="strict",
-        max_age=int(timedelta(days=config.refresh_token_expire_days).total_seconds()),
+        max_age=(int(timedelta(days=request.app.state.settings.refresh_token_expire_days).total_seconds())
+                 if user_login.remember_me else None),
         path="/",
     )
 
-    return success(message="Login successful", payload=result.access_token)
+    return success(message="Login successful", payload=SessionLogin(
+        title=result.access_token.title, token=result.access_token.token,
+        type=result.access_token.type, expires_at=result.access_token.expires_at,
+        user=UserMapper.to_dto(result.identity.user), effective_role=result.identity.effective_role,
+    ))
 
 
 @auth_router.post("/refresh", response_model=StandardResponse[TokenResponse])
@@ -137,8 +162,13 @@ async def get_permissions(
         )
 
 
-@auth_router.get("/me", response_model=StandardResponse[User])
+@auth_router.get("/me", response_model=StandardResponse[CurrentUser], responses={
+    401: {"description":"Missing, invalid, expired or revoked credentials, or inactive account"},
+})
 async def get_me(
-    user=Depends(get_authorized_user()),
+    response: Response,
+    identity: CurrentIdentity = Depends(get_current_identity),
 ):
+    response.headers["Cache-Control"] = "no-store"
+    user = CurrentUser(**UserMapper.to_dto(identity.user).model_dump(), effective_role=identity.effective_role)
     return success(message="User retrieved successfully", payload=user)

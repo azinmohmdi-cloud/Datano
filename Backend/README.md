@@ -21,7 +21,8 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
   contracts, with SQLAlchemy 2 async transactions and Alembic migrations.
 - Refresh-token dictionaries remain process-local pending the session tasks.
 - A digest-only, revocable opaque-session store is available in PostgreSQL.
-  HTTP login/cookie/authorization still use the existing JWT flow until BE-008/009.
+  Login issues its secure cookie and `/auth/me` reads current server identity.
+  Legacy JWT compatibility remains temporarily until BE-009.
 - DTO/mapping and use-case/repository separation. Domain errors still depend on
   FastAPI status values and pagination types cross layer boundaries; isolation is partial.
 - Pytest entity/repository/HTTP tests, including real PostgreSQL constraints,
@@ -29,7 +30,7 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
   inject in-memory adapters with per-test clients, cookies and state.
 
 These are template/development capabilities, not a completed marketing backend.
-The approved target also includes Celery/Redis, opaque-session HTTP integration,
+The approved target also includes Celery/Redis, full session authorization/CSRF,
 email recovery, and the five-domain-entity product model.
 Those changes require their own authorized implementation tasks and mandatory
 red–green–refactor.
@@ -275,8 +276,8 @@ Its body needs first/last name, email and password; username is optional and is
 generated internally when omitted. Public `User`/create/login schemas mark the
 legacy username field optional/deprecated. Existing JWT claims still carry the
 internal username, so callers do not need to supply one. Public registration and
-activation are provided separately by BE-006 below; opaque session security is
-available as a storage primitive below, with HTTP integration still pending. Frontend
+activation are provided separately by BE-006 below; opaque login/current identity
+are provided by BE-008, with full authorization/CSRF migration still pending. Frontend
 generation/adapters are deferred to FE-029; approved UI files are unchanged.
 
 New password creation uses **15–128 Unicode codepoints** (Python `len`), including
@@ -337,8 +338,8 @@ user representation. The account is active and has only the backend-selected
 length limit. Email identity and password policy reuse BE-005. Internal username
 generation, hash creation, activation and role assignment use the existing
 repositories in one request transaction. Failure rolls back the complete account
-and assignment. Registration itself sets no cookie or token; session work remains
-BE-007 onward. The existing protected `POST /api/users/` behavior is unchanged.
+and assignment. Registration itself sets no cookie or token; session issuance is
+provided separately by BE-008. Protected `POST /api/users/` behavior is unchanged.
 
 Unknown fields are rejected with 422, including roles, permissions, username,
 activation, IDs and password hashes. No address grants Admin automatically.
@@ -418,12 +419,11 @@ revocation for one account until commit. Bulk revocation covers sessions ordered
 before it; a subsequent authorized issuance can create a new session. Keep these
 transactions short; this correctness choice is not a throughput benchmark.
 
-The dependency providers are ready for BE-008 but no current route consumes
-them yet. A valid record is **not** an authorization decision: later HTTP work
-must check current account/role state, issue the approved secure cookie, handle
-remember-me cookie lifetime, rotate IDs and enforce CSRF. This task adds no HTTP
-endpoint, cookie, logout/recovery flow, JWT removal, Redis, expiry-cleanup job or
-session retention policy. Existing JWT/refresh compatibility remains unchanged.
+BE-008 below now consumes these providers for login and current identity. A valid
+record alone is **not** an authorization decision: activation and current roles
+are reloaded. General permission enforcement/CSRF and the final JWT transition
+remain BE-009. Logout/recovery flows, Redis, an expiry-cleanup job and a session
+retention policy are not added by these storage/login tasks.
 
 See [BE-007 validation](docs/validation/BE-007-opaque-sessions.md) for real
 PostgreSQL boundaries, concurrency, rollback, process persistence, migration
@@ -441,6 +441,96 @@ concurrent async SQL can leave misleading after-await gaps. No threshold or
 exclusion was relaxed. See [BE-006 validation](docs/validation/BE-006-registration.md)
 for actual Red/Green runs, concurrency, migration, API and full-suite results.
 
+## Email login and current session (BE-008)
+
+`POST /api/auth/login` accepts email, the exact existing password and optional
+`remember_me` (strict JSON boolean, default false). Exactly one email or the
+deprecated username compatibility field is accepted; unknown fields, including
+caller-selected roles/activation, return 422. Email lookup and password/hash
+compatibility reuse BE-005 rather than reimplementing identity rules.
+
+A successful response keeps the existing envelope and temporarily retains
+`payload.title`, `token`, `type` and `expires_at` for existing JWT consumers.
+It adds `payload.user` (the existing public User DTO) and `payload.effective_role`
+(`Admin`, `User` or null). The token field is marked deprecated in OpenAPI.
+The new opaque identifier appears only in Set-Cookie, never the JSON body.
+Do not persist credentials in browser storage. FE-029/030 will connect the
+approved UI after BE-009 establishes the final authentication/CSRF contract.
+
+The normal cookie is **`__Host-datano_session`**, `HttpOnly`, `Secure`,
+`SameSite=Lax`, `Path=/`, without Domain. Without remember-me it has no Max-Age
+or Expires. Remember-me adds Max-Age equal to the issued absolute lifetime
+(default **2592000 seconds / 30 days**). PostgreSQL still enforces the idle and
+absolute limits independently; a browser retaining a cookie cannot bypass them.
+No activity extends the original absolute cap. Normal browser closure does not
+prove server revocation.
+
+Default development also requires HTTPS for that cookie. The explicit
+`SESSION_ALLOW_INSECURE_LOCAL_HTTP=true` exception applies only to HTTP URLs with
+host `localhost`, `127.0.0.1` or `::1` and uses **`datano_session_dev`** instead.
+It is false by default. HTTPS and non-local URLs still use the secure cookie
+even when that flag is true. Do not enable the exception for deployment or use
+an untrusted proxy Host/scheme as a substitute for a local environment. The target
+deployment remains browser and `/api` on one HTTPS origin; production CORS/proxy
+configuration is not introduced here.
+
+Each successful login generates a fresh server identifier and atomically revokes
+the previous browser cookie's session, including account switches. Unknown or
+malformed incoming identifiers cannot fix the new session. Failed authentication
+sets no cookie; a failure after rotation rolls back both insertion and revocation.
+Account locks are ordered by ID before session mutation, including when switching
+between two accounts. Initial credential verification is read-only; password
+verification/legacy hash upgrade runs again under the ordered account locks.
+This prevents a pre-existing bcrypt compare-and-swap lock from reversing lock
+order. Concurrent deletion, activation/password changes and same-secret rehashes
+are handled using current server state. No sleep or retry loop hides a deadlock.
+
+`GET /api/auth/me` keeps the public User fields and adds `effective_role`. It
+prefers the opaque cookie, validates/touches the stored session, reloads the
+account and assigned role records, and rejects inactive/deleted accounts.
+Active `Admin` wins over active `User`; inactive, deleted or custom roles cannot
+invent either product role. Without an active product role the value is null.
+No email or client header/storage value grants Admin. Administrator provisioning
+and ownership proof remain BE-014. Successful login/current-identity responses
+carry `Cache-Control: no-store`.
+
+For this explicit intermediate phase only, `/me` still accepts its existing
+bearer credential **when no session cookie is present**. A present empty,
+malformed, unknown, revoked or expired cookie returns 401 even with a valid
+bearer; it never falls back. Other protected routes and `/auth/refresh` retain
+their JWT behavior pending BE-009. The legacy refresh cookie remains for those
+consumers, now follows the same Secure/local policy and has no Max-Age without
+remember-me; its server expiry is still the legacy configured lifetime.
+`/auth/logout` still handles that legacy cookie and does **not** yet revoke the
+opaque session: the public opaque logout flow is BE-010. These intermediate
+capabilities are not a complete production authentication rollout. No global
+session permission migration, Origin/CSRF-token enforcement or logout/recovery
+flow was implemented in BE-008.
+
+Login uses the existing bounded credential-body guard and PostgreSQL counter
+implementation with an independent `login` namespace. The historical table name
+`registration_attempts` is retained; only digest/window/count data are stored.
+There is no new migration, schema, dependency or Redis service. Registration
+keys and defaults are unchanged. Login's configurable technical defaults are:
+
+| Setting | Default |
+| --- | --- |
+| `LOGIN_IP_LIMIT` | 10 attempts per peer/window |
+| `LOGIN_WINDOW_SECONDS` | 600 seconds |
+| `LOGIN_MAX_BODY_BYTES` | 8192 bytes for the complete body |
+
+Attempts are recorded before JSON parsing/password work in an independent short
+transaction, so malformed credentials, failure or account rollback cannot refund
+them. Quota state survives app lifetimes. HTTP 429 includes Retry-After; oversized
+fixed/chunked bodies yield 413; unavailable counter storage yields 503 without
+authenticating. Forwarded address headers are not trusted by application code.
+This per-peer barrier shares the registration limiter's NAT/boundary/distributed
+abuse limitations and does not replace trusted ingress controls.
+
+See [BE-008 validation](docs/validation/BE-008-session-login.md) for actual TDD,
+PostgreSQL concurrency/rollback evidence, API compatibility changes and full-suite
+results. No Frontend file, approved page design or generated client was changed.
+
 ## Test isolation
 
 The legacy `test_client` fixture explicitly creates a test application with
@@ -448,6 +538,9 @@ in-memory repository overrides and the isolated development seed. It clears
 cookies and resets the registry before startup and after shutdown, including
 when a test fails. `admin_token` and `admin_auth` belong to that same test
 lifetime; do not retain them across tests or reset storage while they are in use.
+It explicitly overrides the session repository and login limiter for these
+legacy bearer/CRUD characterization tests; product cookie/storage/rate behavior
+uses real PostgreSQL in `test_session_login.py` and `test_sessions.py`.
 The development seed supplies authentication only. User/role CRUD and assignment
 tests create their own targets through `created_user` and `created_role` rather
 than changing the seeded admin or selecting the first global list item.

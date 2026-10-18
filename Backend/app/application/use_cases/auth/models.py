@@ -4,6 +4,8 @@ Data models for Auth use cases.
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from app.application.use_cases.auth.current_identity_use_case import CurrentIdentity
+from app.application.use_cases.auth.session_models import IssuedSession
 
 
 @dataclass(frozen=True)
@@ -12,6 +14,8 @@ class LoginRequest:
     password: str = field(repr=False)
     username: str | None = None
     email: str | None = None
+    remember_me: bool = False
+    previous_session_token: str | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True)
@@ -28,6 +32,8 @@ class LoginResponse:
     """Output port for login."""
     access_token: TokenResponse
     refresh_token: TokenResponse
+    identity: CurrentIdentity
+    session: IssuedSession
 
 
 @dataclass(frozen=True)

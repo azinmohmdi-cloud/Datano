@@ -19,6 +19,12 @@ class Config(BaseSettings):
     session_absolute_seconds: int = Field(default=43200, gt=0, le=2147483647, alias="SESSION_ABSOLUTE_SECONDS")
     remember_session_idle_seconds: int = Field(default=604800, gt=0, le=2147483647, alias="REMEMBER_SESSION_IDLE_SECONDS")
     remember_session_absolute_seconds: int = Field(default=2592000, gt=0, le=2147483647, alias="REMEMBER_SESSION_ABSOLUTE_SECONDS")
+    session_allow_insecure_local_http: bool = Field(default=False, alias="SESSION_ALLOW_INSECURE_LOCAL_HTTP")
+
+    # Login-only technical defaults, independent of signup quotas.
+    login_ip_limit: int = Field(default=10, gt=0, le=2147483646, alias="LOGIN_IP_LIMIT")
+    login_window_seconds: int = Field(default=600, gt=0, alias="LOGIN_WINDOW_SECONDS")
+    login_max_body_bytes: int = Field(default=8192, gt=0, alias="LOGIN_MAX_BODY_BYTES")
 
     # Registration-only technical defaults; not account/product quotas.
     registration_ip_limit: int = Field(

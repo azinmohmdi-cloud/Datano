@@ -15,7 +15,7 @@ from app.infra.database.connection import Database
 from app.infra.database.models import RegistrationAttemptRow
 
 
-def registration_peer_key(peer: str | None) -> str:
+def registration_peer_key(peer: str | None, *, namespace: str = "registration") -> str:
     try:
         address = ip_address(peer or "")
         if address.version == 6 and address.ipv4_mapped is not None:
@@ -24,18 +24,21 @@ def registration_peer_key(peer: str | None) -> str:
     except ValueError:
         # Missing/unparseable peers share one restrictive bucket, never a bypass.
         identity = b"unknown"
-    return hashlib.sha256(b"registration:" + identity).hexdigest()
+    return hashlib.sha256(namespace.encode("ascii") + b":" + identity).hexdigest()
 
 
 class PostgresRegistrationLimiter(IRegistrationLimiter):
     def __init__(self, database: Database, *, limit: int, window_seconds: int,
-                 clock: Callable[[], datetime] | None = None) -> None:
+                 clock: Callable[[], datetime] | None = None, namespace: str = "registration") -> None:
         if not 1 <= limit <= 2147483646 or window_seconds < 1:
             raise ValueError("Registration limits must be positive and fit the database counter")
         self._database = database
         self._limit = limit
         self._window_seconds = window_seconds
         self._clock = clock
+        if namespace not in {"registration", "login"}:
+            raise ValueError("Unsupported authentication counter namespace")
+        self._namespace = namespace
 
     async def consume(self, peer: str | None) -> RegistrationLimitDecision:
         row = RegistrationAttemptRow
@@ -56,7 +59,7 @@ class PostgresRegistrationLimiter(IRegistrationLimiter):
                     .limit(100).with_for_update(skip_locked=True))
                 await session.execute(delete(row).where(tuple_(row.peer_key, row.window_start).in_(expired)))
                 statement = insert(row).values(
-                    peer_key=registration_peer_key(peer), window_start=start,
+                    peer_key=registration_peer_key(peer, namespace=self._namespace), window_start=start,
                     expires_at=expires, attempts=1,
                 ).on_conflict_do_update(
                     index_elements=[row.peer_key, row.window_start],
@@ -67,4 +70,4 @@ class PostgresRegistrationLimiter(IRegistrationLimiter):
             return RegistrationLimitDecision(allowed, 0 if allowed else max(1, math.ceil((expires - now).total_seconds())))
         except SQLAlchemyError:
             # An unavailable counter store must never enable unlimited signup.
-            raise ServiceUnavailableException("Registration is temporarily unavailable") from None
+            raise ServiceUnavailableException(f"{self._namespace.title()} is temporarily unavailable") from None

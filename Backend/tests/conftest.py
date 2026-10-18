@@ -25,6 +25,40 @@ def test_client() -> Iterator[TestClient]:
     from app.infra.core.seed import seed
     from app.interface.dependencies.user_dependencies import get_user_repository
     from app.interface.dependencies.role_dependencies import get_role_repository
+    from app.interface.dependencies.session_dependencies import get_session_repository
+    from app.interface.repository.session_repository_interface import ISessionRepository
+    from app.application.use_cases.auth.session_models import SessionRecord
+    from datetime import UTC, datetime, timedelta
+    from unittest.mock import AsyncMock
+    from app.interface.login_route import get_login_limiter
+    from app.application.use_cases.auth.interfaces import RegistrationLimitDecision
+
+    # Legacy bearer/CRUD characterization remains isolated in memory. Product
+    # session behavior and persistence are tested separately with real PostgreSQL.
+    records = {}
+    session_repository = AsyncMock(spec=ISessionRepository)
+
+    async def create_session(digest, user_id, *, remember_me, idle_seconds, absolute_seconds):
+        now = datetime.now(UTC)
+        record = SessionRecord(digest=digest,user_id=user_id,remember_me=remember_me,
+            idle_timeout_seconds=idle_seconds,created_at=now,last_seen_at=now,
+            idle_expires_at=now+timedelta(seconds=idle_seconds),
+            absolute_expires_at=now+timedelta(seconds=absolute_seconds))
+        records[digest] = record
+        return record
+
+    async def rotate_session(previous_digest, digest, user_id, **policy):
+        record = await create_session(digest,user_id,**policy)
+        records.pop(previous_digest,None)
+        return record
+
+    async def resolve_session(digest, *, touch=True):
+        record = records.get(digest)
+        return record if record is not None and record.is_valid_at(datetime.now(UTC)) else None
+
+    session_repository.create.side_effect = create_session
+    session_repository.rotate.side_effect = rotate_session
+    session_repository.resolve.side_effect = resolve_session
 
     @asynccontextmanager
     async def memory_lifespan(application):
@@ -34,6 +68,10 @@ def test_client() -> Iterator[TestClient]:
     app = create_app(lifespan_handler=memory_lifespan)
     app.dependency_overrides[get_user_repository] = lambda: registry.user_repository
     app.dependency_overrides[get_role_repository] = lambda: registry.role_repository
+    app.dependency_overrides[get_session_repository] = lambda: session_repository
+    limiter = AsyncMock()
+    limiter.consume.return_value = RegistrationLimitDecision(True)
+    app.dependency_overrides[get_login_limiter] = lambda request: limiter
 
     # Reset before lifespan seeds this test, and after shutdown even on failure.
     registry.reset()
@@ -45,6 +83,7 @@ def test_client() -> Iterator[TestClient]:
                 client.cookies.clear()
     finally:
         registry.reset()
+        records.clear()
 
 
 @pytest.fixture

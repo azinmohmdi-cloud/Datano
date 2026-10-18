@@ -22,3 +22,9 @@ class ISessionRepository(ABC):
     @abstractmethod
     async def revoke_all(self, user_id: str) -> int:
         raise NotImplementedError
+
+    @abstractmethod
+    async def rotate(self, previous_digest: bytes, digest: bytes, user_id: str, *,
+                     remember_me: bool, idle_seconds: int, absolute_seconds: int) -> SessionRecord:
+        """Create a fresh session and revoke the previous one in the caller's transaction."""
+        raise NotImplementedError

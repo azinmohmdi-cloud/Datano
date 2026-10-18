@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field, SecretStr, StrictBool
 
 
 class Token(BaseModel):
@@ -26,6 +26,9 @@ class UserLogin(BaseModel):
     email: str | None = None
     username: str | None = Field(default=None, json_schema_extra={"deprecated": True})
     password: SecretStr
+    remember_me: StrictBool = False
+
+    model_config = {"extra": "forbid"}
 
 
 class TokenPayload(BaseModel):

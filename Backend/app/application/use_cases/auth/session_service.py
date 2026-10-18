@@ -9,14 +9,20 @@ class SessionService:
         self._tokens = tokens
         self._policy = policy if policy is not None else SessionPolicy()
 
-    async def issue(self, user_id: str, *, remember_me: bool = False) -> IssuedSession:
+    async def issue(self, user_id: str, *, remember_me: bool = False,
+                    previous_token: str | None = None) -> IssuedSession:
         token = self._tokens.generate()
         digest = self._tokens.digest(token)
         if digest is None:
             raise ValueError("Session token generator returned an invalid identifier")
         idle, absolute = self._policy.timeouts(remember_me)
-        record = await self._repository.create(digest, user_id, remember_me=remember_me,
-            idle_seconds=idle, absolute_seconds=absolute)
+        previous_digest = self._tokens.digest(previous_token) if previous_token is not None else None
+        if previous_digest is None:
+            record = await self._repository.create(digest, user_id, remember_me=remember_me,
+                idle_seconds=idle, absolute_seconds=absolute)
+        else:
+            record = await self._repository.rotate(previous_digest, digest, user_id,
+                remember_me=remember_me, idle_seconds=idle, absolute_seconds=absolute)
         return IssuedSession(token, record)
 
     async def resolve(self, token: str, *, touch: bool = True) -> SessionRecord | None:

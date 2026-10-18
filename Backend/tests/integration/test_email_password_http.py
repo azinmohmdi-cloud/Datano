@@ -29,7 +29,7 @@ async def test_email_login_upgrades_legacy_hash_and_survives_new_app(persistent_
     with TestClient(application(isolated_postgres_url)) as client:
         response = client.post("/api/auth/login", json={"email":" \u2003LEGACY@example.test\u00a0", "password":"Secret123"})
         assert response.status_code == 200
-        assert set(response.json()["payload"]) == {"title", "token", "type", "expires_at"}
+        assert set(response.json()["payload"]) == {"title", "token", "type", "expires_at", "user", "effective_role"}
         assert "HttpOnly" in response.headers["set-cookie"]
         headers = {"Authorization": "Bearer " + response.json()["payload"]["token"]}
         current = client.get("/api/auth/me", headers=headers)

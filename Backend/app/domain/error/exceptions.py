@@ -173,10 +173,10 @@ class PasswordResetRequiredException(CredentialsValidationException):
 
 
 class RateLimitExceededException(DomainException):
-    def __init__(self, retry_after: int):
+    def __init__(self, retry_after: int, *, message: str = "Too many registration attempts; try again later"):
         self.retry_after = max(1, retry_after)
         super().__init__(
-            "Too many registration attempts; try again later",
+            message,
             error_code="RATE_LIMITED",
             details={"retry_after": self.retry_after},
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -184,9 +184,9 @@ class RateLimitExceededException(DomainException):
 
 
 class RequestTooLargeException(DomainException):
-    def __init__(self):
+    def __init__(self, message: str = "Registration request body is too large"):
         super().__init__(
-            "Registration request body is too large", error_code="REQUEST_TOO_LARGE",
+            message, error_code="REQUEST_TOO_LARGE",
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
         )
 

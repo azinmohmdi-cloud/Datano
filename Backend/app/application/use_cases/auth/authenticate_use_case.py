@@ -10,7 +10,8 @@ from app.domain.error.exceptions import (
     InactiveUserException,
     ValidationException,
 )
-from app.application.use_cases.auth.interfaces import IPasswordService
+from app.application.use_cases.auth.interfaces import IPasswordService, PasswordVerification
+from app.domain.entities import UserEntity
 from app.interface.repository.user_repository_interface import IUserRepository
 
 
@@ -25,7 +26,8 @@ class AuthenticateUserUseCase:
         self._user_repo = user_repository
         self._password_service = password_service
 
-    async def execute(self, username: str | None, password: str, *, email: str | None = None):
+    async def execute(self, username: str | None, password: str, *, email: str | None = None,
+                      upgrade_hash: bool = True) -> UserEntity:
         """Execute the use case to authenticate a user."""
         if (email is None) == (username is None):
             raise ValidationException("Provide exactly one email or legacy username", field="email")
@@ -37,16 +39,21 @@ class AuthenticateUserUseCase:
         if user is None:
             raise CredentialsValidationException(message)
         verified_hash = user.hashed_password
-        verification = await asyncio.to_thread(
-            self._password_service.verify_and_rehash, password, verified_hash
-        )
+        if upgrade_hash:
+            verification = await asyncio.to_thread(
+                self._password_service.verify_and_rehash, password, verified_hash
+            )
+        else:
+            verification = PasswordVerification(await asyncio.to_thread(
+                self._password_service.verify, password, verified_hash
+            ))
         if not verification.valid:
             raise CredentialsValidationException(message)
 
         if not user.is_active:
             raise InactiveUserException()
 
-        if verification.replacement_hash is not None:
+        if verification.replacement_hash is not None and upgrade_hash:
             replaced = await self._user_repo.replace_password_hash(
                 user.id, verified_hash, verification.replacement_hash
             )
