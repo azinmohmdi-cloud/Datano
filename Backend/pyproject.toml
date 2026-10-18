@@ -52,3 +52,7 @@ addopts = [
     "-v",
     "--tb=short",
 ]
+
+[tool.coverage.run]
+# SQLAlchemy async I/O crosses greenlets; registration races also use threads.
+concurrency = ["thread", "greenlet"]

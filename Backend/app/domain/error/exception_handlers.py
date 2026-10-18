@@ -12,7 +12,7 @@ from fastapi.exception_handlers import request_validation_exception_handler
 
 from app.interface.dto.responses import failure
 
-from .exceptions import DomainException
+from .exceptions import DomainException, RateLimitExceededException
 
 
 def register_domain_exception_handlers(app):
@@ -50,7 +50,8 @@ def register_domain_exception_handlers(app):
 
         # Return as JSONResponse with the appropriate status code
         return JSONResponse(
-            status_code=exc.status_code, content=response_data.model_dump()
+            status_code=exc.status_code, content=response_data.model_dump(),
+            headers={"Retry-After":str(exc.retry_after)} if isinstance(exc, RateLimitExceededException) else None,
         )
 
 
@@ -108,7 +109,9 @@ def register_all_exception_handlers(app):
     async def handle_request_validation(request: Request, exc: RequestValidationError):
         # FastAPI's default errors may echo the whole body on a missing field.
         # Keep the existing 422 detail format, but never echo credential inputs.
-        if request.method == "POST" and request.url.path in {"/api/auth/login", "/api/users/"}:
+        # APIRoute.path remains canonical when a proxy supplies root_path.
+        route_path = getattr(request.scope.get("route"), "path", request.url.path)
+        if request.method == "POST" and route_path in {"/api/auth/login", "/api/auth/register", "/api/users/"}:
             return JSONResponse(status_code=422, content={"detail": [
                 {key: error[key] for key in ("type", "loc", "msg")}
                 for error in exc.errors()

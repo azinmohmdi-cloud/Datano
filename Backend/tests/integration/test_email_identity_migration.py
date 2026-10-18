@@ -28,20 +28,20 @@ async def test_backfill_preserves_accounts_roles_hashes_and_unicode_identity(iso
                 ('role', 'User', '{}', now(), now(), true)"""))
             await connection.execute(text("INSERT INTO user_roles VALUES ('legacy', 'role')"))
             before = (await connection.execute(text("SELECT * FROM users"))).mappings().one()
-            await connection.run_sync(migrate)
+            await connection.run_sync(migrate, "0003_email_identity")
             after = (await connection.execute(text("SELECT * FROM users"))).mappings().one()
             assert after["email_key"] == before["email"].strip().lower()
             assert {key: after[key] for key in before} == dict(before)
             assert await connection.scalar(text("SELECT count(*) FROM user_roles")) == 1
             assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == "0003_email_identity"
-            await connection.run_sync(migrate)
+            await connection.run_sync(migrate, "0003_email_identity")
         async with database.engine.begin() as connection:
             await connection.run_sync(lambda sync: migrate(sync, "0002_users_roles", downgrade=True))
             assert "email_key" not in await connection.run_sync(
                 lambda sync: {col["name"] for col in inspect(sync).get_columns("users")}
             )
             assert dict((await connection.execute(text("SELECT * FROM users"))).mappings().one()) == dict(before)
-            await connection.run_sync(migrate)
+            await connection.run_sync(migrate, "0003_email_identity")
     finally:
         await database.dispose()
 

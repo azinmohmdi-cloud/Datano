@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 from fastapi_pagination import add_pagination
+from sqlalchemy import select
 from sqlalchemy.exc import ProgrammingError
 from starlette.types import Lifespan
 
@@ -12,6 +13,7 @@ from app.infra.core.config import Config, config
 from app.infra.core.logging import register_logger
 from app.infra.database.bootstrap import ensure_required_roles
 from app.infra.database.connection import Database
+from app.infra.database.models import RegistrationAttemptRow
 from app.interface.controller import api_router
 
 
@@ -28,6 +30,7 @@ def create_app(
             try:
                 async with database.transaction() as session:
                     await ensure_required_roles(session)
+                    await session.execute(select(RegistrationAttemptRow).limit(0))
             except ProgrammingError as error:
                 if getattr(error.orig, "sqlstate", None) in {"42P01", "42703"}:
                     raise RuntimeError(
@@ -42,6 +45,7 @@ def create_app(
     application = FastAPI(
         title="FastAPI Server", version="1.0.0", lifespan=lifespan_handler or lifespan
     )
+    application.state.settings = settings if settings is not None else config
     register_logger(application)
     add_middlewares(application)
     register_all_exception_handlers(application)

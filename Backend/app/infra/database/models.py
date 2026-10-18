@@ -1,7 +1,7 @@
 """Identity persistence models, separate from HTTP DTOs and domain entities."""
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, Index, String, Table, Text
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, Index, Integer, String, Table, Text
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -37,6 +37,21 @@ class RoleRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     is_active: Mapped[bool] = mapped_column(Boolean)
+
+
+class RegistrationAttemptRow(Base):
+    __tablename__ = "registration_attempts"
+    __table_args__ = (
+        CheckConstraint("attempts > 0", name="attempts_positive"),
+        CheckConstraint("length(peer_key) = 64", name="peer_key_length"),
+        CheckConstraint("expires_at > window_start", name="window_valid"),
+        Index("ix_registration_attempts_expires_at", "expires_at"),
+    )
+
+    peer_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(Integer)
 
 
 user_roles = Table(

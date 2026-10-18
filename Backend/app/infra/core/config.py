@@ -14,6 +14,17 @@ class Config(BaseSettings):
     # Settings can be loaded offline; the serving lifespan requires DATABASE_URL.
     database_url: SecretStr | None = Field(default=None, alias="DATABASE_URL")
 
+    # Registration-only technical defaults; not account/product quotas.
+    registration_ip_limit: int = Field(
+        default=5, gt=0, le=2147483646, alias="REGISTRATION_IP_LIMIT"
+    )
+    registration_window_seconds: int = Field(
+        default=600, gt=0, alias="REGISTRATION_WINDOW_SECONDS"
+    )
+    registration_max_body_bytes: int = Field(
+        default=8192, gt=0, alias="REGISTRATION_MAX_BODY_BYTES"
+    )
+
     # JWT Configuration
     secret_key: str = Field(
         default="09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7",

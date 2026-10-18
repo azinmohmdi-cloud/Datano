@@ -13,6 +13,8 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
   remains for compatibility. Bearer JWT access tokens and HTTP-only refresh cookie.
 - Argon2id for new passwords and verified legacy hash upgrades; exact Unicode
   passwords and an explicit recovery response for bcrypt inputs over 72 bytes.
+- Public registration creates an active ordinary `User` atomically. Registration
+  attempts have PostgreSQL-backed per-peer throttling and a bounded request body.
 - Role permission checks; JSON permission/policy catalogs. Policy evaluation is
   a placeholder, not a delivered ABAC engine.
 - PostgreSQL-backed users, roles and assignments through the existing repository
@@ -26,7 +28,7 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
 
 These are template/development capabilities, not a completed marketing backend.
 The approved target also includes Celery/Redis, opaque server-side sessions,
-public registration/recovery, and the five-domain-entity product model.
+email recovery, and the five-domain-entity product model.
 Those changes require their own authorized implementation tasks and mandatory
 red–green–refactor.
 
@@ -166,6 +168,14 @@ This data-dependent revision requires an **online PostgreSQL** connection;
 The baseline-only offline example above remains supported. Identity ORM metadata
 is registered for autogeneration; generated revisions still need review.
 
+Revision **`0004_registration_attempts`** adds only shared, expiring registration
+attempt counters and their index/check constraints. It changes no user, role,
+assignment or hash data. Startup checks this required table and refuses an
+outdated schema with `run alembic upgrade head`; it never migrates automatically.
+Downgrading just to `0003_email_identity` drops only counters and preserves
+identity data, but resets their rate-limit history. Use matching application
+code when intentionally rolling back; the BE-006 app requires the new table.
+
 The backfill holds an exclusive lock on `users` inside PostgreSQL transactional
 DDL. Stop application writers for the migration and plan an appropriate
 maintenance window for the target data size. Canonical collisions or empty keys
@@ -210,7 +220,7 @@ Lists use SQL pagination ordered by `(created_at, id)` with compatible empty-pag
 metadata, and roles for a user page are loaded together. Returned domain entities
 are detached values, not live mutable ORM references.
 
-Refresh-token persistence, public registration/activation policy, admin
+Refresh-token persistence, admin
 verification and analytics are later tasks. Existing in-memory user/role data is
 not imported automatically into PostgreSQL. The HTTP/DTO/OpenAPI contract remains
 unchanged in BE-004.
@@ -254,8 +264,9 @@ normalization or provider-specific email alias rules are applied.
 Its body needs first/last name, email and password; username is optional and is
 generated internally when omitted. Public `User`/create/login schemas mark the
 legacy username field optional/deprecated. Existing JWT claims still carry the
-internal username, so callers do not need to supply one. Public registration,
-activation and opaque session security belong to subsequent tasks. Frontend
+internal username, so callers do not need to supply one. Public registration and
+activation are provided separately by BE-006 below; opaque session security is
+still pending. Frontend
 generation/adapters are deferred to FE-029; approved UI files are unchanged.
 
 New password creation uses **15–128 Unicode codepoints** (Python `len`), including
@@ -295,6 +306,86 @@ plaintext password, hash or `email_key` is added to public user responses.
 See [BE-005 validation](docs/validation/BE-005-email-passwords.md) for exact
 Red/Green results, PostgreSQL migration/constraint checks, contract changes,
 coverage and limitations.
+
+## Public registration
+
+BE-006 adds **`POST /api/auth/register`** without an administrative permission or
+existing session. Its JSON body contains exactly:
+
+```json
+{
+  "first_name": "Given name",
+  "last_name": "Family name",
+  "email": "person@example.test",
+  "password": "An exact 15–128 codepoint secret"
+}
+```
+
+Success returns **201** with `{success, message, payload}` and the existing public
+user representation. The account is active and has only the backend-selected
+`User` role. Names require non-whitespace content, without an invented field
+length limit. Email identity and password policy reuse BE-005. Internal username
+generation, hash creation, activation and role assignment use the existing
+repositories in one request transaction. Failure rolls back the complete account
+and assignment. Registration itself sets no cookie or token; session work remains
+BE-007 onward. The existing protected `POST /api/users/` behavior is unchanged.
+
+Unknown fields are rejected with 422, including roles, permissions, username,
+activation, IDs and password hashes. No address grants Admin automatically.
+Canonical duplicate emails return 409, including concurrent attempts. Invalid
+input returns 422 without echoing the password. Missing/inactive default `User`
+role or unavailable attempt storage returns 503 and creates no account. Role
+records are reconciled at startup, never created or re-enabled by registration.
+
+Registration-only technical defaults are configurable in `.env`:
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `REGISTRATION_IP_LIMIT` | `5` | Attempts per peer in each fixed UTC window |
+| `REGISTRATION_WINDOW_SECONDS` | `600` | Window duration in seconds |
+| `REGISTRATION_MAX_BODY_BYTES` | `8192` | Entire request-body byte bound |
+
+All must be positive; the attempt limit must also fit the PostgreSQL integer
+counter. These are initial engineering defaults, not product/account quotas or
+OWASP-mandated numbers. Workers must share settings and the database. A
+registration-specific route guard consumes a counter before JSON parsing,
+dependency resolution or password hashing. Success, validation errors, malformed
+JSON, duplicate emails and oversized requests all consume attempts. Counters
+commit independently of the account transaction so an error cannot refund them.
+Excess requests return **429**, `payload.error_code="RATE_LIMITED"`, a
+`Retry-After` header and `payload.details.retry_after` in seconds. Denials do not
+extend the window. Chunked/no-length bodies are checked while reading; the exact
+byte limit is accepted and a larger body returns **413**.
+
+The peer comes only from the ASGI connection address, with equivalent IPv6 and
+IPv4-mapped spellings canonicalized. Missing/unparseable peers share one
+restrictive bucket. The application does not trust `X-Forwarded-For`, `Forwarded`
+or `X-Real-IP` itself. An ingress proxy/server must establish a trustworthy ASGI
+peer using an explicit trusted-proxy policy; deployment verification belongs to
+OPS-001. The database stores a SHA-256 peer token, window timestamps and a capped
+counter; no raw address, email or credential body is stored there. The peer token
+is pseudonymous, not an anonymity guarantee. Each attempt removes at most 100
+expired rows, skips locked rows and preserves live windows. Expired rows can
+remain during inactivity until a later request or authorized maintenance.
+
+This fixed-window per-peer control is an initial abuse barrier: shared NAT users
+share a quota, boundary bursts and distributed/rotating peers need ingress/bot
+controls. It is not a production load/DDoS guarantee. No Redis, CAPTCHA, global
+auth throttling or unrelated endpoint limit was introduced. The approved signup
+UI and its unavailable-terms gate are unchanged; public rollout/terms integration
+still depends on EXT-002, FE-048 and the authorized transport/session tasks.
+
+Validate using the dedicated PostgreSQL setup above:
+
+```sh
+pdm run pytest tests/integration/test_registration.py tests/integration/test_registration_limiter.py tests/integration/test_registration_migration.py tests/unit/test_registration_config.py
+pdm run pytest --cov=app --cov=migrations --cov-branch
+```
+
+Coverage explicitly traces both threads and SQLAlchemy greenlets; without that,
+concurrent async SQL can leave misleading after-await gaps. No threshold or
+exclusion was relaxed. See [BE-006 validation](docs/validation/BE-006-registration.md)
+for actual Red/Green runs, concurrency, migration, API and full-suite results.
 
 ## Test isolation
 

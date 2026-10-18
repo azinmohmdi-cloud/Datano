@@ -13,6 +13,18 @@ class PasswordVerification:
     replacement_hash: str | None = field(default=None, repr=False)
 
 
+@dataclass(frozen=True)
+class RegistrationLimitDecision:
+    allowed: bool
+    retry_after: int = 0
+
+
+class IRegistrationLimiter:
+    async def consume(self, peer: str | None) -> RegistrationLimitDecision:
+        """Record an attempt independently of the account transaction."""
+        raise NotImplementedError
+
+
 class IPasswordService:
     """Interface for password operations."""
 
