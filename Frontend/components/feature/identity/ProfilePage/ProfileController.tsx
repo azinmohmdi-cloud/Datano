@@ -6,6 +6,7 @@ import { formatRecoveryDuration, normalizeRecoveryCode } from "@/components/feat
 import ProfilePageUI, { type ProfileEmailStep, type ProfilePageUIProps } from ".";
 import { profileMessages as messages, profileTranslations } from "./content";
 import { validateProfileEmail, validateProfileNames } from "./validation";
+import { authErrorMessage } from "../SessionBoundary/messages";
 
 export type ProfileScenario = "ready" | "loading" | "error" | "names-pending" | "names-error" | "email-pending" | "email-error" | "code-error" | "expired" | "resend-ready" | "logout-confirm" | "logout-pending" | "logout-error";
 interface ProfileControllerProps {
@@ -16,13 +17,15 @@ interface ProfileControllerProps {
   emailStep?: ProfileEmailStep;
   onEmailStepChange?: (step: ProfileEmailStep) => void;
   initialScenario?: ProfileScenario;
+  onLogout?: () => Promise<void>;
+  logoutPending?: boolean;
 }
 const subscribeToHydration = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
 const emptyErrors = { firstName: "", lastName: "", names: "", email: "", code: "", emailSubmission: "", logout: "" };
 
-export default function ProfileController({ account, sitesHref, initialEmailValues, preview = false, emailStep: controlledStep, onEmailStepChange, initialScenario = "ready" }: ProfileControllerProps) {
+export default function ProfileController({ account, sitesHref, initialEmailValues, preview = false, emailStep: controlledStep, onEmailStepChange, initialScenario = "ready", onLogout, logoutPending = false }: ProfileControllerProps) {
   const hydrated = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
   const id = useId();
   const [localStep, setLocalStep] = useState<ProfileEmailStep>("request");
@@ -42,7 +45,7 @@ export default function ProfileController({ account, sitesHref, initialEmailValu
   const [attempts, setAttempts] = useState(5);
   const [resendNotice, setResendNotice] = useState("");
   const previousFocus = useRef({ emailStep, logoutOpen });
-  const pendingAction = !preview ? null : scenario === "names-pending" ? "names" : scenario === "email-pending" ? "email" : scenario === "logout-pending" ? "logout" : null;
+  const pendingAction = logoutPending ? "logout" : !preview ? null : scenario === "names-pending" ? "names" : scenario === "email-pending" ? "email" : scenario === "logout-pending" ? "logout" : null;
   const expiry = scenario === "expired" ? 0 : Math.max(0, 600 - elapsed);
   const cooldown = ["expired", "resend-ready"].includes(scenario) ? 0 : Math.max(0, 60 - elapsed);
   const expired = preview && expiry === 0;
@@ -137,7 +140,13 @@ export default function ProfileController({ account, sitesHref, initialEmailValu
     },
     onLogoutOpen: () => { if (!disabled) { setLogoutOpen(true); setErrors((current) => ({ ...current, logout: "" })); } },
     onLogoutCancel: () => { if (!disabled) { setLogoutOpen(false); setErrors((current) => ({ ...current, logout: "" })); } },
-    onLogoutConfirm: () => { if (!disabled) setErrors((current) => ({ ...current, logout: messages.logoutUnavailable })); },
+    onLogoutConfirm: async () => {
+      if (disabled) return;
+      if (!onLogout) { setErrors((current) => ({ ...current, logout: messages.logoutUnavailable })); return; }
+      setErrors((current) => ({ ...current, logout: "" }));
+      try { await onLogout(); }
+      catch (error) { setErrors((current) => ({ ...current, logout: authErrorMessage(error, "logout") })); }
+    },
   };
 
   return <ProfilePageUI id={id} account={account} sitesHref={sitesHref} names={names} emailValues={emailValues}

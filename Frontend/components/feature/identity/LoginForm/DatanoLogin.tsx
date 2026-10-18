@@ -1,59 +1,42 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import useSession from "@/data/feature/session/useSession";
+import useSessionActions from "@/data/feature/session/useSessionActions";
+import { authErrorMessage } from "../SessionBoundary/messages";
+import { loginDestination } from "@/data/feature/session/routing";
+import SessionStatus from "../SessionBoundary/status";
+import DatanoSessionDenied from "../SessionBoundary/DatanoSessionDenied";
+import LoginFormController from "./LoginFormController";
 
-import LoginFormUI, { type LoginFormUIProps } from ".";
-import { loginDestinations, loginTranslations, loginValidation } from "./content";
-
-const subscribeToHydration = () => () => {};
-const clientReady = () => true;
-const serverReady = () => false;
+function destination(role: "User" | "Admin" | null) {
+  const values = new URLSearchParams(window.location.search).getAll("returnTo");
+  return loginDestination(role, values.length === 1 ? values[0] : null);
+}
 
 export default function DatanoLogin() {
-  // Keep native credential submission disabled until the submit handler is hydrated.
-  const hydrated = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
-  const [values, setValues] = useState({ email: "", password: "", remember: false });
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const [errors, setErrors] = useState({ email: "", password: "", submission: "" });
-  const emailInput = useRef<HTMLInputElement>(null);
-  const passwordInput = useRef<HTMLInputElement>(null);
+  const actions = useSessionActions();
+  const session = useSession();
+  const router = useRouter();
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (!session.checking && !session.failed && session.account?.role && !actions.pending) {
+      const target = destination(session.account.role);
+      if (target) router.replace(target);
+    }
+  }, [session.checking, session.failed, session.account, actions.pending, router]);
 
-  function validateEmail() {
-    if (!values.email.trim()) return loginValidation.emailRequired;
-    return emailInput.current?.validity.typeMismatch ? loginValidation.emailInvalid : "";
-  }
-
-  function validatePassword() {
-    // Login accepts existing passwords verbatim; new-password policy belongs to signup/recovery.
-    return values.password.length === 0 ? loginValidation.passwordRequired : "";
-  }
-
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const email = validateEmail();
-    const password = validatePassword();
-    setErrors({ email, password, submission: email || password ? "" : loginValidation.unavailable });
-    if (email) emailInput.current?.focus();
-    else if (password) passwordInput.current?.focus();
-    // FE-030 will connect the real session contract. No API, delay, session or success is simulated.
-  }
-
-  const callbacks: LoginFormUIProps["callbacks"] = {
-    onEmailChange: (email) => {
-      setValues((current) => ({ ...current, email }));
-      setErrors((current) => ({ ...current, email: "", submission: "" }));
-    },
-    onPasswordChange: (password) => {
-      setValues((current) => ({ ...current, password }));
-      setErrors((current) => ({ ...current, password: "", submission: "" }));
-    },
-    onRememberChange: (remember) => setValues((current) => ({ ...current, remember })),
-    onEmailBlur: () => setErrors((current) => ({ ...current, email: validateEmail() })),
-    onPasswordBlur: () => setErrors((current) => ({ ...current, password: validatePassword() })),
-    onTogglePassword: () => setPasswordVisible((current) => !current),
-    onSubmit,
-  };
-
-  return <LoginFormUI values={values} errors={errors} pending={false} disabled={!hydrated} passwordVisible={passwordVisible} inputRefs={{ email: emailInput, password: passwordInput }}
-    destinations={loginDestinations} translations={loginTranslations} callbacks={callbacks} />;
+  if (!actions.pending && !session.checking && !session.failed && session.account && !session.account.role) return <DatanoSessionDenied />;
+  if (!actions.pending && (session.checking || session.failed || session.account)) return <SessionStatus failed={session.failed}
+    onRetry={session.failed ? () => { void session.retry(); } : undefined} />;
+  return <LoginFormController pending={actions.pending} submissionError={error} onEdit={() => setError("")}
+    onLogin={async values => {
+      setError("");
+      try {
+        const account = await actions.login({ email: values.email.trim(), password: values.password, remember_me: values.remember });
+        const target = account && destination(account.role);
+        if (target) router.replace(target);
+      } catch (failure) { setError(authErrorMessage(failure, "login")); }
+    }} />;
 }

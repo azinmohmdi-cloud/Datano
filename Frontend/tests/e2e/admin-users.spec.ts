@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/auth/me", route => route.fulfill({ status: 401, json: { detail: "Unauthorized" } }));
+});
+
 const review = "/ui-review/admin/users";
 const row = (id: string) => `[data-admin-user-row="${id}"]`;
 const multi = row("UI_REVIEW_ADMIN_USER_MULTI");
@@ -145,7 +149,7 @@ test("user table fits RTL layouts through local scrolling while summary card geo
 test("product route never reveals sample users through role flags or browser storage", async ({ page }) => {
   await page.addInitScript(() => { localStorage.setItem("role", "admin"); });
   await page.goto("/admin/users?role=admin&persona=admin&users=ready");
-  await expect(page.getByText("برای مشاهدهٔ پنل مدیریت، وارد شوید.", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL("/login?returnTo=%2Fadmin%2Fusers");
   await expect(page.locator('[data-admin-users], [data-admin-user-row], [data-review-tools]')).toHaveCount(0);
   await expect(page.getByText(/sara\.admin-review@example\.test|growth\.example\.test/)).toHaveCount(0);
 });

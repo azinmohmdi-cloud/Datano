@@ -1,6 +1,15 @@
-import ProfileAccess from "./access";
+"use client";
+
+import { useRouter } from "next/navigation";
+import useSessionActions from "@/data/feature/session/useSessionActions";
+import { useVerifiedAccount } from "../SessionBoundary/DatanoSessionBoundary";
+import ProfileController from "./ProfileController";
 
 export default function DatanoProfile() {
-  // FE-030/FE-032 provide trusted session/account data; no fixture belongs to this route.
-  return <ProfileAccess />;
+  const account = useVerifiedAccount();
+  const actions = useSessionActions();
+  const router = useRouter();
+  if (!account) return null;
+  return <ProfileController key={account.id} account={account} initialEmailValues={{ email: "", code: "" }}
+    logoutPending={actions.pending} onLogout={async () => { await actions.logout(); router.replace("/login"); }} />;
 }

@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/auth/me", route => route.fulfill({ status: 401, json: { detail: "Unauthorized" } }));
+});
+
 const firstDomain = "example.test";
 const readyDomain = "marketing-performance-team.reports.example.test";
 
@@ -176,14 +180,12 @@ test("both private profile stages navigate to website review and return without 
 test("public profile retains guest access and cannot expose website navigation or a query-supplied account", async ({ page }) => {
   const response = await page.goto("/profile?state=ready&role=admin&sitesHref=/ui-review/websites");
   expect(response?.status()).toBe(200);
-  await expect(page.getByText("برای مشاهده و ویرایش اطلاعات حساب، وارد شوید.", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL("/login?returnTo=%2Fprofile");
   await expect(page.getByRole("link", { name: "سایت‌های من", exact: true })).toHaveCount(0);
   await expect(page.getByRole("main").locator('a[href^="/ui-review"]')).toHaveCount(0);
-  await expect(page.getByRole("textbox")).toHaveCount(0);
+  await expect(page.locator("[data-profile-current-email]")).toHaveCount(0);
   await expect(page.getByText("profile-review@example.test", { exact: true })).toHaveCount(0);
   await expect(page.locator("[data-website-row]")).toHaveCount(0);
-  await page.getByRole("main").getByRole("link", { name: "ورود به حساب", exact: true }).click();
-  await expect(page).toHaveURL("/login");
 });
 
 test("My Websites remains available for all private site-count fixtures and fits both profile compositions", async ({ page }, testInfo) => {

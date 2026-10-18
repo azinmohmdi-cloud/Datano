@@ -18,9 +18,11 @@ interface SignupFormControllerProps {
   initialValues?: SignupFormValues;
   pending?: boolean;
   submissionError?: string;
+  onRegister?: (values: SignupFormValues) => Promise<void>;
+  onEdit?: () => void;
 }
 
-export default function SignupFormController({ termsSelectable, termsDescription, initialValues = emptyValues, pending = false, submissionError = "" }: SignupFormControllerProps) {
+export default function SignupFormController({ termsSelectable, termsDescription, initialValues = emptyValues, pending = false, submissionError = "", onRegister, onEdit }: SignupFormControllerProps) {
   const hydrated = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState(emptyErrors);
@@ -32,20 +34,21 @@ export default function SignupFormController({ termsSelectable, termsDescription
     return validateSignup(nextValues, emailTypeMismatch);
   }
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!hydrated || pending || !termsSelectable) return;
     const emailTypeMismatch = event.currentTarget.querySelector<HTMLInputElement>('input[name="email"]')?.validity.typeMismatch ?? false;
     const nextErrors = validate(values, emailTypeMismatch);
     const order: SignupField[] = ["firstName", "lastName", "email", "password", "confirmation", "terms"];
     const firstInvalid = order.find((field) => nextErrors[field]);
-    setErrors({ ...nextErrors, submission: firstInvalid ? "" : signupValidation.unavailable });
+    setErrors({ ...nextErrors, submission: firstInvalid || onRegister ? "" : signupValidation.unavailable });
     if (firstInvalid === "terms") event.currentTarget.querySelector<HTMLElement>("[role=checkbox]")?.focus();
     else if (firstInvalid) event.currentTarget.querySelector<HTMLInputElement>(`input[name="${firstInvalid}"]`)?.focus();
-    // FE-030/FE-048 own real registration and versioned terms. This controller never sends or succeeds.
+    if (!firstInvalid && onRegister) await onRegister(values);
   }
 
   function onFieldChange(field: SignupTextField, value: string) {
+    onEdit?.();
     const nextValues = { ...values, [field]: value };
     setValues(nextValues);
     setErrors((current) => ({

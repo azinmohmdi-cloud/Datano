@@ -1,0 +1,63 @@
+import { test, expect } from "@playwright/test";
+
+test("real server-provisioned Admin uses account entry and an allowed profile return; local role never decides", async ({ page }) => {
+  const email = process.env.DATANO_SESSION_ADMIN_EMAIL;
+  const password = process.env.DATANO_SESSION_ADMIN_PASSWORD;
+  if (!email || !password) throw new Error("A disposable server-provisioned Admin fixture is required");
+  await page.goto("/login?returnTo=%2Fadmin%2Fusers&role=User");
+  await page.getByLabel("ایمیل", { exact: true }).fill(email);
+  await page.getByLabel("رمز عبور", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "ورود به حساب", exact: true }).click();
+  await expect(page).toHaveURL("/admin/users");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("پنل مدیریت");
+  await page.goto("/account?role=User");
+  await expect(page).toHaveURL("/admin/users");
+  await page.goto("/login?returnTo=%2Fprofile&role=User");
+  await expect(page).toHaveURL("/profile");
+  await expect(page.locator("[data-profile-current-email]")).toHaveText(email);
+  await page.getByRole("button", { name: "خروج از حساب", exact: true }).click();
+  await page.getByRole("button", { name: "تأیید خروج", exact: true }).click();
+  await expect(page).toHaveURL("/login");
+});
+
+test("real product login, trusted account routing, current logout and cookie reuse rejection", async ({ page, context }) => {
+  const api = process.env.DATANO_SESSION_API_URL!;
+  const email = `fe030-${crypto.randomUUID()}@example.test`;
+  const password = ` رمز دقیق فارسی ${crypto.randomUUID()} `;
+  const headers = { Origin: "http://127.0.0.1:3100" };
+  const csrf = await context.request.get(`${api}/api/auth/csrf`, { headers });
+  expect(csrf.status()).toBe(200);
+  const registered = await context.request.post(`${api}/api/auth/register`, { headers: { ...headers, "X-CSRF-Token": (await csrf.json()).payload.csrf_token },
+    data: { first_name: "کاربر", last_name: "آزمایش", email, password } });
+  expect(registered.status()).toBe(201);
+  await page.goto("/account?role=Admin");
+  await expect(page.getByLabel("ایمیل", { exact: true })).toBeEnabled();
+  await page.getByLabel("ایمیل", { exact: true }).fill(email);
+  await page.getByLabel("رمز عبور", { exact: true }).fill(password + "wrong");
+  await page.getByRole("button", { name: "ورود به حساب", exact: true }).click();
+  await expect(page.getByText("ایمیل یا رمز عبور درست نیست.", { exact: true })).toBeVisible();
+  await page.getByLabel("رمز عبور", { exact: true }).fill(password);
+  await page.getByRole("checkbox", { name: "مرا به خاطر بسپار", exact: true }).check();
+  await page.getByRole("button", { name: "ورود به حساب", exact: true }).click();
+  await expect(page).toHaveURL("/profile");
+  await expect(page.locator("[data-profile-current-email]")).toHaveText(email);
+  const cookie = (await context.cookies()).find(item => item.name === "datano_session_dev");
+  expect(cookie?.httpOnly).toBe(true); expect(cookie?.sameSite).toBe("Lax"); expect(cookie!.expires).toBeGreaterThan(Date.now() / 1000);
+  expect(await page.evaluate(() => document.cookie)).toBe("");
+  await page.reload();
+  await expect(page.locator("[data-profile-current-email]")).toHaveText(email);
+  await page.goto("/admin/users?role=Admin");
+  await expect(page).toHaveURL("/profile");
+  await page.getByRole("button", { name: "خروج از حساب", exact: true }).click();
+  await page.getByRole("button", { name: "تأیید خروج", exact: true }).click();
+  await expect(page).toHaveURL("/login");
+  expect((await context.cookies()).some(item => item.name === "datano_session_dev")).toBe(false);
+  const replay = await context.request.get(`${api}/api/auth/me`, { headers: { Cookie: `datano_session_dev=${cookie!.value}` } });
+  expect(replay.status()).toBe(401);
+  await page.goto("/profile");
+  await expect(page).toHaveURL("/login?returnTo=%2Fprofile");
+  expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: {}, session: {} });
+  await page.goto("/signup?terms=approved&role=Admin");
+  await expect(page.getByRole("checkbox", { name: "شرایط استفاده را می‌پذیرم", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "ایجاد حساب کاربری", exact: true })).toBeDisabled();
+});

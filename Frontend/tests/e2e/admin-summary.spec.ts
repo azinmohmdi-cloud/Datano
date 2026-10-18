@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/auth/me", route => route.fulfill({ status: 401, json: { detail: "Unauthorized" } }));
+});
+
 const review = "/ui-review/admin/users";
 const metric = (id: string) => `[data-admin-metric="${id}"]`;
 const value = (id: string) => `${metric(id)} [data-admin-count]`;
@@ -102,14 +106,12 @@ test("product admin route ignores sample authority and has a working login actio
   page.on("request", request => { if (request.method() !== "GET" || new URL(request.url()).pathname.startsWith("/api/")) requests.push(request.url()); });
   page.on("pageerror", error => errors.push(error.message));
   await page.goto("/admin/users?persona=admin&role=admin&scenario=ready&totalUsers=999999");
-  await expect(page).toHaveTitle("پنل مدیریت | دیتانو");
-  await expect(page.getByText("برای مشاهدهٔ پنل مدیریت، وارد شوید.", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL("/login?returnTo=%2Fadmin%2Fusers");
+  await expect(page).toHaveTitle("ورود به حساب کاربری | دیتانو");
   await expect(page.locator('[data-admin-metric], [data-review-tools], select, a[href^="/ui-review"]')).toHaveCount(0);
   expect(await context.cookies()).toEqual([]);
   expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: {}, session: {} });
-  expect(requests).toEqual([]); expect(errors).toEqual([]);
-  await page.getByRole("main").getByRole("link", { name: "ورود به حساب", exact: true }).click();
-  await expect(page).toHaveURL("/login");
+  expect(requests.every(url => new URL(url).pathname === "/api/auth/me")).toBe(true); expect(errors).toEqual([]);
 });
 
 test("summary cards fit Persian RTL mobile tablet desktop dark and enlarged text", async ({ page }) => {

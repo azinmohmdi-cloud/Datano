@@ -1,21 +1,21 @@
 import { test, expect } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/auth/me", route => route.fulfill({ status: 401, json: { detail: "Unauthorized" } }));
+});
+
 test("public profile is an honest access state without sample identity or query-controlled authentication", async ({ page, context }) => {
   const requests: string[] = [];
   page.on("request", (request) => { if (request.method() !== "GET" || new URL(request.url()).pathname.startsWith("/api/")) requests.push(request.url()); });
   const response = await page.goto("/profile?state=ready&role=admin&emailStep=code");
   expect(response?.status()).toBe(200);
-  await expect(page).toHaveTitle("پروفایل | دیتانو");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("پروفایل");
-  await expect(page.getByText("برای مشاهده و ویرایش اطلاعات حساب، وارد شوید.", { exact: true })).toBeVisible();
-  await expect(page.getByRole("textbox")).toHaveCount(0);
+  await expect(page).toHaveURL("/login?returnTo=%2Fprofile");
+  await expect(page).toHaveTitle("ورود به حساب کاربری | دیتانو");
+  await expect(page.locator("[data-profile-current-email]")).toHaveCount(0);
   await expect(page.getByText("profile-review@example.test", { exact: true })).toHaveCount(0);
-  await expect(page.locator('[data-layout="account"]')).toHaveCount(1);
   await expect(context.cookies()).resolves.toEqual([]);
   expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: {}, session: {} });
-  expect(requests).toEqual([]);
-  await page.getByRole("main").getByRole("link", { name: "ورود به حساب", exact: true }).click();
-  await expect(page).toHaveURL("/login");
+  expect(requests.every(url => new URL(url).pathname === "/api/auth/me")).toBe(true);
 });
 
 test("private profile edits names with linked validation and scoped reset without mutating account data", async ({ page }) => {

@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/auth/me", route => route.fulfill({ status: 401, json: { detail: "Unauthorized" } }));
+  await page.route("**/api/auth/csrf", route => route.fulfill({ json: { success: true, message: "OK", payload: { csrf_token: "a".repeat(43) } } }));
+  await page.route("**/api/auth/login", route => route.fulfill({ status: 503, json: { detail: "Unavailable" } }));
+});
+
 test("login has the approved fields, links and shared Persian shell", async ({ page }) => {
   const response = await page.goto("/login");
   expect(response?.status()).toBe(200);
@@ -54,7 +60,7 @@ test("validation is Persian, linked, recoverable and preserves login password se
   await expect(page.getByText("ورود به حساب در حال حاضر در دسترس نیست.", { exact: true })).toHaveCount(0);
 });
 
-test("password visibility and remember-me work by keyboard without auth or storage effects", async ({ page, context }) => {
+test("password visibility and remember-me preserve credentials and handle a real transport failure without storage effects", async ({ page, context }) => {
   const requests: string[] = [];
   page.on("request", (request) => {
     if (request.method() !== "GET" || new URL(request.url()).pathname.startsWith("/api/")) requests.push(request.url());
@@ -85,7 +91,9 @@ test("password visibility and remember-me work by keyboard without auth or stora
   await expect(page).toHaveURL("/login");
   await expect(context.cookies()).resolves.toEqual([]);
   expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual(storage);
-  expect(requests).toEqual([]);
+  const paths = requests.map(url => new URL(url).pathname);
+  expect(paths.filter(path => path !== "/api/auth/me")).toEqual(["/api/auth/csrf", "/api/auth/login"]);
+  expect(paths).toContain("/api/auth/me");
   await page.reload();
   await expect(remember).not.toBeChecked();
   await expect(password).toHaveAttribute("type", "password");
@@ -160,11 +168,13 @@ test("without JavaScript login never submits credentials through native navigati
   try {
     const page = await context.newPage();
     await page.goto("/login");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("ورود به حساب کاربری");
-    await expect(page.getByRole("button", { name: "ورود به حساب", exact: true })).toBeDisabled();
-    await expect(page.getByLabel("رمز عبور", { exact: true })).toBeDisabled();
-    await expect(page.getByText("برای استفاده از فرم ورود، JavaScript مرورگر را فعال کنید.", { exact: true })).toBeVisible();
-    await page.getByRole("link", { name: "ثبت‌نام", exact: true }).click();
-    await expect(page).toHaveURL("/signup");
+    await expect(page.getByText("در حال بررسی نشست…", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "ورود به حساب", exact: true })).toHaveCount(0);
+    await expect(page.getByLabel("رمز عبور", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("برای بررسی نشست، JavaScript مرورگر را فعال کنید.", { exact: true })).toBeVisible();
+    const menu = page.getByRole("button", { name: "منوی اصلی", exact: true });
+    if (await menu.isVisible()) await menu.click();
+    await page.getByRole("banner").getByRole("link", { name: "حساب کاربری", exact: true }).click();
+    await expect(page).toHaveURL("/account");
   } finally { await context.close(); }
 });

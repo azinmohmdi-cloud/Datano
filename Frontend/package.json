@@ -15,6 +15,9 @@
     "test:e2e:install": "playwright install chromium",
     "test:transport": "playwright test --config playwright.transport.config.ts",
     "test:transport:integration": "playwright test --config playwright.transport.integration.config.ts",
+    "test:session": "playwright test --config playwright.session.config.ts",
+    "test:session:integration": "playwright test --config playwright.session.integration.config.ts",
+    "test:registration:integration": "playwright test --config playwright.registration.integration.config.ts",
     "api:generate": "orval --config orval.config.ts"
   },
   "dependencies": {

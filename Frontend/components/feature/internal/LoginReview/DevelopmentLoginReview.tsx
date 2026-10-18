@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import DatanoLogin from "@/components/feature/identity/LoginForm/DatanoLogin";
+import LoginFormController from "@/components/feature/identity/LoginForm/LoginFormController";
 import LoginFormUI from "@/components/feature/identity/LoginForm";
 import { loginDestinations, loginTranslations } from "@/components/feature/identity/LoginForm/content";
 import ProductLayout from "@/components/layout/ProductLayout";
@@ -26,7 +26,7 @@ export default function DevelopmentLoginReview() {
         }} callbacks={{ onStateChange: (value) => {
           if (loginReviewOptions.some((option) => option.value === value)) router.replace(`/ui-review/login?state=${value}`, { scroll: false });
         } }}>
-          {state === "idle" ? <DatanoLogin /> : <LoginPreview key={state} state={state} />}
+          {state === "idle" ? <LoginFormController /> : <LoginPreview key={state} state={state} />}
         </LoginReviewUI>
       </PublicLayout>
     </ProductLayout>

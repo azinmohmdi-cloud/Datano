@@ -1155,6 +1155,82 @@ injectors and UI design remain unchanged. Trusted-role routing, private cache
 clearing and actual form hookup remain FE-030. See
 [FE-029 validation](docs/validation/FE-029-transport.md) for executed checks and limits.
 
+## Session flows and account routing (FE-030)
+
+The approved forms now use the generated FastAPI client and the FE-029
+credentialed/CSRF transport. `data/feature/session/` owns session validation,
+queries, operations and cache cleanup; injectors keep presentation state in the
+existing controllers. Passwords and the login/CSRF envelope are never put in
+React Query mutation/query caches or browser storage.
+
+`/account` resolves a fresh `/api/auth/me`: Guest goes to `/login`, active `User`
+to `/profile`, and active `Admin` to `/admin/users`. `/login`, `/profile`, and the
+admin entry wait for this check; a failed lookup has a real retry action and does
+not become Guest. An account without an effective active role gets no protected
+page and can log out. Backend authorization remains authoritative.
+
+Login sends email, the exact password and `remember_me`, then reloads `/me`.
+`returnTo` is accepted only once and only for the exact `/profile` route (either
+active product role) or `/admin/users` (Admin). External, encoded/ambiguous,
+query-bearing, fragment-bearing and unauthorized targets fall back to the server
+role's default. Website deep links await their own ownership/data integrations.
+The header keeps its approved four items/order/appearance; Account now links to
+the resolver. `/profile` is also available to Admin for current-session logout.
+
+Profile uses `/me` identity and its existing logout confirmation. Successful
+server logout cancels queries, clears query/mutation caches, stores anonymous
+session state and replaces the route with Login. A failed logout retains account
+data and allows retry. Account/role changes or `/me` 401 clear other private
+caches. Names/email editing, website flows and admin aggregates remain in their
+separate Backlog tasks; no data or successful save is invented here.
+
+**Public signup remains locked.** The owner explicitly approved completing the
+real connection and non-public tests while retaining the missing-terms gate.
+`DatanoSignup` still passes `termsSelectable={false}` with no environment/query
+bypass. Its real registration callback sends only names/email/exact password and
+returns to Login after success; registration does not create a session. EXT-002
+and FE-048 still own approved legal text/version and public activation. Existing
+UI Review fixtures remain deterministic and issue no authentication requests.
+
+For local HTTP, configure `NEXT_PUBLIC_API_URL_V1` with the actual API origin and
+configure the backend's exact `PUBLIC_ORIGIN` and explicit local-cookie exception
+as documented in `../Backend/README.md`. The example's empty runtime URL expects
+the deployment's same-origin `/api` routing; FE-030 adds no product proxy. A
+fresh checkout still needs `pnpm api:generate` before type checking/building.
+
+Focused checks, using the installed Chrome when bundled Chromium is absent:
+
+```sh
+pnpm test:session
+pnpm test:transport
+PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e tests/e2e/session.spec.ts tests/e2e/login.spec.ts tests/e2e/signup.spec.ts tests/e2e/profile.spec.ts
+pnpm lint
+pnpm exec tsc --noEmit --incremental false
+pnpm build
+```
+
+Real integration checks require a **dedicated disposable migrated PostgreSQL
+backend**, not an existing account database. For registration, its `PUBLIC_ORIGIN`
+must be `http://127.0.0.1:3139`; the temporary test app uses the actual controller
+and session hook, with an explicitly non-legal checkbox fixture outside product
+routes. For product tests, use `http://127.0.0.1:3100` and privately provision an
+active Admin fixture on that disposable server through the existing repositories;
+provide `DATANO_SESSION_ADMIN_EMAIL` and `DATANO_SESSION_ADMIN_PASSWORD` only in
+the runner environment. Never use `NEXT_PUBLIC_*` for fixture credentials.
+
+```sh
+PLAYWRIGHT_CHANNEL=chrome DATANO_TRANSPORT_API_URL=http://127.0.0.1:8019 pnpm test:registration:integration
+# Restart the dedicated backend with PUBLIC_ORIGIN=http://127.0.0.1:3100.
+# Set the two private Admin fixture variables in the test runner environment.
+PLAYWRIGHT_CHANNEL=chrome DATANO_SESSION_API_URL=http://127.0.0.1:8019 pnpm test:session:integration
+```
+
+The product suite uses the actual Next.js routes on mobile/desktop, creates
+ordinary users in the test database and checks real login errors, server roles,
+remember-me cookies, reload, current logout, rejected cookie replay, and the
+public signup lock. It does not enable admin provisioning in the product.
+See [FE-030 validation](docs/validation/FE-030-session-flows.md).
+
 ### Dashboard redesign: FE-019–FE-023 (2026-10-15)
 
 The opted-in development page `/ui-review/websites/dashboard` now contains three

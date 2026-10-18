@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/auth/me", route => route.fulfill({ status: 401, json: { detail: "Unauthorized" } }));
+});
+
 test("320px header with 200 percent text keeps its full-size menu inside the viewport", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 900 });
   await page.goto("/login");
