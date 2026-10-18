@@ -9,7 +9,10 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
 ## Current implementation
 
 - Auth, users, and roles routes under `/api`; OpenAPI at `/openapi.json`.
-- Username/password login, bearer JWT access tokens, and HTTP-only refresh cookie.
+- Email/password login with canonical email lookup; deprecated username login
+  remains for compatibility. Bearer JWT access tokens and HTTP-only refresh cookie.
+- Argon2id for new passwords and verified legacy hash upgrades; exact Unicode
+  passwords and an explicit recovery response for bcrypt inputs over 72 bytes.
 - Role permission checks; JSON permission/policy catalogs. Policy evaluation is
   a placeholder, not a delivered ABAC engine.
 - PostgreSQL-backed users, roles and assignments through the existing repository
@@ -22,8 +25,8 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
   inject in-memory adapters with per-test clients, cookies and state.
 
 These are template/development capabilities, not a completed marketing backend.
-The approved target also includes Celery/Redis, email
-login, opaque server-side sessions, and the five-domain-entity product model.
+The approved target also includes Celery/Redis, opaque server-side sessions,
+public registration/recovery, and the five-domain-entity product model.
 Those changes require their own authorized implementation tasks and mandatory
 red–green–refactor.
 
@@ -147,7 +150,7 @@ is not supported. Run from `Backend/` against the intended database:
 pdm run alembic upgrade head
 pdm run alembic current
 pdm run alembic history
-pdm run alembic upgrade head --sql
+pdm run alembic upgrade 0001_database_baseline --sql
 ```
 
 Revision `0001_database_baseline` establishes history without domain tables.
@@ -155,8 +158,25 @@ Revision **`0002_users_roles`** adds `users`, `roles` and the `user_roles`
 assignment table. `alembic upgrade head` works from an empty target or BE-003's
 baseline and preserves unrelated tables/data. No analytics or session tables are
 introduced. No migration or `create_all` runs during application startup.
-Identity ORM metadata is registered for autogeneration; generated revisions still
-need review.
+Revision **`0003_email_identity`** adds a nonempty, non-null, unique `email_key`
+and backfills existing records using Python's exact `email.strip().lower()`.
+It preserves display email, account IDs, hashes, roles, assignments and timestamps.
+This data-dependent revision requires an **online PostgreSQL** connection;
+`upgrade head --sql` deliberately fails rather than producing an incomplete backfill.
+The baseline-only offline example above remains supported. Identity ORM metadata
+is registered for autogeneration; generated revisions still need review.
+
+The backfill holds an exclusive lock on `users` inside PostgreSQL transactional
+DDL. Stop application writers for the migration and plan an appropriate
+maintenance window for the target data size. Canonical collisions or empty keys
+abort the entire revision, including its DDL and version marker. No account is
+merged, deleted or selected as a winner. Before retrying, an operator must review
+the conflicting accounts in a private, backed-up environment, establish ownership
+and approve a data correction. This task does not modify real account data or
+automatically resolve collisions. Do not bypass the guard or publish account
+emails/hashes in migration logs. Downgrading just to `0002_users_roles` removes
+only the derived key and its constraints; existing display identity and hashes
+remain intact. Re-upgrading recalculates keys.
 
 Downgrading to `0001_database_baseline` **drops all three identity tables and
 their data**. This destructive reversal was tested only on disposable schemas;
@@ -178,8 +198,10 @@ this yield dependency before sending the response. Alembic uses a separate
 `NullPool` engine and disposes it after execution.
 
 IDs remain strings, so unknown non-UUID IDs return the existing missing-record
-behavior. Email/username and role names have exact-value unique constraints;
-email canonicalization and username migration belong to BE-005. The assignment
+behavior. Display email, internal username and role names retain their exact-value
+unique constraints. `email_key` independently enforces canonical uniqueness,
+including concurrent writes. Application writes derive it in the SQL repository
+on create/update; direct SQL writers must use the same Python rule. The assignment
 primary key rejects duplicates, and foreign keys prevent orphan assignments.
 Deleting a user or role cascades only to its assignment rows; it never deletes
 the opposite parent record. Role permission IDs persist as a PostgreSQL text
@@ -188,7 +210,7 @@ Lists use SQL pagination ordered by `(created_at, id)` with compatible empty-pag
 metadata, and roles for a user page are loaded together. Returned domain entities
 are detached values, not live mutable ORM references.
 
-Refresh-token persistence, email login, registration/activation policy, admin
+Refresh-token persistence, public registration/activation policy, admin
 verification and analytics are later tasks. Existing in-memory user/role data is
 not imported automatically into PostgreSQL. The HTTP/DTO/OpenAPI contract remains
 unchanged in BE-004.
@@ -216,6 +238,63 @@ Red/Green checks, migration/data-preservation evidence and full-suite results.
 See [BE-004 validation](docs/validation/BE-004-persistent-identities.md) for the
 persistent repositories, migration constraints, real process/container restart
 checks and the current full-suite result.
+
+## Email identity and password compatibility
+
+BE-005 keeps the existing routes, response envelopes and JWT/refresh-token
+mechanism. `POST /api/auth/login` now accepts `{"email":"person@example.test",
+"password":"the exact existing secret"}`. Supply exactly one of `email` or the
+deprecated compatibility field `username`; both/neither return 422. Email lookup
+and uniqueness use Unicode trim/lowercase only, preserving dots and `+` tags.
+Display spelling retains case, with outer whitespace removed on new writes.
+Historical display spelling is left untouched by migration. No Unicode
+normalization or provider-specific email alias rules are applied.
+
+`POST /api/users/` remains permission-protected and creates inactive accounts.
+Its body needs first/last name, email and password; username is optional and is
+generated internally when omitted. Public `User`/create/login schemas mark the
+legacy username field optional/deprecated. Existing JWT claims still carry the
+internal username, so callers do not need to supply one. Public registration,
+activation and opaque session security belong to subsequent tasks. Frontend
+generation/adapters are deferred to FE-029; approved UI files are unchanged.
+
+New password creation uses **15–128 Unicode codepoints** (Python `len`), including
+spaces, Persian, ZWNJ and emoji, with no composition requirement, trim,
+normalization or truncation. Hashes use Argon2id, version 19, memory **19456 KiB**,
+time cost **2**, parallelism **1**, a random 16-byte salt and a 32-byte hash.
+`argon2-cffi` **25.1.0** and its bindings **26.1.0** are locked; existing package
+versions were retained. Stronger configured parameters may be supplied through
+the password service; no upgrade lowers an existing parameter. Password CPU work
+runs in a thread through the use cases. Deployment capacity/rate controls remain
+the responsibility of their authorized tasks; this is no production load benchmark.
+
+On successful active-account authentication, supported bcrypt `$2a$`/`$2b$`/`$2y$`
+hashes are verified against the **full exact UTF-8 input up to 72 bytes** and
+upgraded to Argon2id. Existing short passwords are verified and upgraded without
+applying the new 15-character minimum. Low-cost Argon2id hashes also upgrade.
+Hash replacement uses an atomic compare-and-swap in the request transaction,
+preserving profile timestamps and preventing overwrite of a concurrent password
+change. Failed/inactive logins never store an upgrade; transaction failure rolls
+it back. The old `BcryptPasswordService` import name is a deprecated compatibility
+alias that also creates only Argon2id hashes.
+
+An input over 72 UTF-8 bytes against a legacy bcrypt hash returns **401** with
+`payload.error_code="PASSWORD_RESET_REQUIRED"` and
+`payload.details.recovery_required=true`. It never retries a truncated prefix,
+ignores an incomplete UTF-8 character or prehashes an existing credential.
+Historical truncation cannot prove the discarded suffix. Such accounts require
+the recovery flow in BE-013 (not implemented here); they are not silently treated
+as a normal wrong-password result. Hash conversion needs a verified plaintext
+secret and is therefore performed at login, never by a schema migration.
+
+Credential DTOs use `SecretStr` internally and OpenAPI marks passwords write-only.
+Credential-route structural 422 errors retain FastAPI's `detail` list but omit
+input/context payloads that could echo the entire password-bearing body. No
+plaintext password, hash or `email_key` is added to public user responses.
+
+See [BE-005 validation](docs/validation/BE-005-email-passwords.md) for exact
+Red/Green results, PostgreSQL migration/constraint checks, contract changes,
+coverage and limitations.
 
 ## Test isolation
 

@@ -77,7 +77,7 @@ async def create_user(
             last_name=user_create.last_name,
             email=user_create.email,
             username=user_create.username,
-            password=user_create.password,
+            password=user_create.password.get_secret_value(),
         )
     )
     from app.interface.mappers import UserMapper

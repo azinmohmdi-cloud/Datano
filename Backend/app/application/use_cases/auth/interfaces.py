@@ -2,7 +2,15 @@
 Service interfaces for dependency inversion in Auth use cases.
 """
 
+from dataclasses import dataclass, field
+
 from app.domain.entities.refresh_token_entity import RefreshTokenEntity
+
+
+@dataclass(frozen=True)
+class PasswordVerification:
+    valid: bool
+    replacement_hash: str | None = field(default=None, repr=False)
 
 
 class IPasswordService:
@@ -15,6 +23,10 @@ class IPasswordService:
     def hash(self, password: str) -> str:
         """Hash a plain text password."""
         raise NotImplementedError
+
+    def verify_and_rehash(self, plain_password: str, hashed_password: str) -> PasswordVerification:
+        """Compatible default for adapters that do not support hash upgrades."""
+        return PasswordVerification(self.verify(plain_password, hashed_password))
 
 
 class ITokenService:

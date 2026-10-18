@@ -47,7 +47,7 @@ async def login(
 ):
     """Authenticate user and return JWT token."""
     result = await usecase.execute(
-        LoginRequest(username=user_login.username, password=user_login.password)
+        LoginRequest(username=user_login.username, email=user_login.email, password=user_login.password.get_secret_value())
     )
 
     response.set_cookie(

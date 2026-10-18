@@ -75,7 +75,7 @@ async def exercise(client, token, label):
         response = client.post("/api/users/", headers=headers, json={{
             "first_name": "Isolation", "last_name": label,
             "email": f"isolation-{{label}}@example.test",
-            "username": f"isolation-{{label}}", "password": "password123",
+            "username": f"isolation-{{label}}", "password": "Fixture password 123!",
         }})
         assert response.status_code == 200
     else:

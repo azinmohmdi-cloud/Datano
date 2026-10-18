@@ -159,3 +159,14 @@ class InactiveUserException(DomainException):
             details=kwargs,
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
+
+
+class PasswordResetRequiredException(CredentialsValidationException):
+    """Legacy bcrypt cannot prove an input beyond its supported byte boundary."""
+
+    def __init__(self):
+        super().__init__(
+            "Password recovery is required for this legacy password",
+            recovery_required=True,
+        )
+        self.error_code = "PASSWORD_RESET_REQUIRED"

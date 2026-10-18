@@ -19,7 +19,7 @@ from app.domain.error.exceptions import (
     ForbiddenException,
     InactiveUserException,
 )
-from app.infra.services import BcryptPasswordService, JoseTokenService
+from app.infra.services import Argon2PasswordService, JoseTokenService
 from app.infra.utils.auth.jwt import verify_token
 from app.infra.utils.auth.permission import Permission
 from app.interface.dependencies.refresh_token_dependencies import (
@@ -46,9 +46,9 @@ def get_refresh_token_from_cookie(
     return refresh_token
 
 
-def get_password_service() -> BcryptPasswordService:
-    """Dependency to provide BcryptPasswordService instance."""
-    return BcryptPasswordService()
+def get_password_service() -> Argon2PasswordService:
+    """Dependency to provide Argon2PasswordService instance."""
+    return Argon2PasswordService()
 
 
 def get_token_service() -> JoseTokenService:
@@ -159,7 +159,7 @@ def get_authorized_user(required_permissions: List[Permission] = []):
 
 async def get_authenticate_user_usecase(
     user_repository: IUserRepository = Depends(get_user_repository),
-    password_service: BcryptPasswordService = Depends(get_password_service),
+    password_service: Argon2PasswordService = Depends(get_password_service),
 ) -> AuthenticateUserUseCase:
     """Dependency to provide AuthenticateUserUseCase instance."""
     return AuthenticateUserUseCase(user_repository, password_service)

@@ -11,11 +11,11 @@ from app.infra.core.config import Config
 from app.infra.database.connection import Database
 from app.infra.repositories.postgres.role_repository import SQLRoleRepository
 from app.infra.repositories.postgres.user_repository import SQLUserRepository
-from app.infra.services.password_service import BcryptPasswordService
+from app.infra.services.password_service import Argon2PasswordService
 from app.infra.utils.auth.permission import Permission
 from app.main import create_app
 
-PASSWORD = "TestOnly123!"
+PASSWORD = "Fixture password 123!"
 
 
 async def provision_test_actor(url: str) -> None:
@@ -25,7 +25,7 @@ async def provision_test_actor(url: str) -> None:
             role = await SQLRoleRepository(session).get_by_name("Admin")
             assert role is not None
             actor = UserEntity.create(first_name="Test", last_name="Actor", email="test-actor@example.test",
-                username="test-actor", hashed_password=BcryptPasswordService().hash(PASSWORD))
+                username="test-actor", hashed_password=Argon2PasswordService().hash(PASSWORD))
             actor.activate()
             users = SQLUserRepository(session)
             await users.create(actor)

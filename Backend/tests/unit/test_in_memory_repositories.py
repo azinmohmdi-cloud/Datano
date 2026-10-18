@@ -13,7 +13,7 @@ from app.infra.repositories.in_memory.user_repository import InMemoryUserReposit
 from app.infra.utils import hash_password
 
 
-HASHED_PASSWORD = hash_password("password123")
+HASHED_PASSWORD = hash_password("Fixture password 123!")
 
 
 @pytest.fixture

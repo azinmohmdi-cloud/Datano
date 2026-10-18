@@ -5,7 +5,7 @@ class TestLogin:
     def test_login_success(self, test_client):
         response = test_client.post(
             "/api/auth/login",
-            json={"username": "admin", "password": "Secret123"},
+            json={"username": "admin", "password": "FixtureAdmin123!"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -26,7 +26,7 @@ class TestLogin:
     def test_login_nonexistent_user(self, test_client):
         response = test_client.post(
             "/api/auth/login",
-            json={"username": "nobody", "password": "password123"},
+            json={"username": "nobody", "password": "Fixture password 123!"},
         )
         assert response.status_code == 401
         data = response.json()

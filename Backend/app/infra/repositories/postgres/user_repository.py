@@ -7,6 +7,7 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from app.domain.entities import RoleEntity, UserEntity
 from app.domain.error.exceptions import ResourceNotFoundException
+from app.domain.identity import canonical_email
 from app.infra.database.models import RoleRow, UserRow, user_roles
 from app.infra.repositories.postgres.mapping import role_entity, translate_constraints, user_entity
 from app.interface.repository.user_repository_interface import IUserRepository
@@ -42,10 +43,18 @@ class SQLUserRepository(IUserRepository):
         return await self._get(UserRow.id == user_id)
 
     async def get_by_email(self, email: str) -> UserEntity | None:
-        return await self._get(UserRow.email == email)
+        return await self._get(UserRow.email_key == canonical_email(email))
 
     async def get_by_username(self, username: str) -> UserEntity | None:
         return await self._get(UserRow.username == username)
+
+    async def replace_password_hash(self, user_id: str, expected: str, replacement: str) -> bool:
+        result = await self.session.execute(
+            update(UserRow)
+            .where(UserRow.id == user_id, UserRow.hashed_password == expected)
+            .values(hashed_password=replacement)
+        )
+        return result.rowcount == 1
 
     async def get_all(self, params: Params) -> Page[UserEntity]:
         total = await self.session.scalar(select(func.count()).select_from(UserRow)) or 0
@@ -67,6 +76,7 @@ class SQLUserRepository(IUserRepository):
     async def create(self, user_to_create: UserEntity) -> UserEntity:
         values = asdict(user_to_create)
         values.pop("roles")
+        values["email_key"] = canonical_email(user_to_create.email)
         row = UserRow(**values)
         with translate_constraints():
             self.session.add(row)
@@ -77,6 +87,7 @@ class SQLUserRepository(IUserRepository):
         values = asdict(source)
         for field in ("id", "roles", "created_at"):
             values.pop(field)
+        values["email_key"] = canonical_email(source.email)
         with translate_constraints():
             row = await self.session.scalar(
                 update(UserRow)

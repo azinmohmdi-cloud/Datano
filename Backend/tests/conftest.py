@@ -51,7 +51,7 @@ def test_client() -> Iterator[TestClient]:
 def admin_token(test_client: TestClient) -> str:
     response = test_client.post(
         "/api/auth/login",
-        json={"username": "admin", "password": "Secret123"},
+        json={"username": "admin", "password": "FixtureAdmin123!"},
     )
     assert response.status_code == 200, response.text
     data = response.json()
@@ -75,7 +75,7 @@ def created_user(test_client: TestClient, admin_auth: dict[str, str]) -> "User":
             "last_name": "User",
             "email": "fixture-user@example.test",
             "username": "fixture-user",
-            "password": "password123",
+            "password": "Fixture password 123!",
         },
     )
     assert response.status_code == 200, response.text

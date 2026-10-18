@@ -7,7 +7,7 @@ from app.domain.error.exceptions import ValidationException
 from app.infra.utils import hash_password
 
 
-HASHED_PASSWORD = hash_password("password123")
+HASHED_PASSWORD = hash_password("Fixture password 123!")
 
 class TestUserEntity:
     def test_create_valid_user(self):
@@ -73,7 +73,7 @@ class TestUserEntity:
             hashed_password=HASHED_PASSWORD,
         )
         old_hash = user.hashed_password
-        new_hashed = hash_password("newpassword123")
+        new_hashed = hash_password("New fixture password 123!")
         user.change_password(new_hashed)
         assert user.hashed_password != old_hash
         assert user.hashed_password == new_hashed

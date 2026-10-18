@@ -25,7 +25,7 @@ class TestUsersAPI:
                 "last_name": "Smith",
                 "email": "jane@example.com",
                 "username": "janesmith",
-                "password": "password123",
+                "password": "Fixture password 123!",
             },
         )
         assert response.status_code == 200

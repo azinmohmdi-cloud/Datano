@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, SecretStr
 
 
 class Token(BaseModel):
@@ -21,10 +21,11 @@ class TokenData(BaseModel):
 
 
 class UserLogin(BaseModel):
-    """User login request model."""
+    """Login with password and exactly one email or deprecated legacy username."""
 
-    username: str
-    password: str
+    email: str | None = None
+    username: str | None = Field(default=None, json_schema_extra={"deprecated": True})
+    password: SecretStr
 
 
 class TokenPayload(BaseModel):

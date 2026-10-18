@@ -16,6 +16,7 @@ dependencies = [
     "sqlalchemy[asyncio]<2.1,>=2.0",
     "alembic<2,>=1.16",
     "psycopg[binary]<4,>=3.2",
+    "argon2-cffi<27,>=25.1",
 ]
 
 requires-python = "==3.12.*"

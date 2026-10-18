@@ -59,3 +59,8 @@ class IUserRepository(ABC):
     async def remove_role(self, user_id: str, role_id: str) -> UserEntity:
         """Remove a role from a user."""
         pass
+
+    @abstractmethod
+    async def replace_password_hash(self, user_id: str, expected: str, replacement: str) -> bool:
+        """Upgrade a verified hash only if unchanged; preserve profile timestamps."""
+        pass

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, SecretStr
 
 
 class UserBase(BaseModel):
@@ -10,13 +10,13 @@ class UserBase(BaseModel):
     first_name: str
     last_name: str
     email: str
-    username: str
+    username: str | None = Field(default=None, json_schema_extra={"deprecated": True})
 
 
 class UserCreate(UserBase):
     """User model for creating new users"""
 
-    password: str
+    password: SecretStr
 
 
 class UserUpdate(BaseModel):
@@ -36,7 +36,7 @@ class User(BaseModel):
     first_name: str
     last_name: str
     email: str
-    username: str
+    username: str | None = Field(default=None, json_schema_extra={"deprecated": True})
     roles: List["Role"] = []
     created_at: datetime
     updated_at: datetime

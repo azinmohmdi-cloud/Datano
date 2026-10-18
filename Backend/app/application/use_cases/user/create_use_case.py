@@ -3,7 +3,9 @@ True Clean Architecture Use Case for creating a user.
 Use case contains business logic and is independent of frameworks and external concerns.
 """
 
-from dataclasses import dataclass
+import asyncio
+from dataclasses import dataclass, field
+from uuid import uuid4
 
 from app.application.use_cases.auth.interfaces import IPasswordService
 from app.domain.entities import UserEntity
@@ -18,8 +20,8 @@ class CreateUserRequest:
     first_name: str
     last_name: str
     email: str
-    username: str
-    password: str
+    password: str = field(repr=False)
+    username: str | None = None
 
 
 @dataclass(frozen=True)
@@ -48,7 +50,8 @@ class CreateUserUseCase:
             raise ConflictException(f"User with email '{request.email}' already exists")
 
         # Check for existing user by username
-        existing_username = await self._user_repo.get_by_username(request.username)
+        username = request.username if request.username is not None else "identity_" + uuid4().hex
+        existing_username = await self._user_repo.get_by_username(username)
         if existing_username:
             raise ConflictException(
                 f"User with username '{request.username}' already exists"
@@ -58,12 +61,14 @@ class CreateUserUseCase:
         UserEntity._validate_password(request.password)
 
         # Hash password and create user entity
-        hashed_password = self._password_service.hash(request.password)
+        UserEntity._validate_email(request.email.strip())
+        UserEntity._validate_username(username)
+        hashed_password = await asyncio.to_thread(self._password_service.hash, request.password)
         user = UserEntity.create(
             first_name=request.first_name,
             last_name=request.last_name,
             email=request.email,
-            username=request.username,
+            username=username,
             hashed_password=hashed_password,
         )
 

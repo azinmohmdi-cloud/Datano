@@ -16,11 +16,11 @@ async def test_upgrade_from_baseline_adds_only_identity_tables(isolated_postgres
             await connection.run_sync(migrate, "0001_database_baseline")
             await connection.execute(text("CREATE TABLE preservation_probe (id integer PRIMARY KEY)"))
             await connection.execute(text("INSERT INTO preservation_probe VALUES (42)"))
-            await connection.run_sync(migrate)
+            await connection.run_sync(migrate, "0002_users_roles")
             tables = await connection.run_sync(lambda sync: inspect(sync).get_table_names())
             assert set(tables) == {"users", "roles", "user_roles", "alembic_version", "preservation_probe"}
             assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == "0002_users_roles"
-            await connection.run_sync(migrate)
+            await connection.run_sync(migrate, "0002_users_roles")
             assert await connection.scalar(text("SELECT id FROM preservation_probe")) == 42
         async with database.engine.begin() as connection:
             await connection.run_sync(lambda sync: migrate(sync, "0001_database_baseline", downgrade=True))

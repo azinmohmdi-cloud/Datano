@@ -10,12 +10,16 @@ from app.infra.database.base import Base
 
 class UserRow(Base):
     __tablename__ = "users"
-    __table_args__ = (CheckConstraint("length(username) BETWEEN 3 AND 50", name="username_length"),)
+    __table_args__ = (
+        CheckConstraint("length(username) BETWEEN 3 AND 50", name="username_length"),
+        CheckConstraint("length(email_key) > 0", name="email_key_nonempty"),
+    )
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     first_name: Mapped[str] = mapped_column(Text)
     last_name: Mapped[str] = mapped_column(Text)
     email: Mapped[str] = mapped_column(Text, unique=True)
+    email_key: Mapped[str] = mapped_column(Text, unique=True)
     username: Mapped[str] = mapped_column(String(50), unique=True)
     hashed_password: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

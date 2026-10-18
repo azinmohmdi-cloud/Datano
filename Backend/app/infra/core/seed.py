@@ -5,7 +5,7 @@ from app.infra.repositories.in_memory.registry import (
     role_repository,
     user_repository,
 )
-from app.infra.services.password_service import BcryptPasswordService
+from app.infra.services.password_service import Argon2PasswordService
 
 
 async def seed():
@@ -39,7 +39,7 @@ async def seed():
             AssignPermissionRequest(role_id=role.id, permission_id=perm.id)
         )
 
-    password_service = BcryptPasswordService()
+    password_service = Argon2PasswordService()
     create_user_uc = CreateUserUseCase(user_repository, password_service)
     result = await create_user_uc.execute(
         CreateUserRequest(
@@ -47,7 +47,7 @@ async def seed():
             last_name="User",
             email="admin@example.com",
             username="admin",
-            password="Secret123",
+            password="FixtureAdmin123!",
         )
     )
     user = result.user

@@ -7,6 +7,8 @@ import logging
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
 
 from app.interface.dto.responses import failure
 
@@ -101,3 +103,14 @@ def register_all_exception_handlers(app):
     register_exception_handler(app)
     # Then register domain exception handlers
     register_domain_exception_handlers(app)
+
+    @app.exception_handler(RequestValidationError)
+    async def handle_request_validation(request: Request, exc: RequestValidationError):
+        # FastAPI's default errors may echo the whole body on a missing field.
+        # Keep the existing 422 detail format, but never echo credential inputs.
+        if request.method == "POST" and request.url.path in {"/api/auth/login", "/api/users/"}:
+            return JSONResponse(status_code=422, content={"detail": [
+                {key: error[key] for key in ("type", "loc", "msg")}
+                for error in exc.errors()
+            ]})
+        return await request_validation_exception_handler(request, exc)

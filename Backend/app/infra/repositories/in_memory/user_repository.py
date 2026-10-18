@@ -4,6 +4,7 @@ from typing import List, Optional
 from fastapi_pagination import Page, Params
 
 from app.domain.entities import RoleEntity, UserEntity
+from app.domain.identity import canonical_email
 from app.domain.error.exceptions import ConflictException, ResourceNotFoundException
 from app.interface.repository.user_repository_interface import IUserRepository
 
@@ -59,7 +60,7 @@ class InMemoryUserRepository(IUserRepository):
 
     async def get_by_email(self, email: str) -> Optional[UserEntity]:
         for user in self._users.values():
-            if user.email == email:
+            if canonical_email(user.email) == canonical_email(email):
                 user.roles = self._build_role_entities(user.id)
                 return user
         return None
@@ -105,3 +106,10 @@ class InMemoryUserRepository(IUserRepository):
             )
             for rid in role_ids
         ]
+
+    async def replace_password_hash(self, user_id: str, expected: str, replacement: str) -> bool:
+        user = self._users.get(user_id)
+        if user is None or user.hashed_password != expected:
+            return False
+        user.hashed_password = replacement
+        return True

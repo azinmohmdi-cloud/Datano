@@ -24,8 +24,8 @@ from app.interface.repository.user_repository_interface import IUserRepository
 
 def get_password_service() -> IPasswordService:
     """Dependency to provide password service instance."""
-    from app.infra.services import BcryptPasswordService
-    return BcryptPasswordService()
+    from app.infra.services import Argon2PasswordService
+    return Argon2PasswordService()
 
 
 async def get_user_repository(

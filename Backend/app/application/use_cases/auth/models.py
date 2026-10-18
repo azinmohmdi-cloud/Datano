@@ -2,15 +2,16 @@
 Data models for Auth use cases.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 
 @dataclass(frozen=True)
 class LoginRequest:
     """Input port for user login."""
-    username: str
-    password: str
+    password: str = field(repr=False)
+    username: str | None = None
+    email: str | None = None
 
 
 @dataclass(frozen=True)

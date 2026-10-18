@@ -30,7 +30,7 @@ class LoginUseCase:
     async def execute(self, request: LoginRequest) -> LoginResponse:
         """Execute the use case to login a user."""
         user = await self._authenticate_use_case.execute(
-            request.username, request.password
+            request.username, request.password, email=request.email
         )
 
         # Generate access token

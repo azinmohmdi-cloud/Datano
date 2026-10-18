@@ -2,7 +2,7 @@
 Domain Entity for User - contains business logic and behavior
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, List, Optional
 from uuid import uuid4
@@ -22,7 +22,7 @@ class UserEntity:
     last_name: str
     email: str
     username: str
-    hashed_password: str
+    hashed_password: str = field(repr=False)
     created_at: datetime
     updated_at: datetime
     is_active: bool
@@ -40,7 +40,8 @@ class UserEntity:
         roles: Optional[List["RoleEntity"]] = None,
     ) -> "UserEntity":
         """Create a new UserEntity entity with validation."""
-        # Validate inputs
+        # Display spelling is preserved; outer whitespace is not identity data.
+        email = email.strip()
         cls._validate_email(email)
         cls._validate_username(username)
 
@@ -71,6 +72,12 @@ class UserEntity:
     ) -> None:
         """Update user information with validation."""
 
+        # Validate identity changes before mutating the existing domain object.
+        if email is not None:
+            email = email.strip()
+            self._validate_email(email)
+        if username is not None:
+            self._validate_username(username)
         if first_name is not None:
             self.first_name = first_name
         if last_name is not None:
@@ -78,10 +85,8 @@ class UserEntity:
         if is_active is not None:
             self.is_active = is_active
         if email is not None:
-            self._validate_email(email)
             self.email = email
         if username is not None:
-            self._validate_username(username)
             self.username = username
 
         self.updated_at = datetime.now(UTC)
@@ -104,8 +109,8 @@ class UserEntity:
     @staticmethod
     def _validate_email(email: str) -> None:
         """Validate email format."""
-        if not email or "@" not in email or "." not in email:
-            raise ValidationException(f"Invalid email format: {email}", field="email")
+        if not email or "@" not in email or "." not in email or any(c.isspace() for c in email):
+            raise ValidationException("Invalid email format", field="email")
 
     @staticmethod
     def _validate_username(username: str) -> None:
@@ -119,10 +124,14 @@ class UserEntity:
     @staticmethod
     def _validate_password(password: str) -> None:
         """Validate password strength."""
-        if not password or len(password) < 8:
+        if not isinstance(password, str) or not 15 <= len(password) <= 128:
             raise ValidationException(
-                "Password must be at least 8 characters long", field="password"
+                "New passwords must contain 15 to 128 Unicode characters", field="password"
             )
+        try:
+            password.encode("utf-8")
+        except UnicodeEncodeError:
+            raise ValidationException("Password must be valid Unicode", field="password") from None
 
     # Conversion methods are now handled by the UserMapper class
     # See app.models.user.mapper.UserMapper
