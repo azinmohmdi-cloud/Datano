@@ -1,7 +1,7 @@
 """Identity persistence models, separate from HTTP DTOs and domain entities."""
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, Index, Integer, String, Table, Text
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, Index, Integer, LargeBinary, String, Table, Text
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -52,6 +52,27 @@ class RegistrationAttemptRow(Base):
     window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     attempts: Mapped[int] = mapped_column(Integer)
+
+
+class SessionRow(Base):
+    __tablename__ = "auth_sessions"
+    __table_args__ = (
+        CheckConstraint("octet_length(digest) = 32", name="digest_length"),
+        CheckConstraint("idle_timeout_seconds > 0", name="idle_positive"),
+        CheckConstraint("created_at <= last_seen_at AND last_seen_at < idle_expires_at AND idle_expires_at <= absolute_expires_at", name="lifetime_valid"),
+        CheckConstraint("revoked_at IS NULL OR revoked_at >= last_seen_at", name="revocation_valid"),
+        Index("ix_auth_sessions_user_id", "user_id"),
+    )
+
+    digest: Mapped[bytes] = mapped_column(LargeBinary, primary_key=True)
+    user_id: Mapped[str] = mapped_column(Text, ForeignKey("users.id", ondelete="CASCADE"))
+    remember_me: Mapped[bool] = mapped_column(Boolean)
+    idle_timeout_seconds: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    idle_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    absolute_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 user_roles = Table(

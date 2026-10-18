@@ -20,6 +20,8 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
 - PostgreSQL-backed users, roles and assignments through the existing repository
   contracts, with SQLAlchemy 2 async transactions and Alembic migrations.
 - Refresh-token dictionaries remain process-local pending the session tasks.
+- A digest-only, revocable opaque-session store is available in PostgreSQL.
+  HTTP login/cookie/authorization still use the existing JWT flow until BE-008/009.
 - DTO/mapping and use-case/repository separation. Domain errors still depend on
   FastAPI status values and pagination types cross layer boundaries; isolation is partial.
 - Pytest entity/repository/HTTP tests, including real PostgreSQL constraints,
@@ -27,7 +29,7 @@ and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
   inject in-memory adapters with per-test clients, cookies and state.
 
 These are template/development capabilities, not a completed marketing backend.
-The approved target also includes Celery/Redis, opaque server-side sessions,
+The approved target also includes Celery/Redis, opaque-session HTTP integration,
 email recovery, and the five-domain-entity product model.
 Those changes require their own authorized implementation tasks and mandatory
 red–green–refactor.
@@ -158,8 +160,8 @@ pdm run alembic upgrade 0001_database_baseline --sql
 Revision `0001_database_baseline` establishes history without domain tables.
 Revision **`0002_users_roles`** adds `users`, `roles` and the `user_roles`
 assignment table. `alembic upgrade head` works from an empty target or BE-003's
-baseline and preserves unrelated tables/data. No analytics or session tables are
-introduced. No migration or `create_all` runs during application startup.
+baseline and preserves unrelated tables/data. These first two revisions introduce
+no analytics or session tables. No migration or `create_all` runs during startup.
 Revision **`0003_email_identity`** adds a nonempty, non-null, unique `email_key`
 and backfills existing records using Python's exact `email.strip().lower()`.
 It preserves display email, account IDs, hashes, roles, assignments and timestamps.
@@ -175,6 +177,14 @@ outdated schema with `run alembic upgrade head`; it never migrates automatically
 Downgrading just to `0003_email_identity` drops only counters and preserves
 identity data, but resets their rate-limit history. Use matching application
 code when intentionally rolling back; the BE-006 app requires the new table.
+
+Revision **`0005_opaque_sessions`** adds `auth_sessions` with a 32-byte digest
+primary key, a cascading user foreign key, an account index and lifetime checks.
+It changes no existing identity or registration data. The current app checks
+both the counter and session tables at startup and requires `alembic upgrade head`.
+Downgrading only to `0004_registration_attempts` drops opaque sessions and thereby
+invalidates them; identities and registration counters are preserved. Use matching
+code for deliberate rollback. No production database was migrated by BE-007.
 
 The backfill holds an exclusive lock on `users` inside PostgreSQL transactional
 DDL. Stop application writers for the migration and plan an appropriate
@@ -266,7 +276,7 @@ generated internally when omitted. Public `User`/create/login schemas mark the
 legacy username field optional/deprecated. Existing JWT claims still carry the
 internal username, so callers do not need to supply one. Public registration and
 activation are provided separately by BE-006 below; opaque session security is
-still pending. Frontend
+available as a storage primitive below, with HTTP integration still pending. Frontend
 generation/adapters are deferred to FE-029; approved UI files are unchanged.
 
 New password creation uses **15–128 Unicode codepoints** (Python `len`), including
@@ -374,6 +384,50 @@ controls. It is not a production load/DDoS guarantee. No Redis, CAPTCHA, global
 auth throttling or unrelated endpoint limit was introduced. The approved signup
 UI and its unavailable-terms gate are unchanged; public rollout/terms integration
 still depends on EXT-002, FE-048 and the authorized transport/session tasks.
+
+## Opaque session store (BE-007)
+
+`SessionService` uses the `ISessionRepository` contract and the SQLAlchemy
+`SQLSessionRepository` adapter. `issue(user_id, remember_me=...)` generates a new
+256-bit identifier with `secrets.token_urlsafe(32)` and returns it only to its
+caller. PostgreSQL receives only SHA-256's 32-byte digest and technical metadata.
+It stores no raw identifier, email, role/permission snapshot, IP or device data.
+Identifiers are exact, case-sensitive URL-safe strings; malformed input and a
+hex digest cannot authenticate. Token and digest fields are excluded from repr.
+
+| Profile | Inactivity limit | Absolute limit |
+| --- | --- | --- |
+| Normal | 30 minutes | 12 hours |
+| Remember-me | 7 days | 30 days |
+
+The approved MVP defaults are configurable through `SESSION_IDLE_SECONDS=1800`,
+`SESSION_ABSOLUTE_SECONDS=43200`, `REMEMBER_SESSION_IDLE_SECONDS=604800` and
+`REMEMBER_SESSION_ABSOLUTE_SECONDS=2592000`. All must be positive integer seconds
+with idle <= absolute; invalid pairs fail startup. A session snapshots its idle
+timeout and absolute expiry when issued, so a later configuration change applies
+to new sessions. The PostgreSQL wall clock is sampled **after** waiting for locks.
+At either exact expiry the record is invalid. Activity updates last-seen time and
+slides idle expiry only up to the original absolute cap; expired/revoked records
+cannot be revived. Backward clock readings fail validation without extending time.
+
+`resolve(token, touch=False)` checks without extending inactivity. `revoke(token)`
+is idempotent; `revoke_all(user_id)` invalidates that account's stored sessions.
+All operations participate in the caller's transaction, with no internal commit.
+Account-row locks precede session-row locks and serialize issue/touch/revoke/bulk
+revocation for one account until commit. Bulk revocation covers sessions ordered
+before it; a subsequent authorized issuance can create a new session. Keep these
+transactions short; this correctness choice is not a throughput benchmark.
+
+The dependency providers are ready for BE-008 but no current route consumes
+them yet. A valid record is **not** an authorization decision: later HTTP work
+must check current account/role state, issue the approved secure cookie, handle
+remember-me cookie lifetime, rotate IDs and enforce CSRF. This task adds no HTTP
+endpoint, cookie, logout/recovery flow, JWT removal, Redis, expiry-cleanup job or
+session retention policy. Existing JWT/refresh compatibility remains unchanged.
+
+See [BE-007 validation](docs/validation/BE-007-opaque-sessions.md) for real
+PostgreSQL boundaries, concurrency, rollback, process persistence, migration
+preservation and full-suite evidence.
 
 Validate using the dedicated PostgreSQL setup above:
 

@@ -7,6 +7,14 @@ from dataclasses import dataclass, field
 from app.domain.entities.refresh_token_entity import RefreshTokenEntity
 
 
+class ISessionTokens:
+    def generate(self) -> str:
+        raise NotImplementedError
+
+    def digest(self, token: str) -> bytes | None:
+        raise NotImplementedError
+
+
 @dataclass(frozen=True)
 class PasswordVerification:
     valid: bool

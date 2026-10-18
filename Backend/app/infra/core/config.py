@@ -14,6 +14,12 @@ class Config(BaseSettings):
     # Settings can be loaded offline; the serving lifespan requires DATABASE_URL.
     database_url: SecretStr | None = Field(default=None, alias="DATABASE_URL")
 
+    # Opaque session policy. Existing sessions retain their issued lifetimes.
+    session_idle_seconds: int = Field(default=1800, gt=0, le=2147483647, alias="SESSION_IDLE_SECONDS")
+    session_absolute_seconds: int = Field(default=43200, gt=0, le=2147483647, alias="SESSION_ABSOLUTE_SECONDS")
+    remember_session_idle_seconds: int = Field(default=604800, gt=0, le=2147483647, alias="REMEMBER_SESSION_IDLE_SECONDS")
+    remember_session_absolute_seconds: int = Field(default=2592000, gt=0, le=2147483647, alias="REMEMBER_SESSION_ABSOLUTE_SECONDS")
+
     # Registration-only technical defaults; not account/product quotas.
     registration_ip_limit: int = Field(
         default=5, gt=0, le=2147483646, alias="REGISTRATION_IP_LIMIT"
