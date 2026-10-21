@@ -6,9 +6,120 @@ Read [the shared workspace instructions](../docs/AGENTS.md) and
 and delegated defaults are in [the MVP document](../docs/Datano_MVP.md);
 [the UX specification](../docs/datano-ux-pages-.md) limits the admin product UI to viewing.
 
+## Outbound SMTP adapter (BE-011 — verified)
+
+The application mail port is `IEmailSender` / `OutboundEmail` in
+`app/application/use_cases/auth/email.py`. The `SMTPEmailSender` infrastructure
+adapter uses Python 3.12's standard `smtplib`, `ssl`, and `EmailMessage`; no new
+package, route, migration, queue or verification-code flow is introduced.
+The frontend and public signup terms lock are unchanged.
+
+**BE-011 is complete:** one owner-approved Gmail STARTTLS submission on port 587
+succeeded, and the owner separately confirmed Inbox receipt and correct message
+rendering on 2026-10-21. The App Password was supplied privately by the owner.
+No additional real message was sent during final validation. Fake credentials
+and `.test` mailboxes exist only in isolated tests and are not application
+configuration. See the validation record for separate automated and real-delivery
+evidence; local protocol tests alone do not verify inbox delivery.
+
+The approved local preparation uses `Backend/.env.be011.local`, ignored by the
+existing `.env.*.local` rule and restricted to mode `0600`. The owner maintains
+`SMTP_PASSWORD` privately. The smoke CLI receives
+only the absolute file path through `--env-file`; `Config(_env_file=...)` loads
+the credential internally. Do not pass the password as an argument, echo the
+file, or source it into a diagnostic shell. Existing process environment settings
+take precedence in Pydantic; before a controlled send, check for SMTP overrides
+without displaying their values. This dedicated file is not auto-loaded as the
+application's normal `.env`.
+
+SMTP is disabled by default. When enabled, startup validates the private
+configuration before opening PostgreSQL, without connecting or sending mail.
+The `get_email_sender` dependency exposes the configured application-scoped
+adapter; a disabled sender fails explicitly instead of returning simulated
+success. Existing deployments can continue with SMTP disabled until the later
+email workflows are connected.
+
+Prepare these values in an ignored private `Backend/.env` or an external private
+settings file; never commit them or use frontend/public variables:
+
+| Setting | Required value |
+| --- | --- |
+| `SMTP_ENABLED` | `true` when intentionally enabling the real adapter |
+| `SMTP_HOST` | Provider's bare SMTP hostname or IP, without URL scheme or port suffix |
+| `SMTP_PORT` | Provider's actual port; 1–65535 (default 587) |
+| `SMTP_SECURITY` | `starttls` (default) or implicit `tls`; commonly port 465 for implicit TLS, as specified by the provider |
+| `SMTP_USERNAME` | Private SMTP AUTH username |
+| `SMTP_PASSWORD` | Private SMTP password/app password or provider-issued SMTP credential; preserved verbatim |
+| `SMTP_FROM_EMAIL` | One sender mailbox authorized/verified by the provider |
+| `SMTP_TIMEOUT_SECONDS` | Per-blocking-operation timeout, >0 and <=60 seconds (default 10); not a total DNS/send deadline |
+| `SMTP_CA_FILE` | Optional trusted private CA bundle; system roots are used otherwise |
+
+SMTP AUTH uses the standard library's supported username/password mechanisms
+and ASCII credentials; this restriction does not apply to product account
+passwords or Persian email text. OAuth-only provider authentication is not
+implemented. Certificate and hostname verification and a TLS 1.2 minimum are
+mandatory; there is no plaintext or certificate-check bypass mode. STARTTLS is
+negotiated before AUTH and followed by a new EHLO. Each message has one explicit
+recipient/envelope, plain Persian UTF-8 content with seven-bit transfer encoding,
+and no CC/BCC. Header/control injection is rejected before I/O.
+
+### Private controlled check
+
+From `Backend/`, validate an operator-provided settings file **without network
+I/O**:
+
+```sh
+pdm run python -m scripts.send_test_email --env-file /absolute/private/settings.env
+```
+
+Only after the owner approves one recipient, submit exactly one harmless test
+message using `--to OWNER_APPROVED_MAILBOX --send`. Replace the uppercase token
+with the actual approved address; it is not a configured/test recipient. The
+tool never auto-selects a recipient or generates an authentication code.
+
+```sh
+pdm run python -m scripts.send_test_email --env-file /absolute/private/settings.env --to OWNER_APPROVED_MAILBOX --send
+```
+
+An exit 0 without `--send` means offline configuration validation only. With
+`--send`, it means the SMTP relay accepted DATA, **not that inbox receipt was
+confirmed**. Exit 2 means loading/configuration-file failure; exit 3 exposes only
+safe failure classification and `retryable` / `delivery_unknown` flags. Disabled
+or incomplete adapter configuration is classified `configuration`. No credentials,
+recipient, message content, code, provider response or raw traceback is printed.
+Confirm receipt in the approved mailbox separately before marking real delivery
+verified. No HTTP/debug send endpoint is exposed.
+
+Failures distinguish configuration, invalid message, TLS, authentication,
+recipient/sender/message rejection, timeout, connection and protocol errors.
+Raw SMTP exceptions/responses are not retained in the raised exception context
+or logged. The adapter never retries: a timeout/disconnect during DATA can have
+an unknown delivery result and must not trigger blind duplicate sends. QUIT or
+socket-close failure after accepted DATA does not turn success into a resend.
+Socket I/O runs in a worker thread; canceling the caller does not guarantee a
+thread's SMTP operation stopped or that no mail was accepted. Later challenge
+flows must handle this boundary explicitly without assuming rollback of email.
+
+### Independent tests
+
+```sh
+pdm run pytest tests/unit/test_smtp_config.py tests/unit/test_smtp_email.py tests/unit/test_email_dependencies_and_smoke.py tests/integration/test_email_boundary.py tests/integration/test_smtp_wire.py
+# Full suite also needs the dedicated DATANO_TEST_DATABASE_URL described below.
+pdm run pytest
+```
+
+The loopback SMTP tests generate temporary certificates, perform actual TLS/AUTH
+and MIME transfer against a local fixture, and cover failed TLS/auth without an
+external provider or real mailbox. Local TCP socket permission is required. The
+certificate generator uses the already-locked `cryptography` dependency; no new
+dependency is installed. See
+[BE-011 validation](docs/validation/BE-011-email-adapter.md) for executed results,
+TDD evidence, limitations and the completed real-delivery verification.
+
 ## Current implementation
 
 - Auth, users, and roles routes under `/api`; OpenAPI at `/openapi.json`.
+- Private TLS SMTP adapter and safe CLI smoke tool; one controlled Gmail submission and Inbox receipt verified (BE-011).
 - Email/password login with canonical email lookup; deprecated username login
   remains for compatibility. Product authentication uses only an opaque session cookie.
 - Argon2id for new passwords and verified legacy hash upgrades; exact Unicode

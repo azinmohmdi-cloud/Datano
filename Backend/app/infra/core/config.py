@@ -3,6 +3,7 @@ Application configuration and settings.
 """
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings
@@ -15,6 +16,17 @@ class Config(BaseSettings):
     database_url: SecretStr | None = Field(default=None, alias="DATABASE_URL")
     public_origin: str | None = Field(default=None, alias="PUBLIC_ORIGIN")
     csrf_secret_key: SecretStr | None = Field(default=None, alias="CSRF_SECRET_KEY")
+
+    # Private outbound mail; no network connection while loading settings.
+    smtp_enabled: bool = Field(default=False, alias="SMTP_ENABLED")
+    smtp_host: SecretStr | None = Field(default=None, alias="SMTP_HOST", repr=False)
+    smtp_port: int = Field(default=587, ge=1, le=65535, alias="SMTP_PORT")
+    smtp_security: Literal["starttls", "tls"] = Field(default="starttls", alias="SMTP_SECURITY")
+    smtp_username: SecretStr | None = Field(default=None, alias="SMTP_USERNAME", repr=False)
+    smtp_password: SecretStr | None = Field(default=None, alias="SMTP_PASSWORD", repr=False)
+    smtp_from_email: SecretStr | None = Field(default=None, alias="SMTP_FROM_EMAIL", repr=False)
+    smtp_timeout_seconds: float = Field(default=10, gt=0, le=60, alias="SMTP_TIMEOUT_SECONDS")
+    smtp_ca_file: str | None = Field(default=None, alias="SMTP_CA_FILE", repr=False)
 
     # Opaque session policy. Existing sessions retain their issued lifetimes.
     session_idle_seconds: int = Field(default=1800, gt=0, le=2147483647, alias="SESSION_IDLE_SECONDS")
@@ -72,6 +84,7 @@ class Config(BaseSettings):
         "populate_by_name": True,
         "env_file": ".env",
         "env_file_encoding": "utf-8",
+        "hide_input_in_errors": True,
     }
 
 

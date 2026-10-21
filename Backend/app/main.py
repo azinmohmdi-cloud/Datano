@@ -18,6 +18,7 @@ from app.interface.controller import api_router
 from app.interface.dependencies.session_dependencies import session_policy
 from app.infra.services.csrf_service import CsrfService
 from app.interface.csrf import document_csrf
+from app.infra.services.smtp_email_service import SMTPEmailSender
 
 
 def create_app(
@@ -29,8 +30,12 @@ def create_app(
     async def lifespan(application: FastAPI):
         session_policy(application.state.settings)
         CsrfService.from_config(application.state.settings)
+        # Validate enabled mail configuration before opening the database. No mail
+        # is sent and no SMTP connection is made during application startup.
+        email_sender = SMTPEmailSender(application.state.settings) if application.state.settings.smtp_enabled else None
         database = Database.from_config(settings if settings is not None else config)
         application.state.database = database
+        application.state.email_sender = email_sender
         try:
             try:
                 async with database.transaction() as session:
@@ -47,6 +52,7 @@ def create_app(
         finally:
             await database.dispose()
             del application.state.database
+            del application.state.email_sender
 
     application = FastAPI(
         title="FastAPI Server", version="1.0.0", lifespan=lifespan_handler or lifespan
