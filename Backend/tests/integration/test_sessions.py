@@ -129,13 +129,15 @@ async def test_session_migration_adds_digest_table_without_touching_existing_dat
                 (repeat('a',64), now(), now()+interval '10 minutes', 2)"""))
             identity_before=dict((await connection.execute(text("SELECT * FROM users"))).mappings().one())
             counter_before=dict((await connection.execute(text("SELECT * FROM registration_attempts"))).mappings().one())
-            await connection.run_sync(migrate)
+            # Characterize the session revision explicitly; newer technical
+            # migrations must not change what this BE-007 regression tests.
+            await connection.run_sync(migrate, "0005_opaque_sessions")
             assert "auth_sessions" in await connection.run_sync(lambda sync:inspect(sync).get_table_names())
             assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == "0005_opaque_sessions"
             assert await connection.scalar(text("SELECT id FROM preservation_probe")) == 42
             assert dict((await connection.execute(text("SELECT * FROM users"))).mappings().one()) == identity_before
             assert dict((await connection.execute(text("SELECT * FROM registration_attempts"))).mappings().one()) == counter_before
-            await connection.run_sync(migrate)
+            await connection.run_sync(migrate, "0005_opaque_sessions")
         async with database.engine.begin() as connection:
             await connection.run_sync(lambda sync:migrate(sync,"0004_registration_attempts",downgrade=True))
             assert "auth_sessions" not in await connection.run_sync(lambda sync:inspect(sync).get_table_names())

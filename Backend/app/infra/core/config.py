@@ -27,6 +27,8 @@ class Config(BaseSettings):
     smtp_from_email: SecretStr | None = Field(default=None, alias="SMTP_FROM_EMAIL", repr=False)
     smtp_timeout_seconds: float = Field(default=10, gt=0, le=60, alias="SMTP_TIMEOUT_SECONDS")
     smtp_ca_file: str | None = Field(default=None, alias="SMTP_CA_FILE", repr=False)
+    # Separate private HMAC key; required only when constructing the code service.
+    email_code_hmac_key: SecretStr | None = Field(default=None, alias="EMAIL_CODE_HMAC_KEY", repr=False)
 
     # Opaque session policy. Existing sessions retain their issued lifetimes.
     session_idle_seconds: int = Field(default=1800, gt=0, le=2147483647, alias="SESSION_IDLE_SECONDS")

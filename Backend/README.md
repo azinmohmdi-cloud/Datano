@@ -116,10 +116,65 @@ dependency is installed. See
 [BE-011 validation](docs/validation/BE-011-email-adapter.md) for executed results,
 TDD evidence, limitations and the completed real-delivery verification.
 
+## Shared email codes (BE-012)
+
+`EmailCodeService` provides internal `issue(context)` and `consume(context, code)`
+operations for password recovery, admin email proof and email change. It does
+not create endpoints, grant privileges, change passwords/emails, or issue a
+recovery session. Those account workflows belong to BE-013/014/016. No frontend
+or public OpenAPI contract changes here.
+
+The approved policy is fixed: eight cryptographically random ASCII digits
+(including leading zeroes), 600-second lifetime, at most five verification
+attempts and at least 60 seconds between issues for the same context. The fifth
+attempt may succeed; expired, exhausted, consumed and pending codes fail closed.
+Malformed guesses also consume attempts. Reissuing resets the attempt budget
+and invalidates the old code before mail I/O; a repeated RNG sample cannot
+reissue the immediately preceding numeric code.
+
+Provision `EMAIL_CODE_HMAC_KEY` privately with at least 32 random bytes, separate
+from SMTP, CSRF and JWT secrets. It has no default or fallback. The settings field
+is optional while no code workflow is used; `get_email_code_service` refuses a
+missing/short key and requires the existing configured mail sender. No deployment
+key is created by the tests or this task. Key rotation invalidates existing
+challenges and changes their scope/cooldown keys; plan rotation operationally.
+
+The trusted caller must construct `EmailCodeContext` from its server-side purpose,
+stable account subject and intended recipient, then re-check account authorization
+when applying proof. Canonicalization is only trim/lowercase, preserving dots and
+plus tags. HMAC-SHA256 binds the code to this context using versioned framing and
+domain separation. Only HMAC scope/code digests and technical lifecycle metadata
+are stored; plaintext code, recipient, account identifier, key and email body are
+absent from the challenge table. No code is returned by `issue`, included in repr
+or logged. The plaintext is handed only to the existing private email adapter.
+
+`PostgresEmailCodeRepository` owns short, independently committed transactions;
+the HTTP/account transaction cannot roll back a failed-attempt counter. A scoped
+advisory lock serializes first issuance, and row locks serialize resend and
+consumption across workers. Production wall time is sampled after locks. SMTP
+runs outside transactions. Pending proofs become usable only after relay
+acceptance and only if that generation is still current and unexpired. Failure,
+unknown delivery, cancellation or process failure leaves them unusable, keeps
+cooldown, and performs no retry. A late old send cannot activate a newer proof.
+
+Revision **`0006_email_codes`** is the current head. Apply it to a privately
+configured target with `pdm run alembic upgrade head` before using the service;
+application startup does not run migrations. It adds only `email_code_challenges`.
+Downgrade to `0005_opaque_sessions` invalidates challenges by dropping that table
+and preserves users, roles, counters and sessions. The previous session migration
+regression explicitly targets revision `0005` rather than assuming it remains head.
+
+Routine validation uses controlled clocks, test-only keys, a capture sender and
+real PostgreSQL; it sends no real email. Public per-IP throttling, account
+existence-neutral responses and the restricted recovery session must be wired in
+the later HTTP workflows before exposure. No public sending route is provided.
+See [BE-012 validation](docs/validation/BE-012-email-codes.md) for acceptance evidence.
+
 ## Current implementation
 
 - Auth, users, and roles routes under `/api`; OpenAPI at `/openapi.json`.
 - Private TLS SMTP adapter and safe CLI smoke tool; one controlled Gmail submission and Inbox receipt verified (BE-011).
+- Shared digest-only, single-use email challenges with durable limits and SMTP delivery gating (BE-012); account-specific HTTP flows remain separate.
 - Email/password login with canonical email lookup; deprecated username login
   remains for compatibility. Product authentication uses only an opaque session cookie.
 - Argon2id for new passwords and verified legacy hash upgrades; exact Unicode
@@ -702,8 +757,9 @@ replaces the temporary logout tombstone with the current-session flow below.
 Historical JWT/refresh utilities remain unmounted; the historical JWT secret
 cannot sign CSRF tokens or authorize requests.
 
-Revision **0005_opaque_sessions** remains head: no migration, dependency, lifetime
-or identity/hash policy change is needed. No Frontend file or approved page design
+BE-009 added no migration beyond **0005_opaque_sessions**, dependency, lifetime
+or identity/hash policy change. The current head is documented in BE-012 above.
+No Frontend file or approved page design
 was changed or regenerated. FE-029/030 must adopt these API changes; browser UI
 integration, deployment proxy/TLS validation and complete production security
 certification are not claimed. See [BE-009 validation](docs/validation/BE-009-session-authorization-csrf.md).

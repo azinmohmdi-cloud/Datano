@@ -75,6 +75,26 @@ class SessionRow(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class EmailCodeRow(Base):
+    __tablename__ = "email_code_challenges"
+    __table_args__ = (
+        CheckConstraint("octet_length(scope) = 32 AND octet_length(digest) = 32", name="digests_valid"),
+        CheckConstraint("generation ~ '^[0-9a-f]{32}$'", name="generation_valid"),
+        CheckConstraint("expires_at = issued_at + interval '10 minutes'", name="lifetime_valid"),
+        CheckConstraint("attempts BETWEEN 0 AND 5", name="attempts_valid"),
+        CheckConstraint("consumed_at IS NULL OR (delivered AND attempts > 0 AND issued_at <= consumed_at AND consumed_at < expires_at)", name="consumption_valid"),
+    )
+
+    scope: Mapped[bytes] = mapped_column(LargeBinary, primary_key=True)
+    digest: Mapped[bytes] = mapped_column(LargeBinary)
+    generation: Mapped[str] = mapped_column(String(32))
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(Integer)
+    delivered: Mapped[bool] = mapped_column(Boolean)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 user_roles = Table(
     "user_roles", Base.metadata,
     Column("user_id", Text, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
