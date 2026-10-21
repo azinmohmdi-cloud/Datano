@@ -148,9 +148,9 @@ test("source management and connection handoff preserve the same site and only e
 });
 
 test("the public receipt page stays guest-only despite sample, ownership, job and readiness flags", async ({ page, context }) => {
-  const errors: string[] = [], requests: string[] = [];
+  const errors: string[] = [], requests: { method: string; path: string }[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  page.on("request", (request) => { if (request.method() !== "GET" || new URL(request.url()).pathname.startsWith("/api/")) requests.push(request.url()); });
+  page.on("request", (request) => { if (request.method() !== "GET" || new URL(request.url()).pathname.startsWith("/api/")) requests.push({ method: request.method(), path: new URL(request.url()).pathname }); });
   const response = await page.goto("/websites/arbitrary-id/receive?site=report-ready&ga4=ready&gsc=empty&ads=ready&verified=1&role=admin&job=success");
   expect(response?.status()).toBe(200);
   await expect(page).toHaveTitle("دریافت داده و آمادگی گزارش | دیتانو");
@@ -159,8 +159,18 @@ test("the public receipt page stays guest-only despite sample, ownership, job an
   await expect(page.locator('a[href^="/ui-review"]')).toHaveCount(0);
   await page.getByRole("link", { name: "بازگشت به سایت‌های من", exact: true }).click(); await expect(page).toHaveURL("/websites");
   await page.goBack();
-  await page.getByRole("main").getByRole("link", { name: "ورود به حساب", exact: true }).click(); await expect(page).toHaveURL("/login");
-  expect(errors).toEqual([]); expect(requests).toEqual([]); expect(await context.cookies()).toEqual([]);
+  expect(requests).toEqual([]);
+  await page.route("**/api/auth/me", route => route.fulfill({ status: 401,
+    json: { success: false, message: "Unauthorized", payload: null } }));
+  const sessionChecked = page.waitForResponse(response => new URL(response.url()).pathname === "/api/auth/me" && response.status() === 401);
+  await page.getByRole("main").getByRole("link", { name: "ورود به حساب", exact: true }).click();
+  await sessionChecked;
+  await expect(page).toHaveURL("/login");
+  await expect(page.getByRole("textbox", { name: "ایمیل", exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+  expect(requests.length).toBeGreaterThan(0);
+  expect(requests.every(request => request.method === "GET" && request.path === "/api/auth/me")).toBe(true);
+  expect(await context.cookies()).toEqual([]);
   expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: {}, session: {} });
 });
 

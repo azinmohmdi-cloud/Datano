@@ -1231,6 +1231,69 @@ remember-me cookies, reload, current logout, rejected cookie replay, and the
 public signup lock. It does not enable admin provisioning in the product.
 See [FE-030 validation](docs/validation/FE-030-session-flows.md).
 
+## Password recovery connection (FE-031)
+
+`/forgot-password` now uses BE-013's generated request, verify and reset operations
+through the existing credentialed/CSRF transport. The page always starts at email;
+query parameters and storage cannot select a later stage. Private UI Review still
+uses its deterministic fixtures and never sends email or changes a password.
+The approved form markup, layout and styling are unchanged.
+
+The request acknowledgement is intentionally conditional: it does not reveal
+account existence or claim inbox delivery. The displayed code lifetime is an
+approximation from the request start; the attempts display is a local upper bound.
+BE-013 intentionally does not expose issuance time or remaining attempts. Its
+600-second expiry, five-attempt limit, 60-second issuance interval and single-use
+proof remain authoritative across tabs/reloads. Resend clears stale code only
+after a successful request acknowledgement. A generic 401 can mean invalid,
+expired, exhausted or consumed proof. A 429 respects `Retry-After` without an
+automatic retry. Network/provider failures never advance a stage or report a
+successful reset; the generic request response cannot prove SMTP delivery.
+
+Verification leaves the limited grant in the backend's HttpOnly cookie; the UI
+uses only the validated `expires_in` value. It never caches the verification
+envelope/CSRF, code or passwords. Expired/rejected grants clear secrets and
+restart at email. Going back from Password also restarts email because the code
+has already been consumed. Successful reset clears private queries/mutations,
+sets anonymous session state and replaces the route with `/login`; it never logs
+in automatically. In-flight actions are aborted when the controller unmounts.
+
+Generate from the actual BE-013 OpenAPI first, using the existing setup:
+
+```sh
+pnpm api:generate
+pnpm test:recovery
+PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e recovery.spec.ts recovery-product.spec.ts
+pnpm lint
+pnpm exec tsc --noEmit --incremental false
+pnpm build
+```
+
+For the automated real-API integration suite, use a dedicated disposable
+PostgreSQL backend migrated to `0007_password_recovery`, with
+`PUBLIC_ORIGIN=http://127.0.0.1:3100`, the explicit local HTTP cookie exception,
+a private HMAC/CSRF key and a **capture-only mail adapter**. The adapter writes
+only a synthetic test message's `{recipient,code}` JSON to a private temporary
+file (0600) after send. The suite registers unique `@example.test` users; it must
+never run against live SMTP or an existing account database. Allow sufficient
+test-only registration/login/recovery quotas for both viewports.
+
+```sh
+DATANO_RECOVERY_API_URL=http://127.0.0.1:8020 \
+DATANO_RECOVERY_CAPTURE_MAILBOX=/private/tmp/datano-fe031/capture-mail.json \
+PLAYWRIGHT_CHANNEL=chrome pnpm test:recovery:integration
+```
+
+This checks the real three-stage UI, code consumption, normal/remember-me session
+revocation, old-password denial and fresh login with the exact Unicode password.
+Trace, screenshot and video recording are disabled. A separate owner-approved
+live-mail check uses a different disposable schema and the private BE-011 SMTP
+file; it never captures the real code. The owner enters that code/password in
+the browser, never in chat. No automatic resend is performed.
+The owner confirmed live inbox delivery, code entry, password reset and fresh
+login on 2026-10-21. See [FE-031 validation](docs/validation/FE-031-password-recovery.md)
+for the automated/manual evidence, cleanup and unrelated test limitation.
+
 ### Dashboard redesign: FE-019–FE-023 (2026-10-15)
 
 The opted-in development page `/ui-review/websites/dashboard` now contains three

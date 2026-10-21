@@ -123,10 +123,10 @@ test("ownership, missing reports, loading and failure remain separate, and selec
   await expect(page.locator('[data-dashboard-source="ga4"]')).toContainText("دریافت موفق، دارای داده");
 });
 
-test("the public dashboard uses the site shell and exposes no sample data, controls or auth effects", async ({ page, context }) => {
-  const errors: string[] = [], requests: string[] = [];
+test("the public dashboard has no auth effects and Login checks only the server session", async ({ page, context }) => {
+  const errors: string[] = [], requests: { method: string; path: string }[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  page.on("request", (request) => { if (request.method() !== "GET" || new URL(request.url()).pathname.startsWith("/api/")) requests.push(request.url()); });
+  page.on("request", (request) => { if (request.method() !== "GET" || new URL(request.url()).pathname.startsWith("/api/")) requests.push({ method: request.method(), path: new URL(request.url()).pathname }); });
   const response = await page.goto("/websites/arbitrary-id?role=admin&site=report-ready&ga4=ready&verified=1");
   expect(response?.status()).toBe(200);
   await expect(page).toHaveTitle("داشبورد سایت | دیتانو");
@@ -134,9 +134,19 @@ test("the public dashboard uses the site shell and exposes no sample data, contr
   await expect(page.locator('[data-layout="site"]')).toHaveCount(1);
   await expect(page.locator('[data-layout="account"]')).toHaveCount(0);
   await expect(page.locator('[data-dashboard-source], [data-dashboard-shell], input, select, a[href^="/ui-review"]')).toHaveCount(0);
+  // The Dashboard itself must remain effect-free; Login owns session detection.
+  expect(requests).toEqual([]);
+  await page.route("**/api/auth/me", route => route.fulfill({ status: 401,
+    json: { success: false, message: "Unauthorized", payload: null } }));
+  const sessionChecked = page.waitForResponse(response => new URL(response.url()).pathname === "/api/auth/me" && response.status() === 401);
   await page.getByRole("main").getByRole("link", { name: "ورود به حساب", exact: true }).click();
+  await sessionChecked;
   await expect(page).toHaveURL("/login");
-  expect(errors).toEqual([]); expect(requests).toEqual([]); expect(await context.cookies()).toEqual([]);
+  await expect(page.getByRole("textbox", { name: "ایمیل", exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+  expect(requests.length).toBeGreaterThan(0);
+  expect(requests.every(request => request.method === "GET" && request.path === "/api/auth/me")).toBe(true);
+  expect(await context.cookies()).toEqual([]);
   expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: {}, session: {} });
 });
 

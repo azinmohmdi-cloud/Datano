@@ -10,6 +10,8 @@ async function geometry(page: Page) {
 
 test("public recovery validates email and never announces delivery or advances without an API", async ({ page, context }) => {
   const requests: string[] = [];
+  await page.route("**/api/auth/csrf", route => route.fulfill({ status: 503, json: { success: false, message: "Unavailable", payload: null } }));
+  await page.route("**/api/auth/me", route => route.fulfill({ status: 401, json: { success: false, message: "Unauthorized", payload: null } }));
   page.on("request", (request) => { if (request.method() !== "GET" || new URL(request.url()).pathname.startsWith("/api/")) requests.push(request.url()); });
   const response = await page.goto("/forgot-password?step=password&state=ready");
   expect(response?.status()).toBe(200);
@@ -30,7 +32,7 @@ test("public recovery validates email and never announces delivery or advances w
   await expect(page.getByRole("textbox", { name: "کد بازیابی", exact: true })).toHaveCount(0);
   await expect(context.cookies()).resolves.toEqual([]);
   expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: {}, session: {} });
-  expect(requests).toEqual([]);
+  expect(requests.map(url => new URL(url).pathname)).toEqual(["/api/auth/csrf"]);
   await page.getByRole("link", { name: "بازگشت به ورود", exact: true }).click();
   await expect(page).toHaveURL("/login");
 });

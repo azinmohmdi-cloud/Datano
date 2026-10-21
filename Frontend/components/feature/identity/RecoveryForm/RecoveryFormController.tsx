@@ -14,6 +14,13 @@ interface RecoveryFormControllerProps {
   onStepChange?: (step: RecoveryStep) => void;
   initialScenario?: RecoveryScenario;
   initialValues?: RecoveryFormUIProps["values"];
+  actions?: {
+    request: (email: string, signal: AbortSignal) => Promise<void>;
+    verify: (email: string, code: string, signal: AbortSignal) => Promise<number>;
+    reset: (password: string, confirmation: string, signal: AbortSignal) => Promise<void>;
+  };
+  onFailure?: (error: unknown, step: RecoveryStep) => { message: string; cancelled?: boolean; restart?: boolean; codeRejected?: boolean; retryAfter?: number };
+  onComplete?: () => void;
 }
 const emptyValues = { email: "", code: "", password: "", confirmation: "" };
 const emptyErrors = { email: "", code: "", password: "", confirmation: "", submission: "" };
@@ -21,10 +28,10 @@ const subscribeToHydration = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
 
-export default function RecoveryFormController({ preview = false, step: controlledStep, onStepChange, initialScenario = "ready", initialValues = emptyValues }: RecoveryFormControllerProps) {
+export default function RecoveryFormController({ preview = false, step: controlledStep, onStepChange, initialScenario = "ready", initialValues = emptyValues, actions, onFailure, onComplete }: RecoveryFormControllerProps) {
   const hydrated = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
   const [localStep, setLocalStep] = useState<RecoveryStep>("email");
-  const step = preview ? controlledStep ?? localStep : "email";
+  const step = preview ? controlledStep ?? localStep : localStep;
   const [values, setValues] = useState(initialValues);
   const [scenario, setScenario] = useState(initialScenario);
   const [errors, setErrors] = useState({ ...emptyErrors,
@@ -37,13 +44,20 @@ export default function RecoveryFormController({ preview = false, step: controll
   const [clockCycle, setClockCycle] = useState(0);
   const [attempts, setAttempts] = useState(5);
   const [resendNotice, setResendNotice] = useState("");
+  const [working, setWorking] = useState(false);
+  const operation = useRef<AbortController | null>(null);
+  const [now, setNow] = useState(0);
+  const [codeDeadline, setCodeDeadline] = useState(0);
+  const [cooldownDeadline, setCooldownDeadline] = useState(0);
+  const [grantDeadline, setGrantDeadline] = useState(0);
+  const [retryDeadline, setRetryDeadline] = useState(0);
   const formId = useId();
   const previousStep = useRef(step);
-  const pending = preview && scenario === "pending";
-  const expiry = scenario === "expired" ? 0 : Math.max(0, (scenario === "near-expiry" ? 2 : 600) - elapsed);
-  const cooldown = ["expired", "locked", "resend-ready", "near-expiry"].includes(scenario) ? 0 : Math.max(0, 60 - elapsed);
-  const expired = preview && expiry === 0;
-  const locked = preview && (scenario === "locked" || attempts === 0);
+  const pending = preview ? scenario === "pending" : working;
+  const expiry = preview ? scenario === "expired" ? 0 : Math.max(0, (scenario === "near-expiry" ? 2 : 600) - elapsed) : Math.max(0, Math.ceil((codeDeadline - now) / 1000));
+  const cooldown = preview ? ["expired", "locked", "resend-ready", "near-expiry"].includes(scenario) ? 0 : Math.max(0, 60 - elapsed) : Math.max(0, Math.ceil((Math.max(cooldownDeadline, retryDeadline) - now) / 1000));
+  const expired = (preview || step === "code") && expiry === 0;
+  const locked = (preview && scenario === "locked") || attempts === 0;
   const length = passwordCharacterCount(values.password);
 
   useEffect(() => {
@@ -54,7 +68,23 @@ export default function RecoveryFormController({ preview = false, step: controll
   }, [preview, clockCycle]);
 
   useEffect(() => {
-    if (previousStep.current === step) return;
+    if (preview) return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => { clearInterval(interval); operation.current?.abort(); };
+  }, [preview]);
+
+  useEffect(() => {
+    if (preview || step !== "password" || !grantDeadline || working) return;
+    const timer = setTimeout(() => {
+      setValues((current) => ({ ...emptyValues, email: current.email }));
+      setLocalStep("email"); setGrantDeadline(0);
+      setErrors({ ...emptyErrors, submission: messages.grantExpired });
+    }, Math.max(0, grantDeadline - Date.now()));
+    return () => clearTimeout(timer);
+  }, [preview, step, grantDeadline, working]);
+
+  useEffect(() => {
+    if (previousStep.current === step || pending) return;
     previousStep.current = step;
     const form = document.getElementById(formId);
     const input = form?.querySelector<HTMLInputElement>(`[data-recovery-panel="${step}"] input`);
@@ -63,16 +93,64 @@ export default function RecoveryFormController({ preview = false, step: controll
   }, [step, pending, formId]);
 
   function moveTo(next: RecoveryStep) {
-    if (!preview || pending) return;
+    if (pending) return;
     setErrors((current) => ({ ...current, submission: "" }));
     setResendNotice("");
     if (onStepChange) onStepChange(next);
     else setLocalStep(next);
   }
 
+  async function perform(stage: RecoveryStep, resend = false) {
+    if (!actions || operation.current || Date.now() < retryDeadline) return;
+    const controller = new AbortController();
+    operation.current = controller; setWorking(true);
+    const started = Date.now();
+    setErrors((current) => ({ ...current, submission: "" }));
+    try {
+      if (stage === "email") {
+        await actions.request(values.email.trim(), controller.signal);
+        if (controller.signal.aborted) return;
+        setValues((current) => ({ ...emptyValues, email: current.email.trim() }));
+        setErrors(emptyErrors); setAttempts(5); setNow(Date.now());
+        setCodeDeadline(started + 600_000); setCooldownDeadline(started + 60_000);
+        setGrantDeadline(0); setLocalStep("code"); setResendNotice(messages.requestAccepted);
+      } else if (stage === "code") {
+        const seconds = await actions.verify(values.email, values.code, controller.signal);
+        if (controller.signal.aborted) return;
+        setValues((current) => ({ ...current, code: "" }));
+        setGrantDeadline(started + seconds * 1000); setNow(Date.now());
+        setResendNotice(""); setLocalStep("password");
+      } else {
+        if (Date.now() >= grantDeadline) {
+          setValues((current) => ({ ...emptyValues, email: current.email })); setLocalStep("email");
+          setErrors({ ...emptyErrors, submission: messages.grantExpired }); return;
+        }
+        await actions.reset(values.password, values.confirmation, controller.signal);
+        if (controller.signal.aborted) return;
+        setValues(emptyValues); setErrors(emptyErrors); onComplete?.();
+      }
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      const failure = onFailure?.(error, stage) ?? { message: messages.requestUnavailable };
+      if (failure.cancelled) return;
+      if (failure.retryAfter) { setRetryDeadline(Date.now() + failure.retryAfter * 1000); setNow(Date.now()); }
+      if (failure.restart) {
+        setValues((current) => ({ ...emptyValues, email: current.email })); setLocalStep("email"); setGrantDeadline(0);
+      }
+      if (failure.codeRejected) setAttempts((current) => Math.max(0, current - 1));
+      setErrors((current) => ({ ...current, [failure.codeRejected ? "code" : "submission"]: failure.message }));
+      if (resend) setResendNotice("");
+    } finally {
+      if (!controller.signal.aborted) { operation.current = null; setWorking(false); }
+    }
+  }
+
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!hydrated || pending) return;
+    if (!preview && Date.now() < retryDeadline) {
+      setErrors((current) => ({ ...current, submission: messages.rateLimited })); return;
+    }
     const invalidEmail = event.currentTarget.querySelector<HTMLInputElement>('input[name="email"]')?.validity.typeMismatch ?? false;
     const validation = validateRecovery(values, invalidEmail);
     const fields: RecoveryField[] = step === "email" ? ["email"] : step === "code" ? ["code"] : ["password", "confirmation"];
@@ -83,7 +161,9 @@ export default function RecoveryFormController({ preview = false, step: controll
       return;
     }
     if (!preview) {
-      setErrors((current) => ({ ...current, submission: messages.requestUnavailable }));
+      if (step === "code" && (expired || locked)) return;
+      if (actions) void perform(step);
+      else setErrors((current) => ({ ...current, submission: messages.requestUnavailable }));
       return;
     }
     if (step === "code" && (expired || locked)) return;
@@ -109,12 +189,16 @@ export default function RecoveryFormController({ preview = false, step: controll
         ...(field === "password" && values.confirmation ? { confirmation: validateRecovery(nextValues).confirmation } : {}),
       }));
     },
-    onFieldBlur: (field, mismatch = false) => setErrors((current) => ({ ...current, [field]: validateRecovery(values, mismatch)[field] })),
-    onPrevious: () => moveTo(step === "password" ? "code" : "email"),
+    onFieldBlur: (field, mismatch = false) => setErrors((current) => ({ ...current, [field]: validateRecovery(values, mismatch)[field] || current[field] })),
+    onPrevious: () => {
+      if (!preview && !pending) { setValues((current) => ({ ...emptyValues, email: current.email })); setGrantDeadline(0); }
+      moveTo(preview && step === "password" ? "code" : "email");
+    },
     onTogglePassword: () => setPasswordVisible((current) => !current),
     onToggleConfirmation: () => setConfirmationVisible((current) => !current),
     onResend: () => {
-      if (!preview || pending || cooldown > 0) return;
+      if (pending || cooldown > 0) return;
+      if (!preview) { void perform("email", true); return; }
       setValues((current) => ({ ...current, code: "" }));
       setErrors((current) => ({ ...current, code: "", submission: "" }));
       setScenario("ready"); setAttempts(5); setElapsed(0); setClockCycle((current) => current + 1);
@@ -123,9 +207,9 @@ export default function RecoveryFormController({ preview = false, step: controll
   };
 
   return <RecoveryFormUI step={step} values={values} errors={{ ...errors, code: expired ? messages.expired : locked ? messages.locked : errors.code }}
-    disabled={!hydrated} pending={pending} codeBlocked={expired || locked} resendDisabled={!preview || cooldown > 0}
-    expiryText={preview ? formatRecoveryDuration(expiry) : "—"} cooldownText={preview ? new Intl.NumberFormat("fa-IR").format(cooldown) : "—"}
-    attemptsText={preview ? new Intl.NumberFormat("fa-IR").format(locked ? 0 : attempts) : "—"} resendNotice={resendNotice}
+    disabled={!hydrated} pending={pending} codeBlocked={expired || locked} resendDisabled={cooldown > 0}
+    expiryText={`${formatRecoveryDuration(expiry)}${preview ? "" : messages.approximateExpiry}`} cooldownText={new Intl.NumberFormat("fa-IR").format(cooldown)}
+    attemptsText={`${preview || locked ? "" : messages.atMost}${new Intl.NumberFormat("fa-IR").format(locked ? 0 : attempts)}`} resendNotice={resendNotice}
     passwordVisible={passwordVisible} confirmationVisible={confirmationVisible} passwordsMatch={Boolean(values.confirmation && values.confirmation === values.password && length >= 15 && length <= 128)}
     formId={formId} translations={recoveryTranslations} callbacks={callbacks} />;
 }

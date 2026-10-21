@@ -134,8 +134,8 @@ test("unverified ownership blocks every source and URL parameters cannot supply 
 });
 
 test("public site source management preserves guest access and ignores all sample or OAuth flags", async ({ page, context }) => {
-  const requests: string[] = []; const errors: string[] = [];
-  page.on("request", (request) => { if (request.method() !== "GET" || new URL(request.url()).pathname.startsWith("/api/")) requests.push(request.url()); });
+  const requests: { method: string; path: string }[] = []; const errors: string[] = [];
+  page.on("request", (request) => { if (request.method() !== "GET" || new URL(request.url()).pathname.startsWith("/api/")) requests.push({ method: request.method(), path: new URL(request.url()).pathname }); });
   page.on("pageerror", (error) => errors.push(error.message));
   const response = await page.goto("/websites/arbitrary/connect?ga4=connected&gsc=connected&ads=connected&role=admin&code=sample&state=success");
   expect(response?.status()).toBe(200);
@@ -145,10 +145,19 @@ test("public site source management preserves guest access and ignores all sampl
   await expect(page.locator('a[href^="/ui-review"]')).toHaveCount(0);
   await page.getByRole("link", { name: "بازگشت به سایت‌های من", exact: true }).click(); await expect(page).toHaveURL("/websites");
   await page.goto("/websites/arbitrary/connect");
-  await page.getByRole("main").getByRole("link", { name: "ورود به حساب", exact: true }).click(); await expect(page).toHaveURL("/login");
+  expect(requests).toEqual([]);
+  await page.route("**/api/auth/me", route => route.fulfill({ status: 401,
+    json: { success: false, message: "Unauthorized", payload: null } }));
+  const sessionChecked = page.waitForResponse(response => new URL(response.url()).pathname === "/api/auth/me" && response.status() === 401);
+  await page.getByRole("main").getByRole("link", { name: "ورود به حساب", exact: true }).click();
+  await sessionChecked;
+  await expect(page).toHaveURL("/login");
+  await expect(page.getByRole("textbox", { name: "ایمیل", exact: true })).toBeVisible();
   await expect(context.cookies()).resolves.toEqual([]);
   expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: {}, session: {} });
-  expect(requests).toEqual([]); expect(errors).toEqual([]);
+  expect(requests.length).toBeGreaterThan(0);
+  expect(requests.every(request => request.method === "GET" && request.path === "/api/auth/me")).toBe(true);
+  expect(errors).toEqual([]);
 });
 
 test("verification success and the no-connection site navigate to the correct private connection page", async ({ page }) => {

@@ -18,6 +18,8 @@
     "test:session": "playwright test --config playwright.session.config.ts",
     "test:session:integration": "playwright test --config playwright.session.integration.config.ts",
     "test:registration:integration": "playwright test --config playwright.registration.integration.config.ts",
+    "test:recovery": "playwright test --config playwright.recovery.config.ts",
+    "test:recovery:integration": "playwright test --config playwright.recovery.integration.config.ts",
     "api:generate": "orval --config orval.config.ts"
   },
   "dependencies": {
