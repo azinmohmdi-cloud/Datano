@@ -345,8 +345,9 @@ async def test_migration_upgrade_replay_downgrade_preserves_existing_tables(isol
             for table in ('users', 'roles', 'user_roles', 'registration_attempts', 'auth_sessions'):
                 snapshots[table] = [dict(row) for row in (await connection.execute(text('SELECT * FROM ' + table))).mappings()]
             before = set(await connection.run_sync(lambda sync: inspect(sync).get_table_names()))
-            await connection.run_sync(migrate)
-            await connection.run_sync(migrate)
+            # Characterize the BE-012 revision independently of later heads.
+            await connection.run_sync(migrate, '0006_email_codes')
+            await connection.run_sync(migrate, '0006_email_codes')
             assert await connection.scalar(text('SELECT version_num FROM alembic_version')) == '0006_email_codes'
             assert set(await connection.run_sync(lambda sync: inspect(sync).get_table_names())) == before | {'email_code_challenges'}
             for table, records in snapshots.items():

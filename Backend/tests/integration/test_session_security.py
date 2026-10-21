@@ -295,13 +295,15 @@ async def test_existing_opaque_session_and_csrf_survive_new_application(security
             assert private not in path.read_text()
 
 
-async def test_openapi_has_session_only_security_and_all_write_headers(security_app):
+async def test_openapi_separates_reset_only_recovery_and_product_session_security(security_app):
     with TestClient(security_app, base_url=ORIGIN) as client:
         schema = client.get("/openapi.json").json()
-    assert set(schema["components"]["securitySchemes"]) == {"OpaqueSession"}
+    assert set(schema["components"]["securitySchemes"]) == {"OpaqueSession", "PasswordRecovery"}
     assert set(schema["components"]["schemas"]["SessionLogin"]["properties"]) == {"user", "effective_role", "csrf_token"}
     for path, operations in schema["paths"].items():
         for method, operation in operations.items():
+            recovery_security = any("PasswordRecovery" in item for item in operation.get("security", []))
+            assert recovery_security is (path == "/api/auth/password-recovery/reset" and method == "post")
             if path.startswith("/api/") and method in {"post", "put", "patch", "delete"}:
                 required = {p["name"] for p in operation["parameters"] if p.get("required") and p["in"] == "header"}
                 assert {"Origin", "X-CSRF-Token"} <= required
@@ -314,6 +316,7 @@ async def test_openapi_has_session_only_security_and_all_write_headers(security_
     assert not logout.get("deprecated") and "410" not in logout["responses"]
     assert {"200", "403"} <= set(logout["responses"])
     assert logout["security"] == [{"OpaqueSession": []}, {}]
+    assert schema["paths"]["/api/auth/password-recovery/reset"]["post"]["security"] == [{"PasswordRecovery": []}]
 
 
 async def test_login_discards_legacy_refresh_cookie(security_app, actor):

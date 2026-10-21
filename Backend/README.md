@@ -157,7 +157,8 @@ acceptance and only if that generation is still current and unexpired. Failure,
 unknown delivery, cancellation or process failure leaves them unusable, keeps
 cooldown, and performs no retry. A late old send cannot activate a newer proof.
 
-Revision **`0006_email_codes`** is the current head. Apply it to a privately
+Revision **`0006_email_codes`** introduced the shared challenge table; BE-013
+adds the current head described below. Apply migrations to a privately
 configured target with `pdm run alembic upgrade head` before using the service;
 application startup does not run migrations. It adds only `email_code_challenges`.
 Downgrade to `0005_opaque_sessions` invalidates challenges by dropping that table
@@ -170,11 +171,87 @@ existence-neutral responses and the restricted recovery session must be wired in
 the later HTTP workflows before exposure. No public sending route is provided.
 See [BE-012 validation](docs/validation/BE-012-email-codes.md) for acceptance evidence.
 
+## Password recovery (BE-013)
+
+The backend exposes three additive routes, all under the existing Origin/CSRF
+middleware and recovery-only bounded-body/per-IP guard:
+
+| Method / route | Input | Result |
+| --- | --- | --- |
+| `POST /api/auth/password-recovery/request` | `email` | `200` generic acknowledgement with null payload; same status/body/cookie behavior for known, unknown, inactive and account-cooldown cases |
+| `POST /api/auth/password-recovery/verify` | `email`, `code` | Consumes BE-012 proof and sets a restricted recovery cookie; payload contains only `expires_in` and a rotated `csrf_token` |
+| `POST /api/auth/password-recovery/reset` | `password`, `password_confirmation` | Requires the recovery cookie, atomically changes the hash and revokes all target-account sessions; clears browser credentials and returns no login/token |
+
+All fields outside these DTOs are rejected. Email identity uses existing
+trim/lowercase rules. The new password/confirmation must match exactly and
+follow the existing 15–128 Unicode-character policy; hashing remains Argon2id.
+Malformed-body diagnostics redact submitted credential values. Responses use
+the existing envelope and `Cache-Control: no-store`; shared CSRF rules apply to
+every mutation, including unauthenticated request/verify/reset.
+
+The request body is sent before any account lookup or SMTP operation. An
+in-process Starlette background task then dispatches through BE-012/BE-011.
+This avoids putting account lookup, cooldown or SMTP latency in the response
+body's critical path. It is **not a durable queue**: process termination can lose
+an accepted request; the acknowledgement never certifies delivery. Background
+failures log only a static operation/class, not provider text, codes, email or
+credentials. Missing SMTP/HMAC setup returns the same `503` for every email.
+No external SMTP call or new real email was used in BE-013 validation.
+
+The default peer limit is 10 attempts per 600 seconds across all three routes,
+separate from login/registration. `RECOVERY_IP_LIMIT`, `RECOVERY_WINDOW_SECONDS`
+and `RECOVERY_MAX_BODY_BYTES` (default 8192) configure these technical limits.
+The actual socket peer is used; client forwarding headers are not trusted.
+BE-012 provides the account-context cooldown and five-attempt code budget.
+
+After verification, `__Host-datano_recovery` contains a separate 256-bit random
+capability with a recovery-specific prefix/domain-separated SHA-256 digest.
+Only the digest is stored. The cookie is Secure, HttpOnly, SameSite=Lax, Path=/,
+without Domain, and has a bounded Max-Age. The existing explicit localhost HTTP
+opt-in uses `datano_recovery_dev` instead. `RECOVERY_GRANT_SECONDS` defaults to
+600 and cannot exceed 600; expiry is absolute and not extended by validation.
+Only the latest grant per account remains usable. A recovery capability is
+rejected as a normal opaque session, and a normal session/JWT/code cannot reset
+a password in place of that cookie. OpenAPI documents `PasswordRecovery` only
+on reset; existing product endpoints retain `OpaqueSession`.
+
+The grant and code scope bind to a one-way fingerprint of account ID, canonical
+email and the current salted password hash. Changing email/password or disabling
+the account invalidates old proof. Even a legitimate legacy-hash upgrade can
+therefore require a fresh recovery request. No duplicate password hash is stored
+in the grant table. Grant creation and reset lock the account before grant/session
+records, matching login's lock ordering. Login re-verifies under that lock, so
+an in-flight old-password login cannot create a surviving session after reset.
+
+Reset writes the new hash, consumes all account recovery grants and calls the
+existing session repository's bulk revocation in **one transaction**. Failure
+rolls all of them back. Other accounts' sessions remain intact. The client must
+sign in through normal login afterwards; no user activation or role change occurs.
+Code consumption precedes grant storage in a separate BE-012 transaction: a
+grant-storage failure consumes proof safely and requires a fresh code request.
+
+Current Alembic head is **`0007_password_recovery`**. Upgrade a privately
+configured target with `pdm run alembic upgrade head` before serving this code.
+Startup probes the recovery table and rejects an outdated schema; it never
+migrates automatically. The migration adds only `password_recovery_grants` with
+a cascading user foreign key, one grant per account and digest/lifetime checks.
+Downgrade to `0006_email_codes` drops recovery grants without changing identities,
+email challenges, counters or normal sessions. No non-test database was migrated.
+
+Provision the serving process's SMTP settings and private `EMAIL_CODE_HMAC_KEY`
+before exposing recovery. The BE-011 CLI file is not automatically the serving
+app's environment. BE-011 has real SMTP/Inbox evidence; BE-013's entire API flow
+was tested with an isolated capture sender and real PostgreSQL. Additional live
+delivery/browser integration belongs to explicitly authorized follow-up work.
+Frontend forms and generated clients were not changed. See
+[BE-013 validation](docs/validation/BE-013-password-recovery.md).
+
 ## Current implementation
 
 - Auth, users, and roles routes under `/api`; OpenAPI at `/openapi.json`.
 - Private TLS SMTP adapter and safe CLI smoke tool; one controlled Gmail submission and Inbox receipt verified (BE-011).
 - Shared digest-only, single-use email challenges with durable limits and SMTP delivery gating (BE-012); account-specific HTTP flows remain separate.
+- Three-step password recovery with a reset-only cookie, atomic password/session revocation and no automatic login (BE-013).
 - Email/password login with canonical email lookup; deprecated username login
   remains for compatibility. Product authentication uses only an opaque session cookie.
 - Argon2id for new passwords and verified legacy hash upgrades; exact Unicode

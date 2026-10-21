@@ -29,6 +29,11 @@ class Config(BaseSettings):
     smtp_ca_file: str | None = Field(default=None, alias="SMTP_CA_FILE", repr=False)
     # Separate private HMAC key; required only when constructing the code service.
     email_code_hmac_key: SecretStr | None = Field(default=None, alias="EMAIL_CODE_HMAC_KEY", repr=False)
+    # Recovery-only technical limits, shared across its three credential routes.
+    recovery_ip_limit: int = Field(default=10, gt=0, le=2147483646, alias="RECOVERY_IP_LIMIT")
+    recovery_window_seconds: int = Field(default=600, gt=0, alias="RECOVERY_WINDOW_SECONDS")
+    recovery_max_body_bytes: int = Field(default=8192, gt=0, alias="RECOVERY_MAX_BODY_BYTES")
+    recovery_grant_seconds: int = Field(default=600, gt=0, le=600, alias="RECOVERY_GRANT_SECONDS")
 
     # Opaque session policy. Existing sessions retain their issued lifetimes.
     session_idle_seconds: int = Field(default=1800, gt=0, le=2147483647, alias="SESSION_IDLE_SECONDS")

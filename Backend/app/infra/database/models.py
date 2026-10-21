@@ -75,6 +75,19 @@ class SessionRow(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class RecoveryGrantRow(Base):
+    __tablename__ = "password_recovery_grants"
+    __table_args__ = (
+        CheckConstraint("octet_length(digest) = 32 AND octet_length(account_state) = 32", name="digests_valid"),
+        CheckConstraint("created_at < expires_at AND expires_at <= created_at + interval '10 minutes'", name="lifetime_valid"),
+    )
+    digest: Mapped[bytes] = mapped_column(LargeBinary, primary_key=True)
+    user_id: Mapped[str] = mapped_column(Text, ForeignKey("users.id", ondelete="CASCADE"), unique=True)
+    account_state: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class EmailCodeRow(Base):
     __tablename__ = "email_code_challenges"
     __table_args__ = (
