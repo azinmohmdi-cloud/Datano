@@ -32,6 +32,9 @@ from app.application.use_cases.auth.current_identity_use_case import CurrentIden
 from app.application.use_cases.auth.session_service import SessionService
 from app.interface.dependencies.session_dependencies import get_session_service
 from app.interface.session_cookie import SessionCredential, read_session_cookie
+from app.application.use_cases.auth.admin_policy import AdminEmailPolicy
+from app.interface.repository.admin_grant_repository_interface import IAdminGrantRepository
+from app.interface.dependencies.admin_dependencies import get_admin_email_policy, get_admin_grant_repository
 
 def get_refresh_token_from_cookie(
     refresh_token: str = Cookie(None, alias="refresh_token"),
@@ -82,9 +85,11 @@ async def get_login_usecase(
     sessions: SessionService = Depends(get_session_service),
     users: IUserRepository = Depends(get_user_repository),
     roles: IRoleRepository = Depends(get_role_repository),
+    grants: IAdminGrantRepository = Depends(get_admin_grant_repository),
+    admin_policy: AdminEmailPolicy = Depends(get_admin_email_policy),
 ) -> LoginUseCase:
     """Dependency to provide LoginUseCase instance."""
-    return LoginUseCase(authenticate_usecase, sessions, GetCurrentIdentityUseCase(users, roles))
+    return LoginUseCase(authenticate_usecase, sessions, GetCurrentIdentityUseCase(users, roles, grants, admin_policy))
 
 
 async def get_current_identity(
@@ -92,13 +97,15 @@ async def get_current_identity(
     users: IUserRepository = Depends(get_user_repository),
     roles: IRoleRepository = Depends(get_role_repository),
     sessions: SessionService = Depends(get_session_service),
+    grants: IAdminGrantRepository = Depends(get_admin_grant_repository),
+    admin_policy: AdminEmailPolicy = Depends(get_admin_email_policy),
 ) -> CurrentIdentity:
     if not credential.present:
         raise CredentialsValidationException()
     record = await sessions.resolve(credential.token)
     if record is None:
         raise CredentialsValidationException()
-    return await GetCurrentIdentityUseCase(users, roles).execute(record.user_id)
+    return await GetCurrentIdentityUseCase(users, roles, grants, admin_policy).execute(record.user_id)
 
 
 async def get_refresh_access_token_usecase(

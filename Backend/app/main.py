@@ -13,7 +13,7 @@ from app.infra.core.config import Config, config
 from app.infra.core.logging import register_logger
 from app.infra.database.bootstrap import ensure_required_roles
 from app.infra.database.connection import Database
-from app.infra.database.models import RecoveryGrantRow, RegistrationAttemptRow, SessionRow
+from app.infra.database.models import AdminGrantRow, RecoveryGrantRow, RegistrationAttemptRow, SessionRow
 from app.interface.controller import api_router
 from app.interface.dependencies.session_dependencies import session_policy
 from app.infra.services.csrf_service import CsrfService
@@ -43,6 +43,7 @@ def create_app(
                     await session.execute(select(RegistrationAttemptRow).limit(0))
                     await session.execute(select(SessionRow).limit(0))
                     await session.execute(select(RecoveryGrantRow).limit(0))
+                    await session.execute(select(AdminGrantRow).limit(0))
             except ProgrammingError as error:
                 if getattr(error.orig, "sqlstate", None) in {"42P01", "42703"}:
                     raise RuntimeError(

@@ -39,6 +39,21 @@ class RoleRow(Base):
     is_active: Mapped[bool] = mapped_column(Boolean)
 
 
+class AdminGrantRow(Base):
+    __tablename__ = "admin_grants"
+    __table_args__ = (
+        CheckConstraint("length(email_key) > 0 AND email_key = lower(btrim(email_key))", name="email_key_valid"),
+        CheckConstraint("octet_length(role_state) = 32", name="role_state_valid"),
+        CheckConstraint("method IN ('email', 'provisioning')", name="method_valid"),
+    )
+    user_id: Mapped[str] = mapped_column(Text, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    email_key: Mapped[str] = mapped_column(Text)
+    role_id: Mapped[str] = mapped_column(Text, ForeignKey("roles.id", ondelete="CASCADE"))
+    role_state: Mapped[bytes] = mapped_column(LargeBinary)
+    verified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    method: Mapped[str] = mapped_column(String(16))
+
+
 class RegistrationAttemptRow(Base):
     __tablename__ = "registration_attempts"
     __table_args__ = (

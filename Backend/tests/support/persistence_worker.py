@@ -12,6 +12,8 @@ from app.infra.database.connection import Database
 from app.infra.repositories.postgres.role_repository import SQLRoleRepository
 from app.infra.repositories.postgres.user_repository import SQLUserRepository
 from app.infra.services.password_service import Argon2PasswordService
+from app.application.use_cases.auth.admin_policy import AdminEmailPolicy
+from app.infra.repositories.postgres.admin_proof_repository import PostgresAdminProofRepository
 from app.infra.utils.auth.permission import Permission
 from app.main import create_app
 
@@ -29,14 +31,15 @@ async def provision_test_actor(url: str) -> None:
             actor.activate()
             users = SQLUserRepository(session)
             await users.create(actor)
-            await users.assign_role(actor.id, role.id)
+        assert await PostgresAdminProofRepository(database,
+            AdminEmailPolicy.parse('["test-actor@example.test"]')).provision(actor.id)
     finally:
         await database.dispose()
 
 
 def run(phase: str) -> dict:
     url = os.environ["DATANO_TEST_DATABASE_URL"]
-    settings = Config(_env_file=None, DATABASE_URL=url)
+    settings = Config(_env_file=None, DATABASE_URL=url, ADMIN_EMAIL_ALLOWLIST='["test-actor@example.test"]')
     with TestClient(create_app(settings)) as client:
         if phase == "write":
             asyncio.run(provision_test_actor(url))

@@ -36,7 +36,7 @@ class PostgresRegistrationLimiter(IRegistrationLimiter):
         self._limit = limit
         self._window_seconds = window_seconds
         self._clock = clock
-        if namespace not in {"registration", "login", "recovery"}:
+        if namespace not in {"registration", "login", "recovery", "admin-email"}:
             raise ValueError("Unsupported authentication counter namespace")
         self._namespace = namespace
 

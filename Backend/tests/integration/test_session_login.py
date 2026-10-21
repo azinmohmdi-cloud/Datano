@@ -11,6 +11,8 @@ from app.infra.repositories.postgres.role_repository import SQLRoleRepository
 from app.infra.repositories.postgres.user_repository import SQLUserRepository
 from app.infra.services import Argon2PasswordService, JoseTokenService
 from app.infra.services.session_token_service import OpaqueSessionTokens
+from app.application.use_cases.auth.admin_policy import AdminEmailPolicy
+from app.infra.repositories.postgres.admin_proof_repository import PostgresAdminProofRepository
 from app.main import create_app
 from tests.postgres import isolated_postgres_url, persistent_database
 
@@ -20,7 +22,8 @@ BODY = {"email": "  LOGIN@example.test  ", "password": PASSWORD}
 
 
 def application(url, **settings):
-    return create_app(Config(_env_file=None, DATABASE_URL=url.render_as_string(hide_password=False), **settings))
+    return create_app(Config(_env_file=None, DATABASE_URL=url.render_as_string(hide_password=False),
+        ADMIN_EMAIL_ALLOWLIST='["login@example.test"]', **settings))
 
 
 @pytest.fixture(autouse=True)
@@ -126,7 +129,15 @@ async def test_cookie_survives_new_application_and_roles_are_live(persistent_dat
         current=client.get("/api/auth/me",headers={"Cookie":f"{COOKIE}={token}"})
         assert current.status_code == 200
         assert current.json()["payload"]["first_name"] == "Changed on server"
-        assert current.json()["payload"]["effective_role"] == "Admin"
+        assert current.json()["payload"]["effective_role"] == "User"
+        assert client.get("/api/users/",headers={"Cookie":f"{COOKIE}={token}"}).status_code == 403
+    proof=PostgresAdminProofRepository(persistent_database,AdminEmailPolicy.parse('["login@example.test"]'))
+    assert await proof.provision(account.id)
+    with TestClient(application(isolated_postgres_url), base_url="https://datano.test") as client:
+        assert client.get("/api/auth/me",headers={"Cookie":f"{COOKIE}={token}"}).status_code == 401
+        renewed=client.post("/api/auth/login",json=BODY)
+        assert renewed.status_code == 200 and renewed.json()["payload"]["effective_role"] == "Admin"
+        assert renewed.json()["payload"]["user"]["first_name"] == "Changed on server"
 
 
 @pytest.mark.parametrize("state", ["inactive", "missing", "wrong"])
@@ -179,9 +190,6 @@ async def test_effective_role_comes_only_from_active_server_roles(persistent_dat
             admin=await roles.get_by_name("Admin")
             if role_state in {"admin","inactive-admin"}:
                 await users.assign_role(account.id,admin.id)
-            if role_state == "inactive-admin":
-                admin.deactivate()
-                await roles.update(admin)
             if role_state in {"no-active-roles","custom-super"}:
                 user_role=await roles.get_by_name("User")
                 user_role.deactivate()
@@ -190,6 +198,15 @@ async def test_effective_role_comes_only_from_active_server_roles(persistent_dat
                 custom=RoleEntity.create("Custom",permission_ids=["super:user"])
                 await roles.create(custom)
                 await users.assign_role(account.id,custom.id)
+        if role_state in {"admin","inactive-admin"}:
+            assert await PostgresAdminProofRepository(persistent_database,
+                AdminEmailPolicy.parse('["login@example.test"]')).provision(account.id)
+        if role_state == "inactive-admin":
+            async with persistent_database.transaction() as session:
+                roles=SQLRoleRepository(session)
+                admin=await roles.get_by_name("Admin")
+                admin.deactivate()
+                await roles.update(admin)
         response=client.post("/api/auth/login",json=BODY)
         assert response.status_code == 200
         assert response.json()["payload"].get("effective_role","MISSING") == expected

@@ -28,3 +28,19 @@ async def test_disappearing_role_cannot_supply_stale_admin_identity():
     assert identity.effective_role is None and identity.user.roles == []
     # Mapping a detached identity must not mutate a legacy adapter's shared object.
     assert user.roles == [role]
+
+
+async def test_admin_role_assignment_alone_is_not_verified_administrator_authority():
+    admin = RoleEntity.create("Admin", permission_ids=["super:user"])
+    ordinary = RoleEntity.create("User")
+    user = UserEntity.create(first_name="Unverified", last_name="Owner",
+        email="unverified-admin@example.test", username="unverified-admin",
+        hashed_password="test-only-hash", roles=[ordinary, admin])
+    user.activate()
+    users, roles = AsyncMock(spec=IUserRepository), AsyncMock(spec=IRoleRepository)
+    users.get_by_id.return_value = user
+    roles.get_by_id.side_effect = lambda role_id: {admin.id: admin, ordinary.id: ordinary}.get(role_id)
+    identity = await GetCurrentIdentityUseCase(users, roles).execute(user.id)
+    assert identity.effective_role == "User"
+    assert all(role.name != "Admin" for role in identity.user.roles)
+    assert user.roles == [ordinary, admin]

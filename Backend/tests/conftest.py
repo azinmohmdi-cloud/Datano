@@ -32,6 +32,9 @@ def test_client() -> Iterator[TestClient]:
     from app.interface.dependencies.role_dependencies import get_role_repository
     from app.interface.dependencies.session_dependencies import get_session_repository
     from app.interface.repository.session_repository_interface import ISessionRepository
+    from app.interface.repository.admin_grant_repository_interface import IAdminGrantRepository
+    from app.interface.dependencies.admin_dependencies import get_admin_grant_repository
+    from app.infra.core.config import Config
     from app.application.use_cases.auth.session_models import SessionRecord
     from datetime import UTC, datetime, timedelta
     from unittest.mock import AsyncMock
@@ -74,10 +77,18 @@ def test_client() -> Iterator[TestClient]:
         await seed()
         yield
 
-    app = create_app(lifespan_handler=memory_lifespan)
+    app = create_app(Config(_env_file=None,ADMIN_EMAIL_ALLOWLIST='["admin@example.com"]'),lifespan_handler=memory_lifespan)
     app.dependency_overrides[get_user_repository] = lambda: registry.user_repository
     app.dependency_overrides[get_role_repository] = lambda: registry.role_repository
     app.dependency_overrides[get_session_repository] = lambda: session_repository
+    # Explicit trusted authority for the isolated seed fixture only. Production
+    # and real database security tests always use persisted server grants.
+    grants = AsyncMock(spec=IAdminGrantRepository)
+    async def fixture_authority(user_id, email, role):
+        actor = await registry.user_repository.get_by_username("admin")
+        return actor is not None and actor.id == user_id and email == "admin@example.com" and role.name == "Admin"
+    grants.verified.side_effect = fixture_authority
+    app.dependency_overrides[get_admin_grant_repository] = lambda: grants
     limiter = AsyncMock()
     limiter.consume.return_value = RegistrationLimitDecision(True)
     app.dependency_overrides[get_login_limiter] = lambda request: limiter

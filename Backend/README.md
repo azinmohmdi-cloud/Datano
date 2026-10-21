@@ -230,10 +230,10 @@ sign in through normal login afterwards; no user activation or role change occur
 Code consumption precedes grant storage in a separate BE-012 transaction: a
 grant-storage failure consumes proof safely and requires a fresh code request.
 
-Current Alembic head is **`0007_password_recovery`**. Upgrade a privately
+Current Alembic head is **`0008_admin_grants`**. Upgrade a privately
 configured target with `pdm run alembic upgrade head` before serving this code.
-Startup probes the recovery table and rejects an outdated schema; it never
-migrates automatically. The migration adds only `password_recovery_grants` with
+Startup probes required tables and rejects an outdated schema; it never
+migrates automatically. Recovery revision `0007_password_recovery` adds only `password_recovery_grants` with
 a cascading user foreign key, one grant per account and digest/lifetime checks.
 Downgrade to `0006_email_codes` drops recovery grants without changing identities,
 email challenges, counters or normal sessions. No non-test database was migrated.
@@ -246,12 +246,97 @@ delivery/browser integration belongs to explicitly authorized follow-up work.
 Frontend forms and generated clients were not changed. See
 [BE-013 validation](docs/validation/BE-013-password-recovery.md).
 
+## Verified administrator authority (BE-014)
+
+`ADMIN_EMAIL_ALLOWLIST` is a private server-only JSON array of eligible mailbox
+addresses. It defaults to `[]`, is canonicalized with trim/lowercase only, and
+is excluded from settings serialization/repr. Keep actual addresses in a private
+Git-ignored backend environment file or secret manager; never expose them through
+frontend variables, generated clients, responses or logs. All serving workers
+must use the same configuration. Private eligibility is checked on every identity
+read: removing an address removes its effective Admin permissions immediately.
+
+Public registration always creates an active User, including an eligible address.
+Neither an existing raw Admin assignment nor the generic role-assignment API can
+create verified administrator authority. Existing Admin assignments are **not**
+automatically trusted/backfilled by migration. Operators must provision or prove
+them explicitly. Ordinary/custom legacy role CRUD remains unchanged; a custom
+permission role is never interpreted as the product Admin role.
+
+Two self-only, session-authenticated endpoints reuse the existing Origin/CSRF
+boundary, secure cookie profile, envelope, SMTP adapter and shared BE-012 codes:
+
+| Endpoint | Strict JSON body | Result |
+| --- | --- | --- |
+| `POST /api/auth/admin-email/request` | `{}` | Generic `200` acknowledgement; background dispatch only for an eligible active account |
+| `POST /api/auth/admin-email/verify` | `{code}` | Consumes proof and returns the existing public login payload with authoritative `effective_role` and rotated `csrf_token` |
+
+No body-selected email, account ID or role is accepted. Request acknowledgement
+never proves eligibility or delivery. SMTP failure is safely observable without
+provider text/codes; an undelivered code cannot elevate authority. This uses the
+existing in-process background task, not a durable email queue. Required private
+SMTP settings and `EMAIL_CODE_HMAC_KEY` must be loaded by the serving process;
+the BE-011 smoke tool's private file is not loaded automatically.
+
+Codes remain eight ASCII digits, HMAC-only at rest, single-use, valid for 600
+seconds, with five guesses and a 60-second resend interval. Their scope binds to
+account ID, canonical mailbox and existing salted password-hash fingerprint, and
+is shared across that account's sessions. A password/email change requires a new
+code. A new issuance invalidates its predecessor. Peer safeguards use the separate
+`admin-email` counter namespace: `ADMIN_PROOF_IP_LIMIT=10` per
+`ADMIN_PROOF_WINDOW_SECONDS=600`, body limit `ADMIN_PROOF_MAX_BODY_BYTES=8192`.
+These are technical defaults, independent of registration/login/recovery quotas.
+
+Revision `0008_admin_grants` adds only the technical `admin_grants` table, with
+account/role cascading foreign keys, one proof/account, canonical email,
+32-byte role-state fingerprint and constrained method (`email`/`provisioning`).
+Run `pdm run alembic upgrade head` against a privately configured, approved target
+before starting the new backend. Startup rejects a missing authority table and
+never applies migrations automatically. No non-test database was migrated in
+BE-014. Downgrade to `0007_password_recovery` drops authority only, retaining
+identity, session and recovery data; a later upgrade requires fresh proof.
+
+Proof storage, Admin assignment, revocation of **all** older account sessions and
+issuance of the replacement digest share one PostgreSQL transaction. The current
+session and account state are rechecked under the existing user-before-session
+lock ordering. Expiry during promotion aborts all writes. The new identifier and
+CSRF token rotate; remember-me behavior is retained and the previous absolute
+session cap is never extended. Other accounts are unaffected. Code consumption
+commits before promotion: a promotion failure burns that code safely and requires
+requesting a fresh one after the normal resend interval.
+
+Authority is checked against the current active Admin role and its versioned
+fingerprint. Editing/deactivating/reactivating that role requires fresh proof;
+changing an account's email or activation state deletes prior authority so moving
+back cannot restore it. Existing account/password contracts are unchanged.
+
+For trusted **private server provisioning**, the operator must already control
+server settings/database access. This CLI creates no user, password or role,
+sends no email, accepts no public HTTP input and requires explicit mutation intent:
+
+```sh
+# Prepare Backend/.env.be014.local privately (ignored by .env.*), mode 600.
+# Include DATABASE_URL and ADMIN_EMAIL_ALLOWLIST for the approved target/account.
+# Confirm the existing account ID privately; do not paste settings into chat/logs.
+pdm run python -m scripts.provision_admin --env-file .env.be014.local --user-id EXISTING_USER_ID --provision
+```
+
+The CLI verifies the existing active account, private eligibility and active Admin
+role, stores `method=provisioning` and revokes all older sessions atomically. Sign
+in again to obtain a fresh verified Admin session. Missing file/intent or invalid
+configuration/storage returns exit `2`; ineligible/missing account/role returns
+`3`; success returns `0`. Output omits account, allowlist and connection details.
+No real account was provisioned and no live administrator email was sent for
+this task. No Frontend page, public-signup release lock or generated client changed.
+See [BE-014 validation](docs/validation/BE-014-admin-authority.md) for results.
+
 ## Current implementation
 
 - Auth, users, and roles routes under `/api`; OpenAPI at `/openapi.json`.
 - Private TLS SMTP adapter and safe CLI smoke tool; one controlled Gmail submission and Inbox receipt verified (BE-011).
 - Shared digest-only, single-use email challenges with durable limits and SMTP delivery gating (BE-012); account-specific HTTP flows remain separate.
 - Three-step password recovery with a reset-only cookie, atomic password/session revocation and no automatic login (BE-013).
+- Private eligibility plus persistent administrator mailbox proof/operator provisioning and privilege-elevation session rotation (BE-014).
 - Email/password login with canonical email lookup; deprecated username login
   remains for compatibility. Product authentication uses only an opaque session cookie.
 - Argon2id for new passwords and verified legacy hash upgrades; exact Unicode
@@ -358,7 +443,7 @@ and `Admin` role records. It preserves existing role IDs, permissions and status
 It creates **no user or password** and never grants Admin based on a supplied
 email. The old fixed-password seed and `scripts/seed_in_memory.py` remain only
 for explicitly isolated in-memory tests/examples; they cannot provision the
-persistent app. Valid administrator provisioning/email proof is BE-014.
+persistent app. Valid administrator provisioning/email proof is documented in BE-014 above.
 The historical JWT key is not used by product authentication or CSRF. Use a
 private independent CSRF key; there is no serving fallback. Recovery and
 deployment hardening retain their separate authorized tasks.
@@ -733,10 +818,10 @@ are handled using current server state. No sleep or retry loop hides a deadlock.
 `GET /api/auth/me` keeps the public User fields and adds `effective_role`. It
 requires the opaque cookie, validates/touches the stored session, reloads the
 account and assigned role records, and rejects inactive/deleted accounts.
-Active `Admin` wins over active `User`; inactive, deleted or custom roles cannot
+Verified, privately eligible active `Admin` wins over active `User`; inactive, deleted or custom roles cannot
 invent either product role. Without an active product role the value is null.
-No email or client header/storage value grants Admin. Administrator provisioning
-and ownership proof remain BE-014. Successful login/current-identity responses
+No email or client header/storage value grants Admin. BE-014 additionally requires
+persistent mailbox proof or private server provisioning. Successful login/current-identity responses
 carry `Cache-Control: no-store`.
 
 BE-009 retires the intermediate JWT path described in the historical BE-008

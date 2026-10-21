@@ -5,6 +5,8 @@ from app.domain.entities import UserEntity
 from app.domain.error.exceptions import CredentialsValidationException, InactiveUserException
 from app.interface.repository.role_repository_interface import IRoleRepository
 from app.interface.repository.user_repository_interface import IUserRepository
+from app.interface.repository.admin_grant_repository_interface import IAdminGrantRepository
+from app.application.use_cases.auth.admin_policy import AdminEmailPolicy
 
 EffectiveRole = Literal["Admin", "User"]
 
@@ -16,9 +18,13 @@ class CurrentIdentity:
 
 
 class GetCurrentIdentityUseCase:
-    def __init__(self, users: IUserRepository, roles: IRoleRepository) -> None:
+    def __init__(self, users: IUserRepository, roles: IRoleRepository,
+                 admin_grants: IAdminGrantRepository | None = None,
+                 admin_policy: AdminEmailPolicy | None = None) -> None:
         self._users = users
         self._roles = roles
+        self._admin_grants = admin_grants
+        self._admin_policy = admin_policy or AdminEmailPolicy()
 
     async def execute(self, user_id: str) -> CurrentIdentity:
         user = await self._users.get_by_id(user_id)
@@ -30,6 +36,9 @@ class GetCurrentIdentityUseCase:
         for assignment in user.roles or []:
             role = await self._roles.get_by_id(assignment.id)
             if role is not None:
+                if role.name == "Admin" and (not role.is_active or not self._admin_policy.allows(user.email)
+                        or self._admin_grants is None or not await self._admin_grants.verified(user.id, user.email, role)):
+                    continue
                 roles.append(role)
         active_names = {role.name for role in roles if role.is_active}
         effective: EffectiveRole | None = (

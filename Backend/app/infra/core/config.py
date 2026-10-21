@@ -5,7 +5,7 @@ Application configuration and settings.
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -16,6 +16,18 @@ class Config(BaseSettings):
     database_url: SecretStr | None = Field(default=None, alias="DATABASE_URL")
     public_origin: str | None = Field(default=None, alias="PUBLIC_ORIGIN")
     csrf_secret_key: SecretStr | None = Field(default=None, alias="CSRF_SECRET_KEY")
+
+    admin_email_allowlist: SecretStr | None = Field(default=None, alias="ADMIN_EMAIL_ALLOWLIST", repr=False, exclude=True)
+    admin_proof_ip_limit: int = Field(default=10, gt=0, le=2147483646, alias="ADMIN_PROOF_IP_LIMIT")
+    admin_proof_window_seconds: int = Field(default=600, gt=0, alias="ADMIN_PROOF_WINDOW_SECONDS")
+    admin_proof_max_body_bytes: int = Field(default=8192, gt=0, alias="ADMIN_PROOF_MAX_BODY_BYTES")
+
+    @field_validator("admin_email_allowlist")
+    @classmethod
+    def valid_admin_allowlist(cls, value: SecretStr | None) -> SecretStr | None:
+        from app.application.use_cases.auth.admin_policy import AdminEmailPolicy
+        AdminEmailPolicy.parse(value.get_secret_value() if value is not None else None)
+        return value
 
     # Private outbound mail; no network connection while loading settings.
     smtp_enabled: bool = Field(default=False, alias="SMTP_ENABLED")

@@ -209,8 +209,8 @@ async def test_recovery_migration_preserves_populated_identity_and_sessions(isol
         async with database.engine.begin() as connection:
             snapshots = {table:[dict(row) for row in (await connection.execute(text('SELECT * FROM '+table))).mappings()]
                 for table in ('users','roles','user_roles','registration_attempts','auth_sessions','email_code_challenges')}
-            await connection.run_sync(migrate)
-            await connection.run_sync(migrate)
+            await connection.run_sync(migrate, '0007_password_recovery')
+            await connection.run_sync(migrate, '0007_password_recovery')
             assert await connection.scalar(text('SELECT version_num FROM alembic_version')) == '0007_password_recovery'
             await connection.run_sync(lambda sync: migrate(sync,'0006_email_codes',downgrade=True))
             for table, before in snapshots.items():

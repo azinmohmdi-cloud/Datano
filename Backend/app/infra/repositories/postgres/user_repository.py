@@ -8,7 +8,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.domain.entities import RoleEntity, UserEntity
 from app.domain.error.exceptions import ResourceNotFoundException
 from app.domain.identity import canonical_email
-from app.infra.database.models import RoleRow, UserRow, user_roles
+from app.infra.database.models import AdminGrantRow, RoleRow, UserRow, user_roles
 from app.infra.repositories.postgres.mapping import role_entity, translate_constraints, user_entity
 from app.interface.repository.user_repository_interface import IUserRepository
 
@@ -84,6 +84,13 @@ class SQLUserRepository(IUserRepository):
         return user_entity(row)
 
     async def update(self, source: UserEntity) -> UserEntity | None:
+        previous = (await self.session.execute(select(UserRow.email_key,UserRow.is_active)
+            .where(UserRow.id == source.id).with_for_update())).first()
+        if previous is None:
+            return None
+        if previous.email_key != canonical_email(source.email) or previous.is_active != source.is_active:
+            # Returning to a former address/active state must not resurrect proof.
+            await self.session.execute(delete(AdminGrantRow).where(AdminGrantRow.user_id == source.id))
         values = asdict(source)
         for field in ("id", "roles", "created_at"):
             values.pop(field)

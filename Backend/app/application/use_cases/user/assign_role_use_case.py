@@ -6,7 +6,7 @@ Use case contains business logic and is independent of frameworks and external c
 from dataclasses import dataclass
 
 from app.domain.entities import UserEntity
-from app.domain.error.exceptions import ResourceNotFoundException
+from app.domain.error.exceptions import ForbiddenException, ResourceNotFoundException
 from app.interface.repository.role_repository_interface import IRoleRepository
 from app.interface.repository.user_repository_interface import IUserRepository
 
@@ -52,6 +52,9 @@ class AssignRoleToUserUseCase:
             raise ResourceNotFoundException(
                 resource_type="Role", identifier=request.role_id
             )
+
+        if role.name == "Admin":
+            raise ForbiddenException("Administrator authority requires mailbox proof or private server provisioning")
 
         updated_user = await self._user_repo.assign_role(
             request.user_id, request.role_id

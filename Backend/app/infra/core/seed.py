@@ -16,8 +16,6 @@ async def seed():
         CreateRoleUseCase,
     )
     from app.application.use_cases.user import (
-        AssignRoleRequest,
-        AssignRoleToUserUseCase,
         CreateUserRequest,
         CreateUserUseCase,
     )
@@ -52,10 +50,8 @@ async def seed():
     )
     user = result.user
 
-    assign_role_uc = AssignRoleToUserUseCase(user_repository, role_repository)
-    await assign_role_uc.execute(
-        AssignRoleRequest(user_id=user.id, role_id=role.id)
-    )
+    # This isolated in-memory fixture is not a persistent provisioning mechanism.
+    await user_repository.assign_role(user.id, role.id)
 
     user.activate()
     await user_repository.update(user)
