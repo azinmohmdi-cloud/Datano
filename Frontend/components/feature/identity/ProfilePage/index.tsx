@@ -22,6 +22,7 @@ export interface ProfilePageUIProps {
   disabled: boolean;
   pendingAction: "names" | "email" | "logout" | null;
   dirty: boolean;
+  namesNotice?: string;
   codeBlocked: boolean;
   resendDisabled: boolean;
   expiryText: string; cooldownText: string; attemptsText: string; resendNotice: string;
@@ -103,7 +104,7 @@ function NamesCard(props: ProfilePageUIProps) {
         <Button type="submit" disabled={disabled || !props.dirty} className={primaryStyle}>{pending ? t.saving : t.save}<ActionIcon pending={pending} /></Button>
         <Button type="button" variant="outline" disabled={disabled || !props.dirty} onClick={callbacks.onNamesReset} className={secondaryStyle}>{t.resetNames}</Button>
       </div>
-      {pending && <p role="status" aria-live="polite" className="text-sm leading-7 text-brand-muted">{t.saving}</p>}
+      {(pending || props.namesNotice) && <p role="status" aria-live="polite" className="text-sm leading-7 text-brand-muted">{pending ? t.saving : props.namesNotice}</p>}
     </form></CardContent>
   </Card>;
 }

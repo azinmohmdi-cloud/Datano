@@ -24,7 +24,7 @@ export function parseSession(payload: unknown): SessionAccount {
     email: payload.email, role: payload.effective_role as EffectiveRole };
 }
 
-async function clearPrivateCache(client: QueryClient) {
+export async function clearPrivateCache(client: QueryClient) {
   // Conservatively all other queries/mutations may contain private account data.
   const otherQueries = { predicate: (query: { queryKey: readonly unknown[] }) => query.queryKey[0] !== sessionKey[0] };
   await client.cancelQueries(otherQueries);

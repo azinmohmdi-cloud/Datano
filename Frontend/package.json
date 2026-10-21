@@ -20,7 +20,9 @@
     "test:registration:integration": "playwright test --config playwright.registration.integration.config.ts",
     "test:recovery": "playwright test --config playwright.recovery.config.ts",
     "test:recovery:integration": "playwright test --config playwright.recovery.integration.config.ts",
-    "api:generate": "orval --config orval.config.ts"
+    "api:generate": "orval --config orval.config.ts",
+    "test:profile": "playwright test --config playwright.profile.config.ts",
+    "test:profile:integration": "playwright test --config playwright.profile.integration.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

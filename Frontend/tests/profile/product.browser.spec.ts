@@ -1,0 +1,45 @@
+import { expect, test } from "@playwright/test";
+
+test("real API profile edit persists, failed validation preserves drafts, reload and reset use saved names", async ({ page, context }) => {
+  const api = process.env.DATANO_PROFILE_API_URL;
+  if (!api) throw new Error("Dedicated test API required");
+  const email = `fe032-${crypto.randomUUID()}@example.test`;
+  const password = `Profile fixture ${crypto.randomUUID()}`;
+  const headers = { Origin: "http://127.0.0.1:3100" };
+  const csrf = await context.request.get(`${api}/api/auth/csrf`, { headers });
+  expect(csrf.status()).toBe(200);
+  const registered = await context.request.post(`${api}/api/auth/register`, { headers: { ...headers, "X-CSRF-Token": (await csrf.json()).payload.csrf_token },
+    data: { first_name: "کاربر", last_name: "آزمایش", email, password } });
+  expect(registered.status()).toBe(201);
+  await page.goto("/login?returnTo=%2Fprofile");
+  await page.getByLabel("ایمیل", { exact: true }).fill(email);
+  await page.getByLabel("رمز عبور", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "ورود به حساب", exact: true }).click();
+  await expect(page).toHaveURL("/profile");
+  await expect(page.locator("[data-profile-current-email]")).toHaveText(email);
+  const before = await context.cookies();
+  const first = page.getByLabel("نام", { exact: true }); const last = page.getByLabel("نام خانوادگی", { exact: true });
+  await first.fill("آوا\u200cآذری"); await last.fill("Cafe\u0301");
+  const saved = page.waitForResponse(response => response.request().method() === "PATCH" && new URL(response.url()).pathname === "/api/auth/me");
+  await page.getByRole("button", { name: "ذخیره تغییرات", exact: true }).click();
+  expect((await saved).status()).toBe(200);
+  await expect(page.getByText("اطلاعات شخصی ذخیره شد.", { exact: true })).toBeVisible();
+  await expect(page.locator("[data-profile-account-name]")).toHaveText("آوا\u200cآذری Cafe\u0301");
+  const current = await context.request.get(`${api}/api/auth/me`);
+  expect(current.status()).toBe(200);
+  const identity = (await current.json()).payload;
+  expect(identity.first_name).toBe("آوا\u200cآذری"); expect(identity.last_name).toBe("Cafe\u0301");
+  expect(identity.email).toBe(email); expect(identity.effective_role).toBe("User"); expect(identity.is_active).toBe(true);
+  expect((await context.cookies()).find(cookie => cookie.name === "datano_session_dev")?.value).toBe(before.find(cookie => cookie.name === "datano_session_dev")?.value);
+  await first.fill("ذخیره نشود"); await last.fill("bad\u0000name");
+  const failed = page.waitForResponse(response => response.request().method() === "PATCH" && new URL(response.url()).pathname === "/api/auth/me");
+  await page.getByRole("button", { name: "ذخیره تغییرات", exact: true }).click();
+  expect((await failed).status()).toBe(422);
+  await expect(page.getByText("نام و نام خانوادگی را بررسی کنید و دوباره تلاش کنید.", { exact: true })).toBeVisible();
+  await expect(first).toHaveValue("ذخیره نشود"); await expect(last).toHaveValue("bad\u0000name");
+  await expect(page.locator("[data-profile-account-name]")).toHaveText("آوا\u200cآذری Cafe\u0301");
+  await page.getByRole("button", { name: "بازنشانی نام‌ها", exact: true }).click();
+  await expect(first).toHaveValue("آوا\u200cآذری"); await expect(last).toHaveValue("Cafe\u0301");
+  await page.reload(); await expect(first).toHaveValue("آوا\u200cآذری"); await expect(last).toHaveValue("Cafe\u0301");
+  expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: {}, session: {} });
+});

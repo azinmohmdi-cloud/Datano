@@ -395,10 +395,10 @@ See [FE-012 validation](docs/validation/FE-012-recovery.md) for executed evidenc
 ## Profile UI — FE-013
 
 `/profile` uses a pathless `(account)` group and the existing AccountLayout inside
-ProductLayout. Until FE-030/FE-032 supply trusted session/account data, it renders
-a concise access state with a Login link. Query parameters cannot provide an
-account, role or preview state. No private fixture or fake authenticated identity
-is included in that route; the existing `/account` routing remains FE-030 work.
+ProductLayout. FE-030 supplies the verified session/account and account routing;
+FE-032 connects name editing as documented below. Guests are directed to Login.
+Query parameters cannot provide an account, role or preview state. No private
+fixture or fake authenticated identity is included in the product route.
 
 The complete UI is available privately at `/ui-review/profile`. It uses the same
 shell, Vazirmatn, icons, Card/Field/Input/Button and brand palette. A summary card
@@ -409,9 +409,10 @@ activation control, invented avatar-upload feature, chart or marketing section.
 The page-only `.page-surface-profile` opt-in reuses the established very pale
 icy-blue/lavender auth gradient and dark adaptation, as requested for FE-013.
 
-Names require non-whitespace content; changes remain drafts, with first-invalid
-focus and linked Persian feedback. Reset restores only names, leaving email/code
-drafts intact. No real save or account-summary mutation is simulated. Email
+Names require non-whitespace content, with first-invalid focus and linked
+Persian feedback. Reset restores only names, leaving email/code drafts intact.
+The private review retains draft-only behavior; product saves use BE-015 through
+FE-032 and update the account summary from the server response. Email
 comparison follows MVP trim/lowercase only, without provider-specific dot/plus
 rules. The current email remains unchanged through request/code/error states.
 Private stage navigation preserves drafts; editing the new address invalidates
@@ -1181,8 +1182,8 @@ Profile uses `/me` identity and its existing logout confirmation. Successful
 server logout cancels queries, clears query/mutation caches, stores anonymous
 session state and replaces the route with Login. A failed logout retains account
 data and allows retry. Account/role changes or `/me` 401 clear other private
-caches. Names/email editing, website flows and admin aggregates remain in their
-separate Backlog tasks; no data or successful save is invented here.
+caches. FE-032 connects names as described below. Email editing, website flows
+and admin aggregates remain in their separate Backlog tasks.
 
 **Public signup remains locked.** The owner explicitly approved completing the
 real connection and non-public tests while retaining the missing-terms gate.
@@ -1314,3 +1315,69 @@ and BE-024/026/027/029/030/032/033, FE-037/039/041; fixtures stay excluded from
 production. See `docs/validation/dashboard-redesign.md` for redesign validation
 and [final UI adjustments](docs/validation/dashboard-final-ui-adjustments.md)
 for the subsequent scoped layout amendment and its checks.
+
+
+## Profile name editing connection (FE-032)
+
+The existing profile uses the verified `GET /api/auth/me` session for initial
+account details. Name submission now uses the actual generated
+`updateOwnProfileApiAuthMePatch` client for BE-015, through the credentialed,
+CSRF-protected shared transport. Only `first_name` and `last_name` are sent;
+no ID, role, activation, email, username or password is writable from this form.
+Names are sent exactly as entered, without trimming or Unicode normalization.
+
+`data/feature/profile/` owns API adaptation and cache coordination. It verifies
+the current cookie owner before writing, validates the returned server identity,
+cancels older session reads and publishes the authoritative returned account to
+the existing `current-session` cache. It introduces no duplicate profile cache or
+optimistic account update. All consumers of the verified account see saved names;
+reset uses that latest saved account and reload reads persisted names again.
+Role changes clear other protected caches through the existing shared helper.
+Late responses cannot restore a query replaced by logout/login, even for the same
+account ID. Invalid/expired session failures use the existing session reconciliation
+and access routing. A same-origin HttpOnly cookie remains the server authority.
+
+The controller keeps inputs on recoverable failure, renders fixed Persian error
+text, permits explicit retry and prevents duplicate submits synchronously. An
+AbortSignal reaches reads/CSRF/PATCH; navigation/unmount aborts pending work and
+ignores obsolete replies. Cancellation cannot undo a write the server has already
+committed; the next read remains authoritative. Names/drafts are never stored in
+browser storage or mutation caches. Only successful public session data is cached.
+
+The approved layout, fields, controls, classes, keyboard order and review fixtures
+are preserved. Success reuses the existing live-status text slot to announce
+«اطلاعات شخصی ذخیره شد.»; the summary and form show returned server values.
+Changing names does not replace the session cookie or CSRF token. Email mutation
+continues to report unavailable until BE-016/FE-033; public signup stays locked
+pending approved terms. No backend, schema, dependency or lockfile changes.
+
+Regenerate ignored clients from the current actual FastAPI OpenAPI before checks:
+
+```sh
+OPENAPI_JSON_URL=/path/to/actual/openapi.json pnpm api:generate
+pnpm test:profile
+pnpm test:session
+pnpm test:transport
+pnpm test:recovery
+PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e --global-timeout=1200000
+pnpm lint
+pnpm exec tsc --noEmit --incremental false
+pnpm build
+```
+
+For real integration, supply `DATANO_PROFILE_API_URL` pointing only to a dedicated
+disposable BE-015-compatible backend/PostgreSQL. It must allow browser origin
+`http://127.0.0.1:3100`, use the explicit loopback development-cookie profile and
+have adequate test-only login/registration limits. The test creates unique
+synthetic `.test` accounts via backend registration; it does not unlock public
+signup. No SMTP settings or email messages are needed.
+
+```sh
+DATANO_PROFILE_API_URL=http://127.0.0.1:TEST_PORT PLAYWRIGHT_CHANNEL=chrome pnpm test:profile:integration
+```
+
+Both mobile and desktop exercise real login, names save, direct API verification,
+server validation rejection, preserved inputs, reset and reload. Real integration
+traces/screenshots/video are disabled. See
+[FE-032 validation](docs/validation/FE-032-profile-editing.md) for actual results,
+source scope and limitations.

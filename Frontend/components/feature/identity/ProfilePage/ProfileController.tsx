@@ -7,6 +7,7 @@ import ProfilePageUI, { type ProfileEmailStep, type ProfilePageUIProps } from ".
 import { profileMessages as messages, profileTranslations } from "./content";
 import { validateProfileEmail, validateProfileNames } from "./validation";
 import { authErrorMessage } from "../SessionBoundary/messages";
+import { profileErrorMessage } from "./errors";
 
 export type ProfileScenario = "ready" | "loading" | "error" | "names-pending" | "names-error" | "email-pending" | "email-error" | "code-error" | "expired" | "resend-ready" | "logout-confirm" | "logout-pending" | "logout-error";
 interface ProfileControllerProps {
@@ -19,18 +20,22 @@ interface ProfileControllerProps {
   initialScenario?: ProfileScenario;
   onLogout?: () => Promise<void>;
   logoutPending?: boolean;
+  onSaveNames?: (names: ProfilePageUIProps["names"], signal: AbortSignal) => Promise<ProfilePageUIProps["names"]>;
 }
 const subscribeToHydration = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
 const emptyErrors = { firstName: "", lastName: "", names: "", email: "", code: "", emailSubmission: "", logout: "" };
 
-export default function ProfileController({ account, sitesHref, initialEmailValues, preview = false, emailStep: controlledStep, onEmailStepChange, initialScenario = "ready", onLogout, logoutPending = false }: ProfileControllerProps) {
+export default function ProfileController({ account, sitesHref, initialEmailValues, preview = false, emailStep: controlledStep, onEmailStepChange, initialScenario = "ready", onLogout, logoutPending = false, onSaveNames }: ProfileControllerProps) {
   const hydrated = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
   const id = useId();
   const [localStep, setLocalStep] = useState<ProfileEmailStep>("request");
   const emailStep = preview ? controlledStep ?? localStep : "request";
   const [names, setNames] = useState({ firstName: account.firstName, lastName: account.lastName });
+  const [namesPending, setNamesPending] = useState(false);
+  const [namesNotice, setNamesNotice] = useState("");
+  const namesRequest = useRef<AbortController | null>(null);
   const [emailValues, setEmailValues] = useState(initialEmailValues);
   const [scenario, setScenario] = useState(initialScenario);
   const [logoutOpen, setLogoutOpen] = useState(preview && initialScenario.startsWith("logout-") && initialScenario !== "logout-error");
@@ -45,12 +50,14 @@ export default function ProfileController({ account, sitesHref, initialEmailValu
   const [attempts, setAttempts] = useState(5);
   const [resendNotice, setResendNotice] = useState("");
   const previousFocus = useRef({ emailStep, logoutOpen });
-  const pendingAction = logoutPending ? "logout" : !preview ? null : scenario === "names-pending" ? "names" : scenario === "email-pending" ? "email" : scenario === "logout-pending" ? "logout" : null;
+  const pendingAction = logoutPending ? "logout" : namesPending ? "names" : !preview ? null : scenario === "names-pending" ? "names" : scenario === "email-pending" ? "email" : scenario === "logout-pending" ? "logout" : null;
   const expiry = scenario === "expired" ? 0 : Math.max(0, 600 - elapsed);
   const cooldown = ["expired", "resend-ready"].includes(scenario) ? 0 : Math.max(0, 60 - elapsed);
   const expired = preview && expiry === 0;
   const locked = preview && attempts === 0;
   const disabled = !hydrated || pendingAction !== null;
+
+  useEffect(() => () => { namesRequest.current?.abort(); }, []);
 
   useEffect(() => {
     if (!preview) return;
@@ -80,14 +87,38 @@ export default function ProfileController({ account, sitesHref, initialEmailValu
     else setLocalStep(step);
   }
 
-  function onNamesSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onNamesSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (disabled) return;
+    if (disabled || namesRequest.current) return;
     const validation = validateProfileNames(names);
     const firstInvalid = (["firstName", "lastName"] as const).find((field) => validation[field]);
-    setErrors((current) => ({ ...current, ...validation, names: firstInvalid ? "" : messages.namesUnavailable }));
-    if (firstInvalid) event.currentTarget.querySelector<HTMLInputElement>(`input[name="${firstInvalid}"]`)?.focus();
-    // No account mutation until FE-032 owns actual persistence and cache updates.
+    setNamesNotice("");
+    setErrors((current) => ({ ...current, ...validation, names: "" }));
+    if (firstInvalid) {
+      event.currentTarget.querySelector<HTMLInputElement>(`input[name="${firstInvalid}"]`)?.focus();
+      return;
+    }
+    if (!onSaveNames || preview) {
+      setErrors((current) => ({ ...current, names: messages.namesUnavailable }));
+      return;
+    }
+    const request = new AbortController();
+    namesRequest.current = request; setNamesPending(true);
+    try {
+      const saved = await onSaveNames(names, request.signal);
+      if (request.signal.aborted || namesRequest.current !== request) return;
+      setNames({ firstName: saved.firstName, lastName: saved.lastName });
+      setNamesNotice(messages.namesSaved);
+    } catch (error) {
+      if (!request.signal.aborted && namesRequest.current === request) {
+        setErrors((current) => ({ ...current, names: profileErrorMessage(error) }));
+      }
+    } finally {
+      if (namesRequest.current === request) {
+        namesRequest.current = null;
+        if (!request.signal.aborted) setNamesPending(false);
+      }
+    }
   }
 
   function onEmailSubmit(event: FormEvent<HTMLFormElement>) {
@@ -116,6 +147,7 @@ export default function ProfileController({ account, sitesHref, initialEmailValu
   const callbacks: ProfilePageUIProps["callbacks"] = {
     onNamesSubmit, onEmailSubmit,
     onNamesChange: (field, value) => {
+      setNamesNotice("");
       setNames((current) => ({ ...current, [field]: value }));
       setErrors((current) => ({ ...current, [field]: "", names: "" }));
     },
@@ -123,6 +155,7 @@ export default function ProfileController({ account, sitesHref, initialEmailValu
     onNamesReset: () => {
       if (disabled) return;
       setNames({ firstName: account.firstName, lastName: account.lastName });
+      setNamesNotice("");
       setErrors((current) => ({ ...current, firstName: "", lastName: "", names: "" }));
     },
     onEmailChange: (field, value) => {
@@ -152,7 +185,7 @@ export default function ProfileController({ account, sitesHref, initialEmailValu
   return <ProfilePageUI id={id} account={account} sitesHref={sitesHref} names={names} emailValues={emailValues}
     errors={{ ...errors, code: expired ? messages.expired : locked ? messages.locked : errors.code }}
     status={preview && scenario === "loading" ? "loading" : preview && scenario === "error" ? "error" : "ready"}
-    emailStep={emailStep} disabled={!hydrated} pendingAction={pendingAction} dirty={names.firstName !== account.firstName || names.lastName !== account.lastName}
+    emailStep={emailStep} disabled={!hydrated} pendingAction={pendingAction} namesNotice={namesNotice} dirty={names.firstName !== account.firstName || names.lastName !== account.lastName}
     codeBlocked={expired || locked} resendDisabled={!preview || cooldown > 0}
     expiryText={preview ? formatRecoveryDuration(expiry) : "—"} cooldownText={preview ? new Intl.NumberFormat("fa-IR").format(cooldown) : "—"}
     attemptsText={preview ? new Intl.NumberFormat("fa-IR").format(attempts) : "—"} resendNotice={resendNotice}
