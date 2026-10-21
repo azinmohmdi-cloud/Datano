@@ -1,4 +1,5 @@
 from dataclasses import asdict
+from datetime import datetime
 
 from fastapi_pagination import Page, Params
 from sqlalchemy import delete, func, insert, select, update
@@ -110,6 +111,18 @@ class SQLUserRepository(IUserRepository):
             delete(UserRow).where(UserRow.id == user_id).returning(UserRow)
         )
         return user_entity(row) if row is not None else None
+
+    async def update_profile_names(self, user_id: str, *, first_name: str | None,
+                                   last_name: str | None, updated_at: datetime) -> UserEntity | None:
+        values = {"updated_at": updated_at}
+        if first_name is not None:
+            values["first_name"] = first_name
+        if last_name is not None:
+            values["last_name"] = last_name
+        row = await self.session.scalar(update(UserRow)
+            .where(UserRow.id == user_id, UserRow.is_active.is_(True))
+            .values(**values).returning(UserRow).execution_options(populate_existing=True))
+        return (await self._entities([row]))[0] if row is not None else None
 
     async def assign_role(self, user_id: str, role_id: str) -> UserEntity:
         if await self.get_by_id(user_id) is None:

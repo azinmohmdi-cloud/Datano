@@ -96,6 +96,26 @@ class UserEntity:
         self.is_active = False
         self.updated_at = datetime.now(UTC)
 
+    def update_profile_names(self, *, first_name: str | None = None,
+                             last_name: str | None = None) -> None:
+        """Validate the complete names patch before changing any field."""
+        if first_name is None and last_name is None:
+            raise ValidationException("At least one name is required", field="body")
+        for field_name, value in (("first_name", first_name), ("last_name", last_name)):
+            if value is None:
+                continue
+            if not isinstance(value, str) or not value.strip() or "\x00" in value:
+                raise ValidationException("Name must contain valid non-whitespace text", field=field_name)
+            try:
+                value.encode("utf-8")
+            except UnicodeEncodeError:
+                raise ValidationException("Name must be valid Unicode", field=field_name) from None
+        if first_name is not None:
+            self.first_name = first_name
+        if last_name is not None:
+            self.last_name = last_name
+        self.updated_at = datetime.now(UTC)
+
     def activate(self) -> None:
         """Activate the user account."""
         self.is_active = True

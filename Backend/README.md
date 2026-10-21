@@ -330,6 +330,57 @@ No real account was provisioned and no live administrator email was sent for
 this task. No Frontend page, public-signup release lock or generated client changed.
 See [BE-014 validation](docs/validation/BE-014-admin-authority.md) for results.
 
+## Own profile (BE-015)
+
+The existing `GET /api/auth/me` remains the single read contract for the current
+account, including public user fields and the server's `effective_role`.
+`PATCH /api/auth/me` adds a names-only partial update under the same opaque-session
+cookie and Origin/session-bound CSRF boundary. No CRUD permission or client user
+ID is required or accepted for this operation; the owner comes from the session.
+
+```json
+{"first_name": "نام تازه", "last_name": "نام خانوادگی تازه"}
+```
+
+At least one name must be supplied. An omitted name is preserved; explicit null,
+non-string values, an empty patch and all unknown fields return `422`. Only
+`first_name`/`last_name` are writable. In particular, ID, email, username, password,
+role, effective role, permissions and activation cannot be changed through this
+contract. Client identity hints in query strings do not select an account.
+Changing email remains BE-016; frontend mutation/cache integration remains FE-032.
+
+Names must contain non-whitespace text and be representable as valid PostgreSQL
+UTF-8 text (no unpaired surrogate or U+0000). The current UI/registration convention
+has no approved maximum name length: no new length limit, trimming, case-folding,
+Unicode normalization or character-set restriction is introduced. Persian names,
+ZWNJ, combining characters and outer whitespace spelling are preserved.
+
+Success is the existing `{success,message,payload}` envelope with the same
+`CurrentUser` payload as GET, including filtered roles and authoritative
+`effective_role`. Responses have `Cache-Control: no-store`. Name editing neither
+rotates nor replaces the opaque/CSRF cookies and grants no additional permission.
+Ordinary session validation still touches idle activity under the existing policy.
+Invalid/expired/revoked sessions and inactive/deleted accounts return `401`;
+failed Origin/CSRF returns `403`. Credential-shaped validation inputs are redacted
+from `422` detail responses, even when sent as forbidden extra fields.
+
+Domain validation completes before any name/timestamp mutation. The use case
+works on a detached candidate so shared in-memory adapter objects remain intact
+on rejection or write failure. The repository's narrow `update_profile_names`
+contract writes only supplied names and `updated_at` for an existing active
+account. It cannot restore an old email/hash/activation value from a stale entity,
+and concurrent disjoint name patches preserve each other's changes. PostgreSQL
+uses the existing request transaction and session/user locking; failed writes
+roll back both names. Other users, roles, verified Admin grants and credential
+records remain intact. Existing permission-guarded legacy user CRUD is unchanged;
+the profile endpoint grants no access to those operations.
+
+No schema, Alembic revision, dependency, environment setting or frontend file
+changes are needed. Database head remains `0008_admin_grants`. The real database
+tests use a disposable task-owned tmpfs PostgreSQL with independent per-test
+schemas. See [BE-015 validation](docs/validation/BE-015-own-profile.md) for executed
+checks, acceptance evidence, exact file scope and operational limits.
+
 ## Current implementation
 
 - Auth, users, and roles routes under `/api`; OpenAPI at `/openapi.json`.
@@ -337,6 +388,7 @@ See [BE-014 validation](docs/validation/BE-014-admin-authority.md) for results.
 - Shared digest-only, single-use email challenges with durable limits and SMTP delivery gating (BE-012); account-specific HTTP flows remain separate.
 - Three-step password recovery with a reset-only cookie, atomic password/session revocation and no automatic login (BE-013).
 - Private eligibility plus persistent administrator mailbox proof/operator provisioning and privilege-elevation session rotation (BE-014).
+- Session-owned profile read and atomic names-only partial editing (BE-015).
 - Email/password login with canonical email lookup; deprecated username login
   remains for compatibility. Product authentication uses only an opaque session cookie.
 - Argon2id for new passwords and verified legacy hash upgrades; exact Unicode

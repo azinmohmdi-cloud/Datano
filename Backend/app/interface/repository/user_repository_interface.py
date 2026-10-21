@@ -5,6 +5,7 @@ depend on this abstraction rather than concrete implementations.
 """
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import List, Optional
 
 from fastapi_pagination import Page, Params
@@ -43,6 +44,16 @@ class IUserRepository(ABC):
     @abstractmethod
     async def update(self, source: UserEntity) -> Optional[UserEntity]:
         """Update a user in the repository."""
+        pass
+
+    @abstractmethod
+    async def update_profile_names(self, user_id: str, *, first_name: str | None,
+                                   last_name: str | None, updated_at: datetime) -> UserEntity | None:
+        """Persist validated supplied names only, for an existing active account.
+
+        Never write identity, credentials, activation or roles from a stale entity.
+        Omitted names must retain their current stored value.
+        """
         pass
 
     @abstractmethod

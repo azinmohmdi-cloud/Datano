@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 
 from fastapi import APIRouter, Depends, Request, Response
 
@@ -31,6 +32,9 @@ from app.interface.mappers import PermissionMapper
 from app.interface.mappers import UserMapper
 from app.interface.dto.session_dto import CurrentUser, SessionLogin, CsrfToken
 from app.application.use_cases.auth.current_identity_use_case import CurrentIdentity
+from app.application.use_cases.user.update_own_profile import UpdateOwnProfileRequest, UpdateOwnProfileUseCase
+from app.interface.dependencies.user_dependencies import get_update_own_profile_usecase
+from app.interface.dto.profile_dto import OwnProfileUpdate
 from app.interface.session_cookie import (
     SessionCredential, clear_session_cookie, read_session_cookie, session_cookie_policy, write_session_cookie,
 )
@@ -168,3 +172,25 @@ async def get_me(
     response.headers["Cache-Control"] = "no-store"
     user = CurrentUser(**UserMapper.to_dto(identity.user).model_dump(), effective_role=identity.effective_role)
     return success(message="User retrieved successfully", payload=user)
+
+
+@auth_router.patch("/me", response_model=StandardResponse[CurrentUser], responses={
+    401: {"description": "Missing, invalid, expired or revoked session, or inactive account"},
+    422: {"description": "Invalid names, empty patch or forbidden account-control fields"},
+})
+async def update_own_profile(
+    body: OwnProfileUpdate,
+    response: Response,
+    identity: CurrentIdentity = Depends(get_current_identity),
+    usecase: UpdateOwnProfileUseCase = Depends(get_update_own_profile_usecase),
+):
+    """Update only the cookie owner's supplied names; no user ID is accepted."""
+    updated = await usecase.execute(identity.user.id,
+        UpdateOwnProfileRequest(first_name=body.first_name, last_name=body.last_name))
+    # Keep the permission-filtered identity from the shared request transaction;
+    # the narrow write changes only supplied names and the profile timestamp.
+    public_user = replace(identity.user, first_name=updated.first_name,
+        last_name=updated.last_name, updated_at=updated.updated_at)
+    response.headers["Cache-Control"] = "no-store"
+    return success("Profile updated successfully", payload=CurrentUser(
+        **UserMapper.to_dto(public_user).model_dump(), effective_role=identity.effective_role))

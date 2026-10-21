@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from dataclasses import replace
 from typing import List, Optional
 
 from fastapi_pagination import Page, Params
@@ -57,6 +58,19 @@ class InMemoryUserRepository(IUserRepository):
         self._user_role_ids.pop(user_id, None)
         user.roles = []
         return user
+
+    async def update_profile_names(self, user_id: str, *, first_name: str | None,
+                                   last_name: str | None, updated_at: datetime) -> UserEntity | None:
+        user = self._users.get(user_id)
+        if user is None or not user.is_active:
+            return None
+        values = {"updated_at": updated_at}
+        if first_name is not None:
+            values["first_name"] = first_name
+        if last_name is not None:
+            values["last_name"] = last_name
+        self._users[user_id] = replace(user, **values)
+        return await self.get_by_id(user_id)
 
     async def get_by_email(self, email: str) -> Optional[UserEntity]:
         for user in self._users.values():

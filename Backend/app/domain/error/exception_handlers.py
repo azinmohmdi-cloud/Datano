@@ -111,9 +111,9 @@ def register_all_exception_handlers(app):
         # Keep the existing 422 detail format, but never echo credential inputs.
         # APIRoute.path remains canonical when a proxy supplies root_path.
         route_path = getattr(request.scope.get("route"), "path", request.url.path)
-        if request.method == "POST" and route_path in {"/api/auth/login", "/api/auth/register", "/api/users/",
+        if (request.method == "PATCH" and route_path == "/api/auth/me") or (request.method == "POST" and route_path in {"/api/auth/login", "/api/auth/register", "/api/users/",
                 "/api/auth/password-recovery/request", "/api/auth/password-recovery/verify", "/api/auth/password-recovery/reset",
-                "/api/auth/admin-email/request", "/api/auth/admin-email/verify"}:
+                "/api/auth/admin-email/request", "/api/auth/admin-email/verify"}):
             return JSONResponse(status_code=422, content={"detail": [
                 {key: error[key] for key in ("type", "loc", "msg")}
                 for error in exc.errors()

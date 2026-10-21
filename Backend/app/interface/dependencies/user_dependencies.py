@@ -6,6 +6,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.use_cases.auth.interfaces import IPasswordService
+from app.application.use_cases.user.update_own_profile import UpdateOwnProfileUseCase
 from app.application.use_cases.user import (
     AssignRoleToUserUseCase,
     CreateUserUseCase,
@@ -62,6 +63,12 @@ async def get_update_user_usecase(
 ) -> UpdateUserUseCase:
     """Dependency to provide UpdateUserUseCase instance."""
     return UpdateUserUseCase(user_repository)
+
+
+async def get_update_own_profile_usecase(
+    user_repository: IUserRepository = Depends(get_user_repository),
+) -> UpdateOwnProfileUseCase:
+    return UpdateOwnProfileUseCase(user_repository)
 
 
 async def get_delete_user_usecase(
