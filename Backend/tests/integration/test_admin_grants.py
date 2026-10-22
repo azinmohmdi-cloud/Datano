@@ -99,16 +99,16 @@ async def test_admin_migration_preserves_existing_identity_sessions_and_recovery
             tables=await connection.run_sync(lambda sync:inspect(sync).get_table_names())
             tables.remove('alembic_version')
             snapshots={table:[dict(row) for row in (await connection.execute(text('SELECT * FROM '+table))).mappings()] for table in tables}
-            await connection.run_sync(migrate)
-            await connection.run_sync(migrate)
+            await connection.run_sync(migrate,'0008_admin_grants')
+            await connection.run_sync(migrate,'0008_admin_grants')
             assert await connection.scalar(text('SELECT version_num FROM alembic_version')) == '0008_admin_grants'
             assert await connection.scalar(text('SELECT count(*) FROM admin_grants')) == 0
             assert set(await connection.run_sync(lambda sync:inspect(sync).get_table_names())) == set(tables)|{'alembic_version','admin_grants'}
-            assert await connection.run_sync(lambda sync:compare_metadata(MigrationContext.configure(sync),Base.metadata)) == []
             await connection.run_sync(lambda sync:migrate(sync,'0007_password_recovery',downgrade=True))
             for table,before in snapshots.items():
                 assert [dict(row) for row in (await connection.execute(text('SELECT * FROM '+table))).mappings()] == before
             await connection.run_sync(migrate)
+            assert await connection.run_sync(lambda sync:compare_metadata(MigrationContext.configure(sync),Base.metadata)) == []
     finally:
         await database.dispose()
 

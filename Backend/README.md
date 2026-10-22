@@ -445,9 +445,75 @@ in [BE-016 validation](docs/validation/BE-016-email-change.md). BE-016 tests cap
 the mail adapter; no additional live email was authorized/sent for this task.
 Frontend/UI changes and generated-client integration belong to FE-033.
 
+## Website model and persistence (BE-017)
+
+`WebsiteEntity`, `IWebsiteRepository` and `SQLWebsiteRepository` add the first
+website storage boundary. No website HTTP route, HTML fetch, challenge issuer or
+Frontend integration is introduced. Those remain BE-018, BE-019, BE-020,
+FE-034 and FE-035 respectively.
+
+- Hostname identity uses lowercase, UTS #46 nontransitional IDNA and removal of
+  the final dot. `www`, parent and child hostnames remain separate; `faß.de` does
+  not collapse into `fass.de`. Explicit direct dependency `idna>=3.11,<4` reuses
+  the already installed/locked 3.11 version; no package version/hash changed.
+- The entity accepts a hostname and explicit `http`/`https` scheme, not a URL.
+  URL parsing belongs to BE-018 and public DNS/SSRF checks to BE-019. Hostname
+  syntax rejects IP forms, local names, credentials, paths and invalid IDNA.
+- A new record is **unverified**, with a 24-hour reservation and no challenge.
+  Storage accepts only a 32-byte digest with consistent issue/expiry timestamps;
+  plaintext proof tokens have no storage field. Challenge expiry is exactly 24
+  hours after issue. Pending/expired/verified status derives from persisted
+  timestamps; expired reservations never imply proved ownership.
+- Each website has one required owner; an owner may have multiple websites.
+  The owner foreign key uses `RESTRICT`: account CRUD cannot orphan or silently
+  remove websites. Account deletion with sites is not an implemented product
+  workflow. Full site deletion and integration/job cleanup remain BE-042.
+- A partial unique index allows one **current** row per canonical hostname.
+  `claim()` holds a transaction-level advisory lock for that hostname and a row
+  lock when one exists. A same-owner repeat returns the existing ID/state without
+  extending its reservation or changing its scheme. Another owner's live
+  reservation or verified website produces only `Website is unavailable`.
+- After an unverified reservation expires, another owner can create a fresh ID.
+  The old row keeps its original owner/identity and receives `released_at`.
+  Owner-scoped reads exclude released records; no proof or history is transferred.
+  Replacement and release share the caller's transaction and roll back together.
+- `save_verification()` is a persistence primitive for a later authorized proof
+  workflow. It requires an unchanged owner/identity and optimistic timestamp,
+  shares the hostname lock, and rejects stale/released/terminal state. It neither
+  checks HTML nor establishes proof by itself. There is no transfer/delete or
+  generic mass-assignment update method.
+
+Run the existing migration command against an explicitly selected environment:
+
+```sh
+pdm run alembic upgrade head
+```
+
+Revision **`0009_websites`**, following `0008_admin_grants`, adds only `websites`
+and its constraints/indexes. Startup now refuses a schema without this table;
+it never creates or migrates schema automatically. Downgrading to
+`0008_admin_grants` removes website records and is destructive for that feature;
+it preserves identity/authority/session tables. The upgrade/repeated-upgrade/
+downgrade checks run only on isolated PostgreSQL test schemas, never an existing
+application database. Make a backup and use an authorized environment migration
+process for deployment.
+
+Focused checks (dedicated `DATANO_TEST_DATABASE_URL` required):
+
+```sh
+pdm run pytest tests/unit/test_website_entity.py \
+  tests/integration/test_website_persistence.py tests/integration/test_website_migration.py
+pdm run pytest
+```
+
+See [the Persian BE-017 validation report](docs/validation/BE-017-website-persistence.md)
+for executed results, TDD evidence and scope limits.
+
 ## Current implementation
 
 - Auth, users, and roles routes under `/api`; OpenAPI at `/openapi.json`.
+- Owner-bound website model/repository and migration with atomic hostname
+  reservations and digest-only challenge state (BE-017); website APIs remain pending.
 - Private TLS SMTP adapter and safe CLI smoke tool; one controlled Gmail submission and Inbox receipt verified (BE-011).
 - Shared digest-only, single-use email challenges with durable limits and SMTP delivery gating (BE-012); account-specific HTTP flows remain separate.
 - Three-step password recovery with a reset-only cookie, atomic password/session revocation and no automatic login (BE-013).

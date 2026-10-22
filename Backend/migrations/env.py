@@ -5,7 +5,7 @@ from sqlalchemy.engine import Connection, URL
 
 from app.infra.core.config import Config
 from app.infra.database.base import Base
-from app.infra.database import models  # Register the identity tables for autogeneration.
+from app.infra.database import models  # Register persistence tables for autogeneration.
 from app.infra.database.connection import (
     configured_database_url,
     create_database_engine,

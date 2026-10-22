@@ -1,7 +1,7 @@
-"""Identity persistence models, separate from HTTP DTOs and domain entities."""
+"""Persistence models, separate from HTTP DTOs and domain entities."""
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, Index, Integer, LargeBinary, String, Table, Text
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, Index, Integer, LargeBinary, String, Table, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -37,6 +37,43 @@ class RoleRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     is_active: Mapped[bool] = mapped_column(Boolean)
+
+
+class WebsiteRow(Base):
+    __tablename__ = "websites"
+    __table_args__ = (
+        CheckConstraint("length(btrim(id)) > 0 AND length(btrim(owner_id)) > 0", name="identifiers_valid"),
+        CheckConstraint(
+            r"length(hostname) <= 253 AND hostname ~ '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$' "
+            r"AND hostname !~ '\.(localhost|local|[0-9]+|0x[0-9a-f]+)$'", name="hostname_canonical"),
+        CheckConstraint("scheme IN ('http', 'https')", name="scheme_valid"),
+        CheckConstraint("created_at <= updated_at AND (released_at IS NULL OR (created_at <= released_at AND released_at <= updated_at))", name="timestamps_valid"),
+        CheckConstraint(
+            "(challenge_digest IS NULL AND challenge_issued_at IS NULL AND challenge_expires_at IS NULL "
+            "AND verified_at IS NULL AND reservation_expires_at = created_at + interval '24 hours') OR "
+            "(challenge_digest IS NOT NULL AND octet_length(challenge_digest) = 32 "
+            "AND challenge_issued_at IS NOT NULL AND challenge_expires_at IS NOT NULL "
+            "AND created_at <= challenge_issued_at AND challenge_issued_at <= updated_at "
+            "AND challenge_expires_at = challenge_issued_at + interval '24 hours' "
+            "AND reservation_expires_at = challenge_expires_at "
+            "AND (verified_at IS NULL OR (challenge_issued_at <= verified_at "
+            "AND verified_at < challenge_expires_at AND verified_at <= updated_at)))", name="challenge_valid"),
+        Index("uq_websites_current_hostname", "hostname", unique=True, postgresql_where=text("released_at IS NULL")),
+        Index("ix_websites_owner_created", "owner_id", "created_at", "id", postgresql_where=text("released_at IS NULL")),
+    )
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    owner_id: Mapped[str] = mapped_column(Text, ForeignKey("users.id", ondelete="RESTRICT"))
+    hostname: Mapped[str] = mapped_column(Text)
+    scheme: Mapped[str] = mapped_column(String(5))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reservation_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    challenge_digest: Mapped[bytes | None] = mapped_column(LargeBinary)
+    challenge_issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    challenge_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AdminGrantRow(Base):

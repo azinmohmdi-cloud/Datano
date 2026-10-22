@@ -17,6 +17,7 @@ dependencies = [
     "alembic<2,>=1.16",
     "psycopg[binary]<4,>=3.2",
     "argon2-cffi<27,>=25.1",
+    "idna<4,>=3.11",
 ]
 
 requires-python = "==3.12.*"
