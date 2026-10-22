@@ -32,7 +32,7 @@ function OwnedWebsiteList({ owner }: { owner: SessionAccount }) {
       const current = await data.readSelected(site.id, controller.signal);
       if (controller.signal.aborted) return;
       if (!current.is_verified) router.push(`/websites/${encodeURIComponent(current.id)}/verify`);
-      else setNotice("وضعیت گزارش این سایت در دسترس نیست. دوباره تلاش کنید.");
+      else router.push(`/websites/${encodeURIComponent(current.id)}/connect`);
     } catch (error) {
       if (!controller.signal.aborted) setNotice(error instanceof ApiError && error.status === 404
         ? "سایت انتخاب‌شده دیگر در دسترس نیست. فهرست سایت‌ها تازه شد."

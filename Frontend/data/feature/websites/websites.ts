@@ -33,7 +33,7 @@ function sameIdentity(left: SessionAccount | null | undefined, right: SessionAcc
 
 // The public website DTO has no owner field. Check the cookie identity around each
 // operation, and reject late results even after a same-account logout/login.
-function ownerGuard(client: QueryClient, owner: SessionAccount, signal: AbortSignal) {
+export function ownerGuard(client: QueryClient, owner: SessionAccount, signal: AbortSignal) {
   const query = client.getQueryCache().find({ queryKey: sessionKey, exact: true });
   const current = () => Boolean(query && client.getQueryCache().find({ queryKey: sessionKey, exact: true }) === query
     && sameIdentity(client.getQueryData<SessionAccount | null>(sessionKey), owner));
@@ -59,7 +59,7 @@ function ownerGuard(client: QueryClient, owner: SessionAccount, signal: AbortSig
   return { check, fresh, current };
 }
 
-async function ownedOperation<T>(client: QueryClient, owner: SessionAccount, signal: AbortSignal, operation: () => Promise<T>): Promise<T> {
+export async function ownedOperation<T>(client: QueryClient, owner: SessionAccount, signal: AbortSignal, operation: () => Promise<T>): Promise<T> {
   const guard = ownerGuard(client, owner, signal);
   try {
     await guard.fresh();

@@ -133,25 +133,15 @@ test("unverified ownership blocks every source and URL parameters cannot supply 
   await expect(page.locator("[data-google-connections]")).toContainText("www.example.test");
 });
 
-test("public site source management preserves guest access and ignores all sample or OAuth flags", async ({ page, context }) => {
+test("public site source management checks the session and ignores all sample or OAuth flags", async ({ page, context }) => {
   const requests: { method: string; path: string }[] = []; const errors: string[] = [];
-  page.on("request", (request) => { if (request.method() !== "GET" || new URL(request.url()).pathname.startsWith("/api/")) requests.push({ method: request.method(), path: new URL(request.url()).pathname }); });
-  page.on("pageerror", (error) => errors.push(error.message));
-  const response = await page.goto("/websites/arbitrary/connect?ga4=connected&gsc=connected&ads=connected&role=admin&code=sample&state=success");
-  expect(response?.status()).toBe(200);
-  await expect(page).toHaveTitle("اتصال منابع گوگل | دیتانو");
-  await expect(page.getByText("برای مدیریت منابع سایت، وارد شوید.", { exact: true })).toBeVisible();
+  await page.route("**/api/auth/me", route => route.fulfill({ status: 401, json: { success: false, message: "Unauthorized", payload: null } }));
+  page.on("request", request => { if (new URL(request.url()).pathname.startsWith("/api/")) requests.push({ method: request.method(), path: new URL(request.url()).pathname }); });
+  page.on("pageerror", error => errors.push(error.message));
+  await page.goto("/websites/arbitrary/connect?ga4=connected&gsc=connected&ads=connected&role=admin&code=sample&state=success");
+  await expect(page).toHaveURL("/login?returnTo=%2Fwebsites%2Farbitrary%2Fconnect");
   await expect(page.locator("[data-google-source], [data-connected-resource], input[type=radio]")).toHaveCount(0);
   await expect(page.locator('a[href^="/ui-review"]')).toHaveCount(0);
-  await page.getByRole("link", { name: "بازگشت به سایت‌های من", exact: true }).click(); await expect(page).toHaveURL("/websites");
-  await page.goto("/websites/arbitrary/connect");
-  expect(requests).toEqual([]);
-  await page.route("**/api/auth/me", route => route.fulfill({ status: 401,
-    json: { success: false, message: "Unauthorized", payload: null } }));
-  const sessionChecked = page.waitForResponse(response => new URL(response.url()).pathname === "/api/auth/me" && response.status() === 401);
-  await page.getByRole("main").getByRole("link", { name: "ورود به حساب", exact: true }).click();
-  await sessionChecked;
-  await expect(page).toHaveURL("/login");
   await expect(page.getByRole("textbox", { name: "ایمیل", exact: true })).toBeVisible();
   await expect(context.cookies()).resolves.toEqual([]);
   expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: {}, session: {} });

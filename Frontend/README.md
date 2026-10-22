@@ -1508,7 +1508,7 @@ for executed results, file scope and operational cleanup.
 OPENAPI_JSON_URL=http://127.0.0.1:API_PORT/openapi.json pnpm api:generate
 pnpm test:websites
 PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e websites-product.spec.ts websites.spec.ts add-website.spec.ts
-DATANO_WEBSITES_API_URL=http://127.0.0.1:TEST_PORT PLAYWRIGHT_CHANNEL=chrome pnpm test:websites:integration
+DATANO_WEBSITES_API_URL=http://127.0.0.1:TEST_PORT PLAYWRIGHT_CHANNEL=chrome pnpm test:websites:integration product.browser.spec.ts
 pnpm lint
 pnpm exec tsc --noEmit --incremental false
 pnpm build
@@ -1519,3 +1519,69 @@ pnpm build
 مستقل، reload، خروج و حساب دوم/409/404 را بدون stub بررسی می‌کند. با تنظیمات واقعی
 پروژه یا دادهٔ موجود اجرا نشود. گزارش اجرا:
 [FE-034](docs/validation/FE-034-owned-websites.md).
+
+## Website ownership integration (FE-035)
+
+`/websites/[websiteId]/verify` now uses the existing session boundary, an
+owner-checked website detail read, and BE-020's generated challenge/verify POST
+callers. Both POST bodies are exactly `{}`; URL flags, browser tokens and role
+hints are not proof. The existing FE-016 visual design and private review stay
+separate from product behavior.
+
+Issuance is explicit, not a query/render side effect. Opening or reloading the
+page never rotates an existing challenge automatically. A pending challenge can
+be checked after reload without recovering its plaintext; requesting a fresh
+code explicitly invalidates the former code. The exact server meta tag is shown
+as inert text and copied unchanged. The countdown uses the returned expiry;
+the backend remains authoritative for validity and ownership.
+
+Only sanitized public website metadata enters owner/site query keys. The tag
+stays in mounted page state, never query/mutation caches, URLs, localStorage or
+sessionStorage. Logout/account replacement and unmount abort late operations;
+owner/session guards from FE-034 are reused around reads/writes. A POST is not
+automatically retried. Failed or ambiguous writes invalidate public metadata;
+success replaces the detail and invalidates the list without inventing a complete
+list or report state. User-facing errors are fixed Persian text.
+
+Successful proof and already verified own sites continue to the same site's
+`/connect` entry after a fresh owner-checked read. The verified site list also
+opens that entry while its report status remains unknown. The connection entry
+checks the session and own site and currently reports provider-operation
+unavailability; OAuth/property selection belongs to FE-036/FE-038/FE-040.
+Ownership alone never enables a report/dashboard or creates a Google permission.
+Safe login return destinations now include only exact `verify`/`connect`
+onboarding paths with a simple site identifier; the server still enforces owner.
+
+Regenerate both ignored Orval targets from actual BE-020 OpenAPI before checks:
+
+```sh
+OPENAPI_JSON_URL=/path/to/current/backend/openapi.json pnpm api:generate
+pnpm test:websites
+pnpm test:session
+pnpm test:transport
+PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e tests/e2e/website-proof-product.spec.ts tests/e2e/website-verification.spec.ts tests/e2e/websites-product.spec.ts tests/e2e/google-connections.spec.ts
+pnpm exec tsc --noEmit --incremental false
+pnpm lint
+NEXT_PUBLIC_API_URL_V1= pnpm build
+```
+
+Use the installed Chrome channel only when bundled Chromium is unavailable.
+Run type checking after development/build type generation has settled, rather
+than concurrently with Next.js writing its generated route types.
+
+The existing dedicated website integration config also includes
+`tests/websites/proof.browser.spec.ts`. It requires a separate disposable backend
+and a **test-only** local HTML publishing peer; never point that publishing URL at
+a production service or add it to public app configuration:
+
+```sh
+DATANO_WEBSITES_API_URL=http://127.0.0.1:API_PORT \
+DATANO_PROOF_PUBLISH_URL=http://127.0.0.1:PEER_PORT/publish \
+PLAYWRIGHT_CHANNEL=chrome pnpm test:websites:integration
+```
+
+The peer accepts `{hostname, meta_tag, placement}` for `head` or `body`; the test
+runtime must serve that HTML over verified TLS through BE-019's normal parser
+and receipt path. Authentication, ownership, proof persistence and verification
+are not stubbed. The disposable harness is described in the Persian
+[FE-035 validation report](docs/validation/FE-035-website-proof.md).

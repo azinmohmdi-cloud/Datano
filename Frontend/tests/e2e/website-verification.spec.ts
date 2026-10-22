@@ -121,15 +121,14 @@ test("unverified list and independently registered sample navigate to the matchi
 });
 
 test("public route and query flags never expose a challenge, sample success or invented site", async ({ page }) => {
+  await page.route("**/api/auth/**", route => route.fulfill({ status: 401, json: { detail: "Unauthorized" } }));
   for (const route of ["/websites/unverified/verify?state=success&site=new", "/websites/arbitrary-id/verify?token=UI_REVIEW_ONLY_NOT_A_VALID_CHALLENGE&role=admin"]) {
     const response = await page.goto(route);
     expect(response?.status()).toBe(200);
-    await expect(page).toHaveTitle("تأیید مالکیت سایت | دیتانو");
-    await expect(page.getByText("برای تأیید مالکیت سایت، وارد شوید.", { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(`/login?returnTo=${encodeURIComponent(new URL(route, "http://localhost").pathname)}`);
     await expect(page.locator("textarea, [data-website-verification], meta[name='datano-verification']")).toHaveCount(0);
     await expect(page.locator('a[href^="/ui-review"]')).toHaveCount(0);
-    await page.getByRole("main").getByRole("link", { name: "ورود به حساب", exact: true }).click();
-    await expect(page).toHaveURL("/login");
+    await expect(page.getByRole("button", { name: "ورود به حساب", exact: true })).toBeVisible();
   }
   await page.goto("/ui-review/websites/verify?site=arbitrary&state=success&state=expired");
   await expect(page.locator("[data-website-verification]")).toHaveAttribute("data-verification-state", "ready");

@@ -47,7 +47,8 @@ test("confirmed registration replaces empty cache, selects the saved site, survi
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: info.outputPath("owned-list.png"), fullPage: true });
   await page.getByRole("button", { name: "مشاهده اطلاعات سایت من", exact: true }).click();
-  await expect(page).toHaveURL(`/websites/${site.id}/verify`); expect(details).toBe(1);
+  await expect(page).toHaveURL(`/websites/${site.id}/verify`);
+  await expect(page.getByRole("button", { name: "دریافت کد تأیید", exact: true })).toBeVisible(); expect(details).toBe(2);
   expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: {}, session: {} });
 });
 
@@ -86,7 +87,7 @@ test("same-owner verified duplicate keeps true ownership and does not fabricate 
   await expect(page.locator("[data-registration-result] a")).toHaveCount(0);
 });
 
-test("multiple sites require selection, verified status remains unknown, and refresh removes a stale selection", async ({ page }) => {
+test("multiple sites require selection, verified ownership leads to source management without report readiness, and refresh removes a stale selection", async ({ page }) => {
   await session(page); const a = website(); const b = website("two", "shop.example.test", true); let stale = false;
   await page.route("**/api/websites/**", route => {
     const detail = new URL(route.request().url()).pathname.endsWith(b.id);
@@ -97,8 +98,11 @@ test("multiple sites require selection, verified status remains unknown, and ref
   await expect(view).toBeDisabled(); await page.getByRole("button", { name: `انتخاب ${b.hostname}`, exact: true }).click();
   await expect(page.locator("[data-selected-website]")).toContainText(b.hostname);
   await expect(page.getByText("وضعیت گزارش در دسترس نیست", { exact: true })).toBeVisible();
-  await view.click(); await expect(page.getByRole("status")).toContainText("وضعیت گزارش این سایت در دسترس نیست");
-  await expect(page).toHaveURL("/websites?site=two"); stale = true; await view.click();
+  await view.click(); await expect(page).toHaveURL(`/websites/${b.id}/connect`);
+  await expect(page.getByText("مالکیت: تأیید شده", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "بازگشت به سایت‌های من", exact: true }).click();
+  await page.getByRole("button", { name: `انتخاب ${b.hostname}`, exact: true }).click();
+  stale = true; await view.click();
   await expect(page.getByText("هنوز سایتی ثبت نکرده‌اید.", { exact: true })).toBeVisible();
   await expect(page.locator("[data-selected-website]")).toHaveCount(0);
 });

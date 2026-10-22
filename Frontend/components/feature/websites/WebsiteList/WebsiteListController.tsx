@@ -58,6 +58,7 @@ export default function WebsiteListController({ sites, initialScenario = "ready"
     onDestination(step, site);
   }
 
+  const nextStep = (site: WebsiteListItem) => !preview && site.verified && site.report === "unknown" ? "connect" : getWebsiteNextStep(site);
   const destinationSite = sites.find((site) => site.id === destination?.siteId);
   const notice = !preview ? liveNotice : !destination ? "" : destination.step === "add" ? messages.previewAdd : `${messages.previewDestination} ${websiteNextStepLabels[destination.step]}`;
   return <WebsiteListUI id={id} status={status} selectedId={selected?.id ?? null}
@@ -66,13 +67,13 @@ export default function WebsiteListController({ sites, initialScenario = "ready"
       reportLabel: site.verified ? websiteReportLabels[site.report] : websiteReportLabels.unverified,
       reportFailed: site.verified && site.report === "failed",
     }))}
-    selected={selected ? { domain: selected.domain, nextStep: websiteNextStepLabels[getWebsiteNextStep(selected)] } : null}
+    selected={selected ? { domain: selected.domain, nextStep: websiteNextStepLabels[nextStep(selected)] } : null}
     deleteTarget={target ? { id: target.id, domain: target.domain } : null} deleting={deleting} disabled={disabled}
     deleteError={deleteError} notice={notice} noticeDomain={destinationSite?.domain ?? ""} destination={destination?.step ?? ""} translations={websiteListTranslations}
     callbacks={{
       onClickRetry: onRetry,
       onClickAdd: () => requestDestination("add", null),
-      onClickView: () => { if (selected) requestDestination(getWebsiteNextStep(selected), selected); },
+      onClickView: () => { if (selected) requestDestination(nextStep(selected), selected); },
       onClickSelect: (siteId) => {
         if (disabled || !sites.some((site) => site.id === siteId)) return;
         setSelectedId(siteId); setDestination(null); setDeleteId(null); setDeleteError("");
