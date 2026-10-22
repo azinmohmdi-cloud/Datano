@@ -62,6 +62,15 @@ def test_hmac_is_bound_to_purpose_account_and_exact_canonical_recipient(context)
     assert crypto.digest(context, '12345678') != crypto.digest(CONTEXT, '12345678')
 
 
+def test_email_change_shares_scope_across_targets_but_binds_proof_to_target():
+    crypto = EmailCodeCrypto(KEY)
+    first = replace(CONTEXT, purpose=EmailCodePurpose.EMAIL_CHANGE)
+    second = replace(first, recipient='new@example.test')
+    assert crypto.scope(first) == crypto.scope(second)
+    assert crypto.digest(first, '12345678') != crypto.digest(second, '12345678')
+    assert crypto.digest(second, '12345678') == crypto.digest(replace(second, recipient=' NEW@EXAMPLE.TEST '), '12345678')
+
+
 @pytest.mark.parametrize('key', [None, '', b'', b'short', b'x' * 31])
 def test_missing_or_short_key_has_no_fallback_or_secret_echo(key):
     with pytest.raises(ValueError):

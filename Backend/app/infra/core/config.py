@@ -22,6 +22,10 @@ class Config(BaseSettings):
     admin_proof_window_seconds: int = Field(default=600, gt=0, alias="ADMIN_PROOF_WINDOW_SECONDS")
     admin_proof_max_body_bytes: int = Field(default=8192, gt=0, alias="ADMIN_PROOF_MAX_BODY_BYTES")
 
+    email_change_ip_limit: int = Field(default=10, gt=0, le=2147483646, alias="EMAIL_CHANGE_IP_LIMIT")
+    email_change_window_seconds: int = Field(default=600, gt=0, alias="EMAIL_CHANGE_WINDOW_SECONDS")
+    email_change_max_body_bytes: int = Field(default=8192, gt=0, alias="EMAIL_CHANGE_MAX_BODY_BYTES")
+
     @field_validator("admin_email_allowlist")
     @classmethod
     def valid_admin_allowlist(cls, value: SecretStr | None) -> SecretStr | None:

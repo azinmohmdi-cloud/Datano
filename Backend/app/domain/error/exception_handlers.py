@@ -113,7 +113,8 @@ def register_all_exception_handlers(app):
         route_path = getattr(request.scope.get("route"), "path", request.url.path)
         if (request.method == "PATCH" and route_path == "/api/auth/me") or (request.method == "POST" and route_path in {"/api/auth/login", "/api/auth/register", "/api/users/",
                 "/api/auth/password-recovery/request", "/api/auth/password-recovery/verify", "/api/auth/password-recovery/reset",
-                "/api/auth/admin-email/request", "/api/auth/admin-email/verify"}):
+                "/api/auth/admin-email/request", "/api/auth/admin-email/verify",
+                "/api/auth/email-change/request", "/api/auth/email-change/verify"}):
             return JSONResponse(status_code=422, content={"detail": [
                 {key: error[key] for key in ("type", "loc", "msg")}
                 for error in exc.errors()

@@ -347,7 +347,8 @@ non-string values, an empty patch and all unknown fields return `422`. Only
 `first_name`/`last_name` are writable. In particular, ID, email, username, password,
 role, effective role, permissions and activation cannot be changed through this
 contract. Client identity hints in query strings do not select an account.
-Changing email remains BE-016; frontend mutation/cache integration remains FE-032.
+Email changes use the separate proof workflow in BE-016 below. Frontend name
+editing is integrated in FE-032; email-change integration remains FE-033.
 
 Names must contain non-whitespace text and be representable as valid PostgreSQL
 UTF-8 text (no unpaired surrogate or U+0000). The current UI/registration convention
@@ -381,6 +382,69 @@ tests use a disposable task-owned tmpfs PostgreSQL with independent per-test
 schemas. See [BE-015 validation](docs/validation/BE-015-own-profile.md) for executed
 checks, acceptance evidence, exact file scope and operational limits.
 
+## Verified email change (BE-016)
+
+Only the current active opaque-session owner can use these routes. Origin and
+session-bound CSRF are required; JWT, selected user IDs, roles and activation
+fields are not accepted. The names-only profile contract remains unchanged.
+
+| Route | Strict body | Result |
+| --- | --- | --- |
+| `POST /api/auth/email-change/request` | `{email}` | Generic `200` acknowledgement; sends a code to an available new mailbox through the existing private SMTP adapter |
+| `POST /api/auth/email-change/verify` | `{email,code}` | Public `SessionLogin` payload with updated user, authoritative `effective_role`, rotated CSRF token and a new opaque cookie |
+
+Request acknowledgement does not confirm delivery or reveal whether an email
+is occupied. The current/occupied address receives the same acknowledgement and
+no message. Both DTO fields are write-only in OpenAPI; validation errors never
+echo the email, code or forbidden credential-shaped extra inputs. Invalid proof
+or session returns `401`, CSRF/Origin `403`, a target claimed before confirmation
+`409`, oversized body `413`, quota exhaustion `429` with `Retry-After`, and
+unavailable private infrastructure `503`. Success responses are `no-store`.
+
+The email remains unchanged until the new mailbox code is consumed. Validation
+uses the existing email entity rule plus the shared mail-context/header-safety
+checks. The new email and identity key use trim/lowercase, without provider alias
+rules. Codes reuse BE-012: eight ASCII digits, private HMAC, ten-minute expiry,
+five attempts, single use, at least sixty seconds between sends. One scope per
+account/current-email/password state shares cooldown and attempts across all
+browsers and destination addresses. The target is independently bound into the
+code digest. A resend to another target replaces the prior pending challenge;
+only the delivered latest generation can be consumed. Other code purposes keep
+their existing HMAC format. No plaintext pending email/code or new table is needed.
+
+Confirmation rechecks the session, active account and credential-state snapshot
+under the user lock. One PostgreSQL transaction narrowly updates email/key and
+timestamp, removes prior Admin authority/assignment, reevaluates the private
+allowlist and active Admin role, invalidates existing recovery authorization,
+revokes every old account session and creates the replacement session. The
+existing unique constraints arbitrate concurrent claims; the losing account's
+fields, roles and sessions roll back together. Names, hash, activation, internal
+username and unrelated users are preserved. An allowlisted target gets a fresh
+mailbox-proved grant only after proof; a noneligible target gets no Admin grant.
+Active User fallback is assigned without reactivating any disabled role.
+
+Every successful email change rotates the current session and CSRF identifier,
+including ordinary User-to-User changes. This defensive implementation satisfies
+the MVP's required rotation on privilege changes. It retains `remember_me` and
+never extends the preceding absolute expiry. Other browsers must log in again
+using the proved new address. Code consumption commits before the final identity
+transaction: a failed commit burns the proof safely, while account writes roll
+back; request another code after cooldown. SMTP runs outside database locks in
+the existing process-local background task, with no durable delivery queue or
+automatic resend. A failure reading public identity after commit can require a
+fresh login with the new address; it cannot restore old sessions.
+
+Required private SMTP/HMAC settings are the existing BE-011/012 settings. The
+independent technical peer bucket has `EMAIL_CHANGE_IP_LIMIT=10` per
+`EMAIL_CHANGE_WINDOW_SECONDS=600`, shared across request/verify; full body limit
+`EMAIL_CHANGE_MAX_BODY_BYTES=8192`. Quotas run before JSON parsing and failed
+requests consume attempts. All workers must share settings, HMAC key and DB.
+No schema migration or dependency change is required; head remains
+`0008_admin_grants`. Actual OpenAPI and real PostgreSQL validation are recorded
+in [BE-016 validation](docs/validation/BE-016-email-change.md). BE-016 tests capture
+the mail adapter; no additional live email was authorized/sent for this task.
+Frontend/UI changes and generated-client integration belong to FE-033.
+
 ## Current implementation
 
 - Auth, users, and roles routes under `/api`; OpenAPI at `/openapi.json`.
@@ -389,6 +453,7 @@ checks, acceptance evidence, exact file scope and operational limits.
 - Three-step password recovery with a reset-only cookie, atomic password/session revocation and no automatic login (BE-013).
 - Private eligibility plus persistent administrator mailbox proof/operator provisioning and privilege-elevation session rotation (BE-014).
 - Session-owned profile read and atomic names-only partial editing (BE-015).
+- New-mailbox-proved email changes with atomic uniqueness, fresh Admin evaluation and all-session rotation (BE-016).
 - Email/password login with canonical email lookup; deprecated username login
   remains for compatibility. Product authentication uses only an opaque session cookie.
 - Argon2id for new passwords and verified legacy hash upgrades; exact Unicode
