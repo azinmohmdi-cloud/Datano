@@ -22,7 +22,8 @@
     "test:recovery:integration": "playwright test --config playwright.recovery.integration.config.ts",
     "api:generate": "orval --config orval.config.ts",
     "test:profile": "playwright test --config playwright.profile.config.ts",
-    "test:profile:integration": "playwright test --config playwright.profile.integration.config.ts"
+    "test:profile:integration": "playwright test --config playwright.profile.integration.config.ts",
+    "test:email-change:integration": "playwright test --config playwright.email-change.integration.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

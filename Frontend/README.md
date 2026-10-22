@@ -419,8 +419,9 @@ Private stage navigation preserves drafts; editing the new address invalidates
 its old sample code. Codes accept exactly eight digits, including a leading zero,
 with Persian/Arabic decimal digit conversion and no silent truncation. The private
 clock models 600-second expiry, 60-second resend cooldown and five invalid attempts.
-Resend explicitly states that no email was sent. Valid verification still reports
-unavailability; FE-033 owns real ownership proof/email replacement.
+Resend explicitly states that no email was sent. Valid verification in this
+private review still reports unavailability; the product workflow is connected
+through BE-016/FE-033 as documented below.
 
 `emailStep=request|code` directly selects the private email stage. `state=ready`
 provides interaction; other initial scenarios are `loading`, `error`,
@@ -1348,7 +1349,7 @@ The approved layout, fields, controls, classes, keyboard order and review fixtur
 are preserved. Success reuses the existing live-status text slot to announce
 «اطلاعات شخصی ذخیره شد.»; the summary and form show returned server values.
 Changing names does not replace the session cookie or CSRF token. Email mutation
-continues to report unavailable until BE-016/FE-033; public signup stays locked
+uses the separate BE-016/FE-033 workflow below; public signup stays locked
 pending approved terms. No backend, schema, dependency or lockfile changes.
 
 Regenerate ignored clients from the current actual FastAPI OpenAPI before checks:
@@ -1381,3 +1382,95 @@ server validation rejection, preserved inputs, reset and reload. Real integratio
 traces/screenshots/video are disabled. See
 [FE-032 validation](docs/validation/FE-032-profile-editing.md) for actual results,
 source scope and limitations.
+
+## Verified email change connection (FE-033)
+
+The existing product profile now connects its request/code forms to the actual
+BE-016 OpenAPI operations through both existing Orval generation targets:
+
+- `POST /api/auth/email-change/request` sends only canonical `{email}` and
+  advances on the generic acknowledgement. It does not claim delivery or replace
+  the current email. The same acknowledgement may represent an unavailable target
+  or a server-side cooldown; the server remains authoritative.
+- `POST /api/auth/email-change/verify` sends only `{email,code}`. The code accepts
+  eight digits with Persian/Arabic conversion and leading-zero preservation.
+  Success displays the returned email and a live Persian confirmation in the
+  existing status slot, clears email/code drafts and returns to the request step.
+
+`data/feature/profile/email-change.ts` owns transport and cache coordination.
+Before each operation it checks the active cookie owner with a fresh GET without
+putting the session observer into a loading state. It validates the verified
+public user, expected owner and canonical destination, uses only the server's
+`effective_role`, cancels old session reads, clears other private queries/mutations
+on every successful session rotation and stores only sanitized `SessionAccount`.
+CSRF-bearing envelopes and code/destination mutation variables are not cached.
+No browser storage is used. The shared transport sends credentials and bootstraps
+fresh session-bound CSRF for each POST; neither mutator is bypassed or rewritten.
+
+Query-instance and owner/email guards prevent a late response from restoring a
+replaced login/session. AbortSignal reaches GET, CSRF and POST; unmount aborts
+work. A committed server write cannot be undone by cancellation. Proof `401`
+privately rechecks identity: a valid session retains the code/name drafts, while
+an expired session clears private data and returns to login. Network/protocol
+failures also attempt an identity read; a confirmed changed identity is reflected
+without replaying the POST or claiming that a failed request succeeded.
+
+Navigation continues to use the shared session boundary and `/account` resolver.
+The updated effective role is cached; the resolver and protected routes fetch
+fresh server identity. A newly proved Admin can enter the Admin route; a former
+Admin is redirected to profile. Profile remains accessible to both roles so the
+success result can be read before navigating. No input role/query flag grants
+access, and a null effective role keeps the existing denied-account state.
+
+Local wall-clock guidance uses BE-016 defaults: ten-minute approximate validity,
+sixty-second resend and at most five rejected attempts observed by this form.
+Cooldown persists across editing the target; expiry/five rejected proofs block
+verification and allow a new request after cooldown. Retry-After delays are
+honored. These are approximate client hints, not claimed server counters; the
+backend owns expiry, attempt limits and delivery. Codes clear on successful
+resend. Failures retain useful inputs; `409` returns to the editable target and
+requests a fresh proof. `403`, `422`, `429`, network and service errors use fixed
+Persian messages rather than response/provider text. There is no automatic POST
+retry, and synchronous request guards prevent duplicate submission.
+
+The approved fields, controls, classes, layout and private review scenarios are
+preserved. The only pure UI addition is an optional status message using the
+existing pending paragraph's location/style. No CSS, page/layout, backend,
+schema, dependency, lockfile, public environment or terms-release changes occur.
+
+```sh
+OPENAPI_JSON_URL=/path/to/current/backend/openapi.json pnpm api:generate
+pnpm test:profile # names + email-change adapter/cache tests
+pnpm test:session
+pnpm test:transport
+pnpm test:recovery
+PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e email-change.spec.ts profile-product.spec.ts profile.spec.ts session.spec.ts login.spec.ts signup.spec.ts recovery.spec.ts recovery-product.spec.ts --global-timeout=600000
+pnpm lint
+pnpm exec tsc --noEmit --incremental false
+NEXT_PUBLIC_API_URL_V1= pnpm build
+```
+
+Real integration is separate and must point only to a disposable BE-016 backend
+and PostgreSQL. Its test lifespan injects a captured `IEmailSender` with SMTP
+disabled; the private mode-0600 JSON capture maps canonical synthetic recipients
+to mail text outside the repository. The file is accessible only to the local
+test runner, never via HTTP or a product endpoint. The backend must permit origin
+`http://127.0.0.1:3100`, opt in to the explicit loopback cookie and have adequate
+test-only quotas. For the role scenarios its private fixture allowlist contains
+only `admin-mobile-fe033@example.test` and `admin-desktop-fe033@example.test`.
+These are synthetic test identities, not real provider or deployment settings.
+
+```sh
+DATANO_EMAIL_CHANGE_API_URL=http://127.0.0.1:TEST_PORT \
+DATANO_EMAIL_CHANGE_CAPTURE_PATH=/private/test/captured-mail.json \
+PLAYWRIGHT_CHANNEL=chrome pnpm test:email-change:integration
+```
+
+The suite creates unique `.test` accounts, logs in through the product UI, reads
+the actually generated code only from the private test sender, verifies API/DB
+changes and cookie revocation, exercises User→Admin→User navigation and persisted
+login at the final email, then tests real invalid proof and concurrent-claim
+`409`. Mobile/desktop traces, screenshots and video are disabled for this suite.
+No external email or existing private Gmail credentials are used. Inbox delivery
+is not claimed by these tests. See [FE-033 validation](docs/validation/FE-033-email-change.md)
+for executed results, file scope and operational cleanup.

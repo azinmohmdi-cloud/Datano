@@ -82,11 +82,14 @@ for (const status of [422, 403]) test(`server ${status} retains inputs without s
   await expect(page.getByText(/private-error/)).toHaveCount(0);
 });
 
-test("invalid names do not submit, cancel resets to server names and email remains unavailable", async ({ page }) => {
+test("invalid names do not submit, cancel resets names and email proof keeps the current account unchanged", async ({ page }) => {
   let writes = 0;
   await page.route("**/api/auth/**", async route => {
     const csrf = new URL(route.request().url()).pathname.endsWith("/csrf");
     if (route.request().method() === "PATCH") writes++;
+    if (new URL(route.request().url()).pathname.endsWith('/email-change/request')) {
+      return route.fulfill({ json: { success:true, message:'Generic acknowledgement', payload:null } });
+    }
     await route.fulfill({ json: { success: true, message: "OK", payload: csrf ? { csrf_token: "c".repeat(43) } : initial } });
   });
   await page.goto("/profile");
@@ -97,7 +100,7 @@ test("invalid names do not submit, cancel resets to server names and email remai
   await expect(page.getByLabel("نام", { exact: true })).toHaveValue(initial.first_name);
   await page.getByLabel("ایمیل جدید", { exact: true }).fill("new@example.test");
   await page.getByRole("button", { name: "ادامه برای تأیید", exact: true }).click();
-  await expect(page.getByText("تغییر ایمیل در حال حاضر در دسترس نیست.", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("کد تأیید ایمیل", { exact: true })).toBeVisible();
   await expect(page.locator("[data-profile-current-email]")).toHaveText(initial.email);
 });
 

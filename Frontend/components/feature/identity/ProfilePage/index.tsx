@@ -23,6 +23,7 @@ export interface ProfilePageUIProps {
   pendingAction: "names" | "email" | "logout" | null;
   dirty: boolean;
   namesNotice?: string;
+  emailNotice?: string;
   codeBlocked: boolean;
   resendDisabled: boolean;
   expiryText: string; cooldownText: string; attemptsText: string; resendNotice: string;
@@ -147,7 +148,7 @@ function EmailCard(props: ProfilePageUIProps) {
         </Button>
         {emailStep === "code" && <Button type="button" variant="ghost" disabled={disabled} onClick={callbacks.onEmailPrevious} className={secondaryStyle}><ArrowRight className="size-4" aria-hidden="true" />{t.previous}</Button>}
       </div>
-      {pending && <p role="status" aria-live="polite" className="text-sm leading-7 text-brand-muted">{t.requesting}</p>}
+      {(pending || props.emailNotice) && <p role="status" aria-live="polite" className="text-sm leading-7 text-brand-muted">{pending ? t.requesting : props.emailNotice}</p>}
     </form></CardContent>
   </Card>;
 }

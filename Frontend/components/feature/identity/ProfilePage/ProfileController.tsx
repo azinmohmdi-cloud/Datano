@@ -7,7 +7,7 @@ import ProfilePageUI, { type ProfileEmailStep, type ProfilePageUIProps } from ".
 import { profileMessages as messages, profileTranslations } from "./content";
 import { validateProfileEmail, validateProfileNames } from "./validation";
 import { authErrorMessage } from "../SessionBoundary/messages";
-import { profileErrorMessage } from "./errors";
+import { emailChangeFailure, profileErrorMessage } from "./errors";
 
 export type ProfileScenario = "ready" | "loading" | "error" | "names-pending" | "names-error" | "email-pending" | "email-error" | "code-error" | "expired" | "resend-ready" | "logout-confirm" | "logout-pending" | "logout-error";
 interface ProfileControllerProps {
@@ -21,17 +21,21 @@ interface ProfileControllerProps {
   onLogout?: () => Promise<void>;
   logoutPending?: boolean;
   onSaveNames?: (names: ProfilePageUIProps["names"], signal: AbortSignal) => Promise<ProfilePageUIProps["names"]>;
+  emailActions?: {
+    request: (email: string, signal: AbortSignal) => Promise<void>;
+    verify: (email: string, code: string, signal: AbortSignal) => Promise<void>;
+  };
 }
 const subscribeToHydration = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
 const emptyErrors = { firstName: "", lastName: "", names: "", email: "", code: "", emailSubmission: "", logout: "" };
 
-export default function ProfileController({ account, sitesHref, initialEmailValues, preview = false, emailStep: controlledStep, onEmailStepChange, initialScenario = "ready", onLogout, logoutPending = false, onSaveNames }: ProfileControllerProps) {
+export default function ProfileController({ account, sitesHref, initialEmailValues, preview = false, emailStep: controlledStep, onEmailStepChange, initialScenario = "ready", onLogout, logoutPending = false, onSaveNames, emailActions }: ProfileControllerProps) {
   const hydrated = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
   const id = useId();
   const [localStep, setLocalStep] = useState<ProfileEmailStep>("request");
-  const emailStep = preview ? controlledStep ?? localStep : "request";
+  const emailStep = preview ? controlledStep ?? localStep : localStep;
   const [names, setNames] = useState({ firstName: account.firstName, lastName: account.lastName });
   const [namesPending, setNamesPending] = useState(false);
   const [namesNotice, setNamesNotice] = useState("");
@@ -49,15 +53,28 @@ export default function ProfileController({ account, sitesHref, initialEmailValu
   const [clockCycle, setClockCycle] = useState(0);
   const [attempts, setAttempts] = useState(5);
   const [resendNotice, setResendNotice] = useState("");
+  const [emailNotice, setEmailNotice] = useState("");
+  const [emailPending, setEmailPending] = useState(false);
+  const emailRequest = useRef<AbortController | null>(null);
+  const [now, setNow] = useState(0);
+  const [codeDeadline, setCodeDeadline] = useState(0);
+  const [cooldownDeadline, setCooldownDeadline] = useState(0);
+  const [retryDeadline, setRetryDeadline] = useState(0);
   const previousFocus = useRef({ emailStep, logoutOpen });
-  const pendingAction = logoutPending ? "logout" : namesPending ? "names" : !preview ? null : scenario === "names-pending" ? "names" : scenario === "email-pending" ? "email" : scenario === "logout-pending" ? "logout" : null;
-  const expiry = scenario === "expired" ? 0 : Math.max(0, 600 - elapsed);
-  const cooldown = ["expired", "resend-ready"].includes(scenario) ? 0 : Math.max(0, 60 - elapsed);
-  const expired = preview && expiry === 0;
-  const locked = preview && attempts === 0;
+  const pendingAction = logoutPending ? "logout" : namesPending ? "names" : emailPending ? "email" : !preview ? null : scenario === "names-pending" ? "names" : scenario === "email-pending" ? "email" : scenario === "logout-pending" ? "logout" : null;
+  const expiry = preview ? scenario === "expired" ? 0 : Math.max(0, 600 - elapsed) : Math.max(0, Math.ceil((codeDeadline - now) / 1000));
+  const cooldown = preview ? ["expired", "resend-ready"].includes(scenario) ? 0 : Math.max(0, 60 - elapsed) : Math.max(0, Math.ceil((Math.max(cooldownDeadline, retryDeadline) - now) / 1000));
+  const expired = (preview || emailStep === "code") && expiry === 0;
+  const locked = attempts === 0;
   const disabled = !hydrated || pendingAction !== null;
 
-  useEffect(() => () => { namesRequest.current?.abort(); }, []);
+  useEffect(() => () => { namesRequest.current?.abort(); emailRequest.current?.abort(); }, []);
+
+  useEffect(() => {
+    if (preview) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [preview]);
 
   useEffect(() => {
     if (!preview) return;
@@ -80,11 +97,51 @@ export default function ProfileController({ account, sitesHref, initialEmailValu
   }, [id, disabled, emailStep, logoutOpen]);
 
   function moveEmailTo(step: ProfileEmailStep) {
-    if (!preview || disabled) return;
+    if (disabled) return;
     setErrors((current) => ({ ...current, emailSubmission: "" }));
     setResendNotice("");
     if (onEmailStepChange) onEmailStepChange(step);
     else setLocalStep(step);
+  }
+
+  async function performEmail(verification: boolean) {
+    if (!emailActions || emailRequest.current || disabled) return;
+    if (Date.now() < retryDeadline || !verification && Date.now() < cooldownDeadline) {
+      setErrors((current) => ({ ...current, emailSubmission: messages.emailCooldown })); return;
+    }
+    const request = new AbortController();
+    emailRequest.current = request; setEmailPending(true); setEmailNotice("");
+    const started = Date.now();
+    try {
+      if (verification) {
+        await emailActions.verify(emailValues.email, emailValues.code, request.signal);
+        if (request.signal.aborted) return;
+        setEmailValues({ email: "", code: "" }); setLocalStep("request");
+        setEmailNotice(messages.emailSaved); setResendNotice("");
+        setCodeDeadline(0); setCooldownDeadline(0); setRetryDeadline(0);
+      } else {
+        await emailActions.request(emailValues.email, request.signal);
+        if (request.signal.aborted) return;
+        setEmailValues((current) => ({ email: current.email.trim().toLowerCase(), code: "" }));
+        setLocalStep("code"); setAttempts(5); setNow(Date.now());
+        setCodeDeadline(started + 600_000); setCooldownDeadline(started + 60_000);
+        setResendNotice(messages.emailAccepted);
+      }
+      setErrors((current) => ({ ...current, email: "", code: "", emailSubmission: "" }));
+    } catch (error) {
+      if (request.signal.aborted) return;
+      const failure = emailChangeFailure(error, verification);
+      if (failure.codeRejected) setAttempts((current) => Math.max(0, current - 1));
+      if (failure.retryAfter) { setRetryDeadline(Date.now() + failure.retryAfter * 1000); setNow(Date.now()); }
+      if (failure.restart) { setLocalStep("request"); setEmailValues((current) => ({ ...current, code: "" })); }
+      setResendNotice("");
+      setErrors((current) => ({ ...current, [failure.codeRejected ? "code" : "emailSubmission"]: failure.message }));
+    } finally {
+      if (emailRequest.current === request) {
+        emailRequest.current = null;
+        if (!request.signal.aborted) setEmailPending(false);
+      }
+    }
   }
 
   async function onNamesSubmit(event: FormEvent<HTMLFormElement>) {
@@ -123,12 +180,13 @@ export default function ProfileController({ account, sitesHref, initialEmailValu
 
   function onEmailSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (disabled) return;
+    if (disabled || emailRequest.current) return;
     if (emailStep === "request") {
       const mismatch = event.currentTarget.querySelector<HTMLInputElement>('input[name="email"]')?.validity.typeMismatch ?? false;
       const error = validateProfileEmail(emailValues.email, account.email, mismatch);
       setErrors((current) => ({ ...current, email: error, emailSubmission: "" }));
       if (error) { event.currentTarget.querySelector<HTMLInputElement>('input[name="email"]')?.focus(); return; }
+      if (!preview && emailActions) { void performEmail(false); return; }
       if (!preview || scenario === "email-error") setErrors((current) => ({ ...current, emailSubmission: messages.emailUnavailable }));
       else moveEmailTo("code");
       return;
@@ -137,11 +195,12 @@ export default function ProfileController({ account, sitesHref, initialEmailValu
     const formatError = /^[0-9]{8}$/.test(emailValues.code) ? "" : messages.codeFormat;
     setErrors((current) => ({ ...current, code: formatError, emailSubmission: "" }));
     if (formatError) { event.currentTarget.querySelector<HTMLInputElement>('input[name="code"]')?.focus(); return; }
+    if (!preview && emailActions) { void performEmail(true); return; }
     if (preview && scenario === "code-error") {
       setAttempts((current) => Math.max(0, current - 1));
       setErrors((current) => ({ ...current, code: messages.codeInvalid }));
     } else setErrors((current) => ({ ...current, emailSubmission: messages.emailUnavailable }));
-    // FE-033 verifies ownership and replaces the email; no sample code can do that here.
+    // Private review scenarios never authenticate codes or replace an identity.
   }
 
   const callbacks: ProfilePageUIProps["callbacks"] = {
@@ -159,13 +218,15 @@ export default function ProfileController({ account, sitesHref, initialEmailValu
       setErrors((current) => ({ ...current, firstName: "", lastName: "", names: "" }));
     },
     onEmailChange: (field, value) => {
+      setEmailNotice("");
       setEmailValues((current) => ({ ...current, [field]: field === "code" ? normalizeRecoveryCode(value) : value, ...(field === "email" ? { code: "" } : {}) }));
       setErrors((current) => ({ ...current, [field]: "", emailSubmission: "", ...(field === "email" ? { code: "" } : {}) }));
     },
     onEmailBlur: (field, mismatch = false) => setErrors((current) => ({ ...current, [field]: field === "email" ? validateProfileEmail(emailValues.email, account.email, mismatch) : /^[0-9]{8}$/.test(emailValues.code) ? "" : messages.codeFormat })),
     onEmailPrevious: () => moveEmailTo("request"),
     onResend: () => {
-      if (!preview || disabled || cooldown > 0) return;
+      if (disabled || cooldown > 0 || emailRequest.current) return;
+      if (!preview) { void performEmail(false); return; }
       setEmailValues((current) => ({ ...current, code: "" }));
       setErrors((current) => ({ ...current, code: "", emailSubmission: "" }));
       setScenario("ready"); setElapsed(0); setAttempts(5); setClockCycle((current) => current + 1);
@@ -185,9 +246,9 @@ export default function ProfileController({ account, sitesHref, initialEmailValu
   return <ProfilePageUI id={id} account={account} sitesHref={sitesHref} names={names} emailValues={emailValues}
     errors={{ ...errors, code: expired ? messages.expired : locked ? messages.locked : errors.code }}
     status={preview && scenario === "loading" ? "loading" : preview && scenario === "error" ? "error" : "ready"}
-    emailStep={emailStep} disabled={!hydrated} pendingAction={pendingAction} namesNotice={namesNotice} dirty={names.firstName !== account.firstName || names.lastName !== account.lastName}
-    codeBlocked={expired || locked} resendDisabled={!preview || cooldown > 0}
-    expiryText={preview ? formatRecoveryDuration(expiry) : "—"} cooldownText={preview ? new Intl.NumberFormat("fa-IR").format(cooldown) : "—"}
-    attemptsText={preview ? new Intl.NumberFormat("fa-IR").format(attempts) : "—"} resendNotice={resendNotice}
+    emailStep={emailStep} disabled={!hydrated} pendingAction={pendingAction} namesNotice={namesNotice} emailNotice={emailNotice} dirty={names.firstName !== account.firstName || names.lastName !== account.lastName}
+    codeBlocked={expired || locked || !preview && now < retryDeadline} resendDisabled={cooldown > 0}
+    expiryText={`${formatRecoveryDuration(expiry)}${preview ? "" : messages.approximateExpiry}`} cooldownText={new Intl.NumberFormat("fa-IR").format(cooldown)}
+    attemptsText={`${preview || locked ? "" : messages.atMost}${new Intl.NumberFormat("fa-IR").format(attempts)}`} resendNotice={resendNotice}
     logoutOpen={logoutOpen} translations={profileTranslations} callbacks={callbacks} />;
 }

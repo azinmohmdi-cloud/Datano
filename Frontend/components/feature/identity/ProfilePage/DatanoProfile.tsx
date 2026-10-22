@@ -14,5 +14,7 @@ export default function DatanoProfile() {
   if (!account) return null;
   return <ProfileController key={account.id} account={account} initialEmailValues={{ email: "", code: "" }}
     onSaveNames={(names, signal) => profile.saveNames(account.id, names, signal)}
+    emailActions={{ request: (email, signal) => profile.requestEmail(account.id, email, signal),
+      verify: async (email, code, signal) => { await profile.verifyEmail(account.id, email, code, signal); } }}
     logoutPending={actions.pending} onLogout={async () => { await actions.logout(); router.replace("/login"); }} />;
 }
