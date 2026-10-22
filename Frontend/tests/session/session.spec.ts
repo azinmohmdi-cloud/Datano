@@ -27,7 +27,11 @@ test("role destinations and strict return allowlist reject external, ambiguous a
     expect(allowedReturnDestination(target, "User"), target).toBeNull();
     expect(loginDestination("User", target)).toBe("/profile");
   }
-  expect(loginDestination("User", "/websites")).toBe("/profile");
+  for (const role of ["User", "Admin"] as const) {
+    expect(loginDestination(role, "/websites")).toBe("/websites");
+    expect(loginDestination(role, "/websites/new")).toBe("/websites/new");
+  }
+  expect(loginDestination(null, "/websites")).toBeNull();
   expect(loginDestination("Admin", "/admin/users")).toBe("/admin/users");
   expect(loginDestination(null, "/profile")).toBeNull();
 });

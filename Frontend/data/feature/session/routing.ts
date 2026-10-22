@@ -5,10 +5,11 @@ export function accountDestination(role: EffectiveRole): string | null {
 }
 
 // Resource ownership/report readiness is not established by authentication. Site
-// deep links wait for their authorized integration tasks; only these entries are safe.
+// deep links remain excluded; FE-034 adds only the authenticated list/add entries.
 export function allowedReturnDestination(value: string | null | undefined, role: EffectiveRole): string | null {
   if (!value || /[\\%?#\s\u0000-\u001f\u007f]/u.test(value)) return null;
   if (value === "/profile" && role) return value;
+  if ((value === "/websites" || value === "/websites/new") && role) return value;
   if (value === "/admin/users" && role === "Admin") return value;
   return null;
 }

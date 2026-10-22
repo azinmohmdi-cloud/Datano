@@ -10,17 +10,25 @@ export type WebsiteListScenario = "ready" | "loading" | "error" | "delete-confir
 interface WebsiteListControllerProps {
   sites: readonly WebsiteListItem[];
   initialScenario?: WebsiteListScenario;
-  // Review owns the destination callback until the later onboarding routes exist.
+  // The injector owns real navigation; private review supplies its own destinations.
   onDestination: (step: WebsiteNextStep, site: WebsiteListItem | null) => void;
+  status?: "ready" | "loading" | "error";
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
+  busy?: boolean;
+  preview?: boolean;
+  notice?: string;
+  onRetry?: () => void;
 }
 const subscribe = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
 
-export default function WebsiteListController({ sites, initialScenario = "ready", onDestination }: WebsiteListControllerProps) {
+export default function WebsiteListController({ sites, initialScenario = "ready", onDestination, status: liveStatus, selectedId: liveSelection, onSelect, busy = false, preview = true, notice: liveNotice = "", onRetry }: WebsiteListControllerProps) {
   const hydrated = useSyncExternalStore(subscribe, clientReady, serverReady);
   const id = useId();
-  const [selectedId, setSelectedId] = useState<string | null>(sites.length === 1 ? sites[0].id : null);
+  const [localSelection, setSelectedId] = useState<string | null>(sites.length === 1 ? sites[0].id : null);
+  const selectedId = liveSelection === undefined ? localSelection : liveSelection;
   const initialTarget = initialScenario.startsWith("delete-") ? sites[0]?.id ?? null : null;
   const [deleteId, setDeleteId] = useState<string | null>(initialTarget);
   const [deleteError, setDeleteError] = useState(initialTarget && initialScenario === "delete-error" ? messages.deleteUnavailable : "");
@@ -28,9 +36,9 @@ export default function WebsiteListController({ sites, initialScenario = "ready"
   const focusRequest = useRef<{ kind: "confirm" | "trigger"; siteId: string } | null>(initialTarget ? { kind: "confirm", siteId: initialTarget } : null);
   const selected = sites.find((site) => site.id === selectedId) ?? null;
   const target = sites.find((site) => site.id === deleteId) ?? null;
-  const status = initialScenario === "loading" ? "loading" : initialScenario === "error" ? "error" : "ready";
+  const status = liveStatus ?? (initialScenario === "loading" ? "loading" : initialScenario === "error" ? "error" : "ready");
   const deleting = Boolean(target) && initialScenario === "delete-pending";
-  const disabled = !hydrated || status !== "ready" || deleting;
+  const disabled = !hydrated || status !== "ready" || deleting || busy;
 
   useEffect(() => {
     if (!hydrated) return;
@@ -46,12 +54,12 @@ export default function WebsiteListController({ sites, initialScenario = "ready"
 
   function requestDestination(step: WebsiteNextStep, site: WebsiteListItem | null) {
     if (disabled) return;
-    setDestination({ step, siteId: site?.id ?? null });
+    if (preview) setDestination({ step, siteId: site?.id ?? null });
     onDestination(step, site);
   }
 
   const destinationSite = sites.find((site) => site.id === destination?.siteId);
-  const notice = !destination ? "" : destination.step === "add" ? messages.previewAdd : `${messages.previewDestination} ${websiteNextStepLabels[destination.step]}`;
+  const notice = !preview ? liveNotice : !destination ? "" : destination.step === "add" ? messages.previewAdd : `${messages.previewDestination} ${websiteNextStepLabels[destination.step]}`;
   return <WebsiteListUI id={id} status={status} selectedId={selected?.id ?? null}
     sites={sites.map((site) => ({ id: site.id, domain: site.domain, verified: site.verified,
       ownershipLabel: site.verified ? websiteOwnershipLabels.verified : websiteOwnershipLabels.unverified,
@@ -59,14 +67,16 @@ export default function WebsiteListController({ sites, initialScenario = "ready"
       reportFailed: site.verified && site.report === "failed",
     }))}
     selected={selected ? { domain: selected.domain, nextStep: websiteNextStepLabels[getWebsiteNextStep(selected)] } : null}
-    deleteTarget={target ? { id: target.id, domain: target.domain } : null} deleting={deleting} disabled={!hydrated}
+    deleteTarget={target ? { id: target.id, domain: target.domain } : null} deleting={deleting} disabled={disabled}
     deleteError={deleteError} notice={notice} noticeDomain={destinationSite?.domain ?? ""} destination={destination?.step ?? ""} translations={websiteListTranslations}
     callbacks={{
+      onClickRetry: onRetry,
       onClickAdd: () => requestDestination("add", null),
       onClickView: () => { if (selected) requestDestination(getWebsiteNextStep(selected), selected); },
       onClickSelect: (siteId) => {
         if (disabled || !sites.some((site) => site.id === siteId)) return;
         setSelectedId(siteId); setDestination(null); setDeleteId(null); setDeleteError("");
+        onSelect?.(siteId);
       },
       onClickDelete: (siteId) => {
         if (disabled || !sites.some((site) => site.id === siteId)) return;

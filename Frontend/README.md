@@ -440,9 +440,10 @@ See [FE-013 validation](docs/validation/FE-013-profile.md) for executed evidence
 
 ## Website list and selection UI — FE-014
 
-`/websites` reuses the pathless `(account)` group and AccountLayout. Until
-FE-030/FE-034 supply trusted account/site data, it shows an access state and Login
-link. Query flags cannot supply sites, identity, selection or permission. The
+`/websites` reuses the pathless `(account)` group and AccountLayout. FE-034 now
+loads the authenticated owner's real list through BE-018 and the shared session
+boundary. Guests return through Login. Query flags cannot supply sites, identity,
+selection or permission. See the FE-034 integration notes below. The
 existing `/account` routing and `/sites/[siteId]` layout are unchanged. No
 individual-site route is added; later workspace routes must follow the approved
 Backlog `/websites/[websiteId]` policy with the previously reported layout
@@ -511,9 +512,10 @@ unverified; FE-016 adds a private ownership-review link without a real token,
 ownership check, Google source or report. FE-034 with BE-018 owns real registration,
 conflict responses and list/cache integration.
 
-`/websites/new` currently displays honest guest access with Login and a public
-list backlink. Query flags cannot supply an account or sample result. Production
-excludes the new private route/fixture under the unchanged review policy.
+`/websites/new` now uses the shared session boundary and FE-034 real registration;
+its approved form and result composition are retained. Query flags cannot supply
+an account or sample result. Production excludes the private review route/fixture
+under the unchanged review policy.
 
 Focused check: `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e add-website.spec.ts websites.spec.ts profile.spec.ts`.
 See [FE-015 validation](docs/validation/FE-015-add-website.md) for executed evidence.
@@ -1474,3 +1476,46 @@ login at the final email, then tests real invalid proof and concurrent-claim
 No external email or existing private Gmail credentials are used. Inbox delivery
 is not claimed by these tests. See [FE-033 validation](docs/validation/FE-033-email-change.md)
 for executed results, file scope and operational cleanup.
+
+## اتصال فهرست و افزودن سایت (FE-034)
+
+صفحات `/websites` و `/websites/new` با نشست تأییدشدهٔ User/Admin به APIهای BE-018
+وصل‌اند. بازگشت ورود فقط برای این دو مسیر دقیق به allowlist افزوده شده است؛
+شناسهٔ سایت یا query string اجازهٔ دسترسی ایجاد نمی‌کند. صفحه → injector → hook
+داده → client تولیدشده پابرجاست؛ source، proof و حذف واقعی در این تسک پیاده نشده‌اند.
+
+- `data/feature/websites/websites.ts` DTO عمومی را هنگام اجرا بررسی و بازسازی می‌کند؛
+  envelope، پیام خام سرور، owner و proof در cache موفق ذخیره نمی‌شوند.
+- فهرست با page/size واقعی (۱۰۰) تا آخر خوانده می‌شود. دادهٔ ناقص یا pagination
+  ناسازگار خطای قابل تلاش مجدد است؛ خطا به حساب بدون سایت تبدیل نمی‌شود.
+- کلیدهای `owned-websites` و `website-selection` شامل owner ID هستند. انتخاب فقط
+  در حافظه و از فهرست معتبر است؛ یک سایت خودکار انتخاب می‌شود، چند سایت پس از reload
+  به انتخاب کاربر نیاز دارند. ثبت موفق سایت برگشتی را انتخاب می‌کند. انتخاب حذف‌شده
+  هنگام تازه‌سازی پاک می‌شود؛ پیش از ادامه GET جزئیات مالک بررسی می‌شود.
+- ثبت با URL canonical و cookie/CSRF موجود انجام می‌شود؛ پاسخ 200 تازه یا تکراری
+  همان مالک معتبر است. خطا ورودی را حفظ می‌کند؛ POST خودکار تکرار نمی‌شود. cache فهرست
+  حتی در شکست مبهم باطل می‌شود تا بازگشت به فهرست، وضعیت واقعی سرور را دریافت کند.
+- هویت cookie پیش و پس از عملیات بررسی می‌شود؛ تغییر حساب/نقش/ایمیل، خروج و پاسخ
+  دیررس نمی‌توانند دادهٔ قبلی را منتشر کنند. هیچ انتخاب یا دامنه‌ای در storage نیست.
+- API فعلی آمادگی گزارش/اتصال منابع را ندارد؛ سایت تأییدشده با وضعیت گزارش نامعلوم
+  نمایش داده می‌شود. سایت تأییدنشده به مسیر موجود verify تحویل داده می‌شود؛ اتصال proof
+  واقعی متعلق به FE-035 است. حذف همچنان پیام عدم دسترسی موجود را دارد (FE-047).
+
+پس از اجرای Backend با تنظیمات تست، client را از OpenAPI واقعی تولید کنید؛ فایل‌های
+`lib/api/v1` همچنان ignored هستند و نباید دستی ویرایش یا commit شوند:
+
+```sh
+OPENAPI_JSON_URL=http://127.0.0.1:API_PORT/openapi.json pnpm api:generate
+pnpm test:websites
+PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e websites-product.spec.ts websites.spec.ts add-website.spec.ts
+DATANO_WEBSITES_API_URL=http://127.0.0.1:TEST_PORT PLAYWRIGHT_CHANNEL=chrome pnpm test:websites:integration
+pnpm lint
+pnpm exec tsc --noEmit --incremental false
+pnpm build
+```
+
+آزمون integration فقط با دیتابیس تازهٔ مختص تست، SMTP خاموش و Origin برابر
+`http://127.0.0.1:3100` اجرا شود. مرورگر حساب آزمایشی می‌سازد؛ ثبت سایت، تکرار، www
+مستقل، reload، خروج و حساب دوم/409/404 را بدون stub بررسی می‌کند. با تنظیمات واقعی
+پروژه یا دادهٔ موجود اجرا نشود. گزارش اجرا:
+[FE-034](docs/validation/FE-034-owned-websites.md).

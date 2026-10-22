@@ -20,13 +20,14 @@ export interface WebsiteListUIProps {
   noticeDomain: string;
   destination: string;
   translations: {
-    title: string; description: string; access: string; login: string; add: string; loading: string; loadError: string;
+    title: string; description: string; access: string; login: string; add: string; loading: string; loadError: string; retry: string;
     empty: string; emptyDescription: string; listLabel: string; ownership: string; report: string;
     select: string; selected: string; remove: string; selectionTitle: string; selectionHint: string; nextStep: string; view: string;
     deleteTitle: string; deleteFor: string; deleteConnections: string; deleteData: string; deleteProof: string;
     confirmDelete: string; cancelDelete: string; deleting: string;
   };
   callbacks: {
+    onClickRetry?: () => void;
     onClickAdd: () => void;
     onClickSelect: (id: string) => void;
     onClickView: () => void;
@@ -47,7 +48,7 @@ export default function WebsiteListUI(props: WebsiteListUIProps) {
       <WebsiteListHeading title={t.title} description={t.description} />
       <Button type="button" disabled={unavailable} onClick={props.callbacks.onClickAdd} className={primaryStyle}><Plus className="size-4" aria-hidden="true" />{t.add}</Button>
     </div>
-    {props.status === "loading" ? <LoadingState title={t.loading} /> : props.status === "error" ? <ErrorState title={t.loadError} /> : props.sites.length === 0 ? <EmptyState title={t.empty} description={t.emptyDescription} className="rounded-2xl border-brand-blue/10 py-10" /> : <>
+    {props.status === "loading" ? <LoadingState title={t.loading} /> : props.status === "error" ? <ErrorState title={t.loadError} action={props.callbacks.onClickRetry ? <Button type="button" variant="outline" className={actionStyle} onClick={props.callbacks.onClickRetry}>{t.retry}</Button> : undefined} /> : props.sites.length === 0 ? <EmptyState title={t.empty} description={t.emptyDescription} className="rounded-2xl border-brand-blue/10 py-10" /> : <>
       <Selection {...props} />
       <ul aria-label={t.listLabel} className="grid min-w-0 gap-4 md:grid-cols-2">
         {props.sites.map((site) => <li key={site.id} className="min-w-0"><SiteCard site={site} {...props} /></li>)}

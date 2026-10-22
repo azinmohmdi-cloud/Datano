@@ -12,16 +12,13 @@ test("public website list requires trusted account data and ignores preview or r
   page.on("request", (request) => { if (request.method() !== "GET" || new URL(request.url()).pathname.startsWith("/api/")) requests.push(request.url()); });
   const response = await page.goto("/websites?account=multiple&state=ready&role=admin&site=report-ready");
   expect(response?.status()).toBe(200);
-  await expect(page).toHaveTitle("سایت‌های من | دیتانو");
-  await expect(page.getByText("برای مشاهده سایت‌های خود، وارد شوید.", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL("/login?returnTo=%2Fwebsites");
   await expect(page.locator("[data-website-row]")).toHaveCount(0);
   await expect(page.getByText(firstDomain, { exact: true })).toHaveCount(0);
-  await expect(page.locator('[data-layout="account"]')).toHaveCount(1);
   await expect(context.cookies()).resolves.toEqual([]);
   expect(await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }))).toEqual({ local: {}, session: {} });
-  expect(requests).toEqual([]);
-  await page.getByRole("main").getByRole("link", { name: "ورود به حساب", exact: true }).click();
-  await expect(page).toHaveURL("/login");
+  expect(requests.every(url => new URL(url).pathname === "/api/auth/me")).toBe(true);
+  await expect(page.getByRole("button", { name: "ورود به حساب", exact: true })).toBeVisible();
 });
 
 test("empty account opens the add-site form without creating a site", async ({ page }) => {

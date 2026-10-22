@@ -134,17 +134,13 @@ test("private scenarios show pending, generic conflict, recoverable error and un
 });
 
 test("public add-site access ignores review flags and displays no invented account or registration", async ({ page }) => {
+  await page.route("**/api/auth/me", route => route.fulfill({ status: 401, json: { detail: "Unauthorized" } }));
   const response = await page.goto("/websites/new?state=registered&role=admin&account=single");
   expect(response?.status()).toBe(200);
-  await expect(page).toHaveTitle("افزودن سایت | دیتانو");
-  await expect(page.getByText("برای افزودن سایت، وارد شوید.", { exact: true })).toBeVisible();
-  await expect(page.locator("input, [data-registration-result], [data-canonical-hostname]")).toHaveCount(0);
+  await expect(page).toHaveURL("/login?returnTo=%2Fwebsites%2Fnew");
+  await expect(page.locator("[data-registration-result], [data-canonical-hostname], input[name=websiteURL]")).toHaveCount(0);
   await expect(page.locator('a[href^="/ui-review"]')).toHaveCount(0);
-  await page.getByRole("link", { name: "بازگشت به سایت‌های من", exact: true }).click();
-  await expect(page).toHaveURL("/websites");
-  await page.goto("/websites/new");
-  await page.getByRole("main").getByRole("link", { name: "ورود به حساب", exact: true }).click();
-  await expect(page).toHaveURL("/login");
+  await expect(page.getByRole("button", { name: "ورود به حساب", exact: true })).toBeVisible();
 });
 
 test("form stays readable in Persian RTL, both themes and enlarged text", async ({ page }, testInfo) => {

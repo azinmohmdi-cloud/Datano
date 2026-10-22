@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import DatanoWebsiteList from "@/components/feature/websites/WebsiteList/DatanoWebsiteList";
+import DatanoSessionBoundary from "@/components/feature/identity/SessionBoundary/DatanoSessionBoundary";
 
 export const metadata: Metadata = {
   title: "سایت‌های من",
@@ -9,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function WebsitesPage() {
-  return <DatanoWebsiteList />;
+  return <DatanoSessionBoundary><DatanoWebsiteList /></DatanoSessionBoundary>;
 }
