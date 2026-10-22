@@ -17,6 +17,13 @@ class Config(BaseSettings):
     public_origin: str | None = Field(default=None, alias="PUBLIC_ORIGIN")
     csrf_secret_key: SecretStr | None = Field(default=None, alias="CSRF_SECRET_KEY")
 
+    # BE-019 receipt limits; redirect policy is fixed at three, not configurable.
+    html_fetch_total_seconds: float = Field(default=10, gt=0, le=30, alias="HTML_FETCH_TOTAL_SECONDS")
+    html_fetch_dns_seconds: float = Field(default=3, gt=0, le=10, alias="HTML_FETCH_DNS_SECONDS")
+    html_fetch_connect_seconds: float = Field(default=3, gt=0, le=10, alias="HTML_FETCH_CONNECT_SECONDS")
+    html_fetch_read_seconds: float = Field(default=3, gt=0, le=10, alias="HTML_FETCH_READ_SECONDS")
+    html_fetch_max_bytes: int = Field(default=1048576, gt=0, le=5242880, alias="HTML_FETCH_MAX_BYTES")
+
     admin_email_allowlist: SecretStr | None = Field(default=None, alias="ADMIN_EMAIL_ALLOWLIST", repr=False, exclude=True)
     admin_proof_ip_limit: int = Field(default=10, gt=0, le=2147483646, alias="ADMIN_PROOF_IP_LIMIT")
     admin_proof_window_seconds: int = Field(default=600, gt=0, alias="ADMIN_PROOF_WINDOW_SECONDS")

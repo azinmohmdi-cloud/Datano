@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.1"
-content_hash = "sha256:3e802da135d3eac442a6c8f92d078cc896f485e124187d6135d107f8efd506eb"
+content_hash = "sha256:3804e269f514bedd176a7c4cbc45698ca6774fcbb501c9ed6e3b69a46d9dec7e"
 
 [[metadata.targets]]
 requires_python = "==3.12.*"
@@ -141,7 +141,7 @@ name = "certifi"
 version = "2025.11.12"
 requires_python = ">=3.7"
 summary = "Python package for providing Mozilla's CA Bundle."
-groups = ["dev"]
+groups = ["default", "dev"]
 files = [
     {file = "certifi-2025.11.12-py3-none-any.whl", hash = "sha256:97de8790030bbd5c2d96b7ec782fc2f7820ef8dba6db909ccf95449f2d062d4b"},
     {file = "certifi-2025.11.12.tar.gz", hash = "sha256:d8ab5478f2ecd78af242878415affce761ca6bc54a22a27e026d7c25357c3316"},
@@ -379,10 +379,26 @@ name = "httpcore"
 version = "1.0.9"
 requires_python = ">=3.8"
 summary = "A minimal low-level HTTP client."
-groups = ["dev"]
+groups = ["default", "dev"]
 dependencies = [
     "certifi",
     "h11>=0.16",
+]
+files = [
+    {file = "httpcore-1.0.9-py3-none-any.whl", hash = "sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55"},
+    {file = "httpcore-1.0.9.tar.gz", hash = "sha256:6e34463af53fd2ab5d807f399a9b45ea31c3dfa2276f15a2c3f00afff6e176e8"},
+]
+
+[[package]]
+name = "httpcore"
+version = "1.0.9"
+extras = ["asyncio"]
+requires_python = ">=3.8"
+summary = "A minimal low-level HTTP client."
+groups = ["default"]
+dependencies = [
+    "anyio<5.0,>=4.0",
+    "httpcore==1.0.9",
 ]
 files = [
     {file = "httpcore-1.0.9-py3-none-any.whl", hash = "sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55"},

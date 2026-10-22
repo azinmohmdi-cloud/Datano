@@ -538,8 +538,8 @@ whitespace/control characters, IP representations, local names and invalid IDNA
 are rejected before a permissive parser could normalize them away. Explicit
 matching default ports (HTTP 80 / HTTPS 443) are aliases and disappear from the
 canonical URL. `www`, parent and subdomains remain independent. URL syntax is
-validated here; **DNS, public-address resolution and safe HTML receipt remain
-BE-019**, with actual proof in BE-020. Registration performs no outbound fetch.
+validated here. **BE-019 now provides the safe HTML receipt port and adapter**
+described below; actual proof remains BE-020. Registration performs no outbound fetch.
 
 The BE-017 repository still arbitrates duplicate/expiry rules atomically. A
 repeat by the same owner keeps the original ID, scheme and reservation deadline,
@@ -1267,3 +1267,98 @@ provisioning command. Run the affected checks with:
 ```sh
 pdm run pytest tests/integration/test_persistent_repositories.py tests/integration/test_persistence_migrations.py tests/integration/test_persistent_http.py
 ```
+
+
+## Safe website HTML receipt (BE-019)
+
+`IWebsiteHTMLFetcher` in `app/application/use_cases/website/html.py` returns a
+bounded `WebsiteHTML` (bytes, final URL and content type), or a safe typed
+`HTMLFetchError`. It does not issue a challenge, parse a proof token, verify a
+site, or expose a public fetch endpoint. `get_website_html_fetcher` composes the
+adapter from validated application settings for BE-020. That future use case
+must resolve the current authenticated owner and stored WebsiteAddress before
+calling this port; a submitted URL or HTML result is not authorization.
+
+The infrastructure adapter `SafeWebsiteHTMLFetcher` has these policies:
+
+- Canonical HTTP(S) site addresses only. Start at the HTTPS homepage. An explicitly
+  HTTP-registered site may fall back to HTTP only after a network/TLS failure,
+  within the same total deadline and redirect budget. A DNS/policy/content/status
+  rejection or timeout never enables that fallback. HTTPS registrations never
+  use HTTP. An HTTPS response cannot redirect to HTTP, even for an HTTP registration.
+- Resolve the absolute hostname afresh on every hop and fetch, requesting both
+  address families. Reject an empty answer or any mixed/unsafe answer set before
+  connecting. Only global IPv4/native global-unicast IPv6 is eligible; loopback,
+  private, link-local, CGNAT, multicast, reserved/documentation, mapped, scoped,
+  NAT64/tunnel and conservative special-purpose protocol ranges are rejected.
+  Azure's platform address 168.63.129.16 is also explicitly blocked.
+- Pin TCP to the first validated numeric IP; keep the canonical Host header and
+  TLS SNI/certificate hostname. No second hostname lookup, alternate-IP retry,
+  shared connection reuse or DNS cache exists in the adapter. TLS verification
+  and hostname checking are required, with TLS 1.2 or later.
+- Handle only 301/302/303/307/308 manually, allowing at most three redirects in
+  total. Every redirect must retain the exact canonical hostname (www/subdomains
+  are independent), an allowed scheme/default port and no credentials. Relative
+  paths and queries can redirect within that hostname. Fragments are discarded;
+  loops, malformed/ambiguous URLs, duplicate/missing Location, controls, custom
+  ports and cross-host redirects fail closed. Redirect bodies are not consumed.
+- A fresh low-level HTTPCore pool per hop has no ambient proxy, cookies, browser
+  authentication, Referer or automatic redirects/retries. Only GET is sent.
+- Return only status 200 and explicit text/html or application/xhtml+xml.
+  Request identity encoding and reject compressed responses, so decompression
+  bombs are never expanded. Check Content-Length before receipt and count actual
+  streamed bytes, including chunked/lengthless bodies. Close responses/sockets
+  on success, error, timeout and cancellation; discard partial HTML on failure.
+
+Settings are server-only and listed in `.env.example`:
+
+| Variable | Default | Valid range |
+|---|---|---|
+| `HTML_FETCH_TOTAL_SECONDS` | 10 | >0, <=30 |
+| `HTML_FETCH_DNS_SECONDS` | 3 | >0, <=10 |
+| `HTML_FETCH_CONNECT_SECONDS` | 3 | >0, <=10; TCP, TLS and writes |
+| `HTML_FETCH_READ_SECONDS` | 3 | >0, <=10 per read |
+| `HTML_FETCH_MAX_BYTES` | 1048576 (1 MiB) | 1..5242880 (5 MiB) |
+
+The total deadline includes DNS, redirects, TLS, body receipt and permitted HTTP
+fallback; it is not reset at each hop. The redirect maximum is fixed at three.
+HTTPCore/h11 also bound incomplete HTTP headers to 100 KiB; redirect URLs are
+limited to 2048 characters. These are technical limits, not product plan quotas.
+The system DNS call uses asyncio's resolver executor: cancelling the await prevents
+any subsequent socket connection, but cannot forcibly terminate an OS resolver
+call already executing. Deployment-level egress restrictions remain useful in
+addition to this adapter; do not add a proxy/private-address bypass in production.
+
+`httpcore[asyncio]==1.0.9` is now an explicit runtime dependency, promoted from the
+already locked HTTPX development dependency. PDM updated the default-group
+metadata for it and certifi; no existing version was upgraded and no package was
+installed. Production environments should install from the updated PDM lockfile.
+
+Focused tests (no live external site, public DNS or Google/SMTP dependency):
+
+```sh
+pdm run pytest tests/unit/test_website_html_fetcher.py tests/integration/test_website_html_wire.py -q --tb=short --show-capture=no
+pdm run pytest tests/unit/test_website_html_fetcher.py tests/integration/test_website_html_wire.py \
+  --cov=app.infra.services.website_html_fetcher --cov=app.application.use_cases.website.html \
+  --cov-branch --cov-report=term-missing -q --tb=short --show-capture=no
+# Full suite requires an explicit dedicated datano_test* PostgreSQL database.
+pdm run pytest -q --tb=short --show-capture=no
+pdm lock --check
+```
+
+Real wire fixtures use loopback with ephemeral test certificates. A test-only
+network backend routes already validated numeric destinations to that peer;
+production IP validation and TLS hostname verification are retained. Tests cover
+DNS rebinding/mixed results, special-use IPs, all redirect codes/limits, hostile
+URLs, proxy/cookie isolation, TLS trust/name failures, stalled DNS/TLS/read,
+streaming size, compressed bodies and cleanup. No public URL is fetched in tests.
+See the Persian [BE-019 validation report](docs/validation/BE-019-safe-html.md).
+
+The implementation uses the documented [HTTPCore SNI extension](https://www.encode.io/httpcore/extensions/#sni_hostname),
+[async streaming API](https://www.encode.io/httpcore/async/) and
+[OWASP SSRF guidance](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html).
+The extra special-purpose exclusions are deliberately conservative; some IANA
+protocol/anycast assignments marked globally reachable are also excluded from
+website verification. Reference registries:
+[IANA IPv4](https://www.iana.org/assignments/iana-ipv4-special-registry/),
+[IANA IPv6](https://www.iana.org/assignments/iana-ipv6-special-registry/).
