@@ -448,16 +448,16 @@ Frontend/UI changes and generated-client integration belong to FE-033.
 ## Website model and persistence (BE-017)
 
 `WebsiteEntity`, `IWebsiteRepository` and `SQLWebsiteRepository` add the first
-website storage boundary. No website HTTP route, HTML fetch, challenge issuer or
-Frontend integration is introduced. Those remain BE-018, BE-019, BE-020,
-FE-034 and FE-035 respectively.
+website storage boundary. BE-017 itself adds no HTTP route, HTML fetch, challenge
+issuer or Frontend integration. Website HTTP operations are documented under
+BE-018 below; HTML fetch/proof and Frontend integration remain separate tasks.
 
 - Hostname identity uses lowercase, UTS #46 nontransitional IDNA and removal of
   the final dot. `www`, parent and child hostnames remain separate; `faß.de` does
   not collapse into `fass.de`. Explicit direct dependency `idna>=3.11,<4` reuses
   the already installed/locked 3.11 version; no package version/hash changed.
 - The entity accepts a hostname and explicit `http`/`https` scheme, not a URL.
-  URL parsing belongs to BE-018 and public DNS/SSRF checks to BE-019. Hostname
+  URL parsing is supplied by BE-018 below; public DNS/SSRF checks belong to BE-019. Hostname
   syntax rejects IP forms, local names, credentials, paths and invalid IDNA.
 - A new record is **unverified**, with a 24-hour reservation and no challenge.
   Storage accepts only a 32-byte digest with consistent issue/expiry timestamps;
@@ -509,11 +509,83 @@ pdm run pytest
 See [the Persian BE-017 validation report](docs/validation/BE-017-website-persistence.md)
 for executed results, TDD evidence and scope limits.
 
+## Own website API (BE-018)
+
+These endpoints derive the owner exclusively from the current active opaque
+session. An ordinary User needs no administrative users-CRUD permission; Admin
+receives no exception to website ownership. Query owner hints cannot select an
+account and additional creation-body fields are rejected.
+
+| Endpoint | Request / result |
+| --- | --- |
+| `POST /api/websites/` | Strict JSON `{ "url": "https://example.com/" }`; HTTP 200 and the public website envelope for both a new reservation and an existing same-owner registration |
+| `GET /api/websites/` | Owner-only list, with existing `page`/`size` pagination inside `payload`; stable creation-time/ID ordering, maximum page size 100 |
+| `GET /api/websites/{website_id}` | The owner's current site only; an unknown, foreign or released ID returns the same static HTTP 404 |
+
+All use the existing `{success,message,payload}` envelope. Public website fields
+are `id`, `hostname`, `scheme`, canonical root `url`, `is_verified`,
+`challenge_status`, `reservation_expires_at`, `challenge_expires_at`,
+`verified_at`, `created_at` and `updated_at`. Owner IDs, email, raw proof tokens,
+challenge digests and released history are never serialized. State/expiry
+metadata does not certify successful proof or report readiness. New records are
+unverified and have no issued challenge. Private results and website errors use
+`Cache-Control: no-store`; ordinary route responses also vary by Cookie.
+
+The creation URL must be an HTTP(S) homepage with only an optional root slash.
+Outer whitespace is trimmed. Credential-bearing authorities, custom/mismatched
+ports, path/query/fragment markers (even empty ones), backslashes, internal
+whitespace/control characters, IP representations, local names and invalid IDNA
+are rejected before a permissive parser could normalize them away. Explicit
+matching default ports (HTTP 80 / HTTPS 443) are aliases and disappear from the
+canonical URL. `www`, parent and subdomains remain independent. URL syntax is
+validated here; **DNS, public-address resolution and safe HTML receipt remain
+BE-019**, with actual proof in BE-020. Registration performs no outbound fetch.
+
+The BE-017 repository still arbitrates duplicate/expiry rules atomically. A
+repeat by the same owner keeps the original ID, scheme and reservation deadline,
+including an expired pending record; it does not renew or synthesize a challenge.
+Another owner's live reservation or verified site produces only HTTP 409,
+`Website is unavailable`, with empty details. An expired unverified reservation
+can be replaced with a fresh ID; the old owner cannot read the released record
+and the new owner inherits no proof/history.
+
+The creation use case receives its clock through dependency injection. Serving
+uses PostgreSQL wall time from the same request transaction, avoiding rejection
+of legitimate registrations when the application host clock is slightly ahead
+of the database. No submitted timestamp, owner or verification state is accepted.
+
+Authentication remains the existing opaque cookie; a bearer JWT cannot replace
+it. POST also requires trusted Origin and session-bound `X-CSRF-Token`, enforced
+by the existing global middleware before routing. Missing/invalid/expired/revoked
+sessions and inactive accounts return 401 once CSRF validation succeeds. Invalid
+Origin/CSRF returns 403; invalid URL/strict DTO/pagination returns 422; occupied
+hostname returns 409; foreign/missing website returns 404. DTO/JSON errors omit
+input values, including forbidden credential fields.
+
+No schema revision, dependency/configuration change or new mutation other than
+registration is introduced. Delete/transfer/update/verification routes are not
+part of this API task. The actual OpenAPI has 23 paths; all prior operations and
+schemas remain unchanged. Both ignored Orval targets were regenerated from it,
+and generated consumers, TypeScript and transport were checked. FE-034 still
+owns wiring the approved website UI to these endpoints.
+
+Focused checks require a dedicated `DATANO_TEST_DATABASE_URL`:
+
+```sh
+pdm run pytest tests/unit/test_website_api_use_cases.py tests/integration/test_websites_http.py
+pdm run pytest
+```
+
+See [the Persian BE-018 validation report](docs/validation/BE-018-own-websites-api.md)
+for TDD, exact commands, results and remaining task boundaries.
+
 ## Current implementation
 
 - Auth, users, and roles routes under `/api`; OpenAPI at `/openapi.json`.
 - Owner-bound website model/repository and migration with atomic hostname
-  reservations and digest-only challenge state (BE-017); website APIs remain pending.
+  reservations and digest-only challenge state (BE-017).
+- Session-owned website registration, paginated listing and individual reads with
+  strict URL validation and a public DTO (BE-018); HTML/proof and UI wiring remain pending.
 - Private TLS SMTP adapter and safe CLI smoke tool; one controlled Gmail submission and Inbox receipt verified (BE-011).
 - Shared digest-only, single-use email challenges with durable limits and SMTP delivery gating (BE-012); account-specific HTTP flows remain separate.
 - Three-step password recovery with a reset-only cookie, atomic password/session revocation and no automatic login (BE-013).

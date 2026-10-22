@@ -15,6 +15,11 @@ from app.interface.dto.responses import failure
 from .exceptions import DomainException, RateLimitExceededException
 
 
+def website_privacy_headers(request: Request) -> dict[str, str]:
+    path = getattr(request.scope.get("route"), "path", request.url.path)
+    return {"Cache-Control": "no-store", "Vary": "Cookie"} if path.startswith("/api/websites/") else {}
+
+
 def register_domain_exception_handlers(app):
     """
     Register domain exception handlers with the FastAPI application.
@@ -51,7 +56,8 @@ def register_domain_exception_handlers(app):
         # Return as JSONResponse with the appropriate status code
         return JSONResponse(
             status_code=exc.status_code, content=response_data.model_dump(),
-            headers={"Retry-After":str(exc.retry_after)} if isinstance(exc, RateLimitExceededException) else None,
+            headers={**({"Retry-After": str(exc.retry_after)} if isinstance(exc, RateLimitExceededException) else {}),
+                     **website_privacy_headers(request)},
         )
 
 
@@ -92,7 +98,7 @@ def register_exception_handler(app: FastAPI):
         )
 
         # Return as JSONResponse to ensure proper formatting
-        return JSONResponse(status_code=500, content=response_data.model_dump())
+        return JSONResponse(status_code=500, content=response_data.model_dump(), headers=website_privacy_headers(request))
 
 
 def register_all_exception_handlers(app):
@@ -114,9 +120,11 @@ def register_all_exception_handlers(app):
         if (request.method == "PATCH" and route_path == "/api/auth/me") or (request.method == "POST" and route_path in {"/api/auth/login", "/api/auth/register", "/api/users/",
                 "/api/auth/password-recovery/request", "/api/auth/password-recovery/verify", "/api/auth/password-recovery/reset",
                 "/api/auth/admin-email/request", "/api/auth/admin-email/verify",
-                "/api/auth/email-change/request", "/api/auth/email-change/verify"}):
-            return JSONResponse(status_code=422, content={"detail": [
+                "/api/auth/email-change/request", "/api/auth/email-change/verify", "/api/websites/"}):
+            return JSONResponse(status_code=422, headers=website_privacy_headers(request), content={"detail": [
                 {key: error[key] for key in ("type", "loc", "msg")}
                 for error in exc.errors()
             ]})
-        return await request_validation_exception_handler(request, exc)
+        response = await request_validation_exception_handler(request, exc)
+        response.headers.update(website_privacy_headers(request))
+        return response

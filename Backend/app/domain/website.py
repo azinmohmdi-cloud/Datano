@@ -1,4 +1,5 @@
-"""Hostname identity only; URL parsing, DNS and HTML checks belong to later tasks."""
+"""Hostname and homepage URL identity; no DNS lookup or HTML request."""
+from dataclasses import dataclass
 import re
 
 import idna
@@ -23,3 +24,42 @@ def canonical_hostname(value: str) -> str:
             or re.fullmatch(r"(?:[0-9]+|0x[0-9a-f]+)", labels[-1])):
         raise ValidationException(message, field="hostname")
     return hostname
+
+
+@dataclass(frozen=True)
+class WebsiteAddress:
+    hostname: str
+    scheme: str
+
+    @property
+    def url(self) -> str:
+        return f"{self.scheme}://{self.hostname}/"
+
+
+def parse_website_url(value: str) -> WebsiteAddress:
+    """Reject prohibited original syntax before any URL/IDNA normalization.
+
+    Only the root slash is optional. In particular, /a/.. and even empty query
+    or fragment markers must not disappear through a permissive URL parser.
+    Matching default ports are syntax aliases, never custom fetch destinations.
+    """
+    message = "Invalid website URL"
+    if not isinstance(value, str):
+        raise ValidationException(message, field="url")
+    raw = value.strip()
+    if any(char.isspace() or ord(char) < 32 or ord(char) == 127 or char == "\\" for char in raw):
+        raise ValidationException(message, field="url")
+    match = re.fullmatch(r"(https?)://([^/?#]+)(/?)", raw, re.IGNORECASE)
+    if match is None:
+        raise ValidationException(message, field="url")
+    scheme, authority, _ = match.groups()
+    scheme = scheme.lower()
+    hostname, separator, port = authority.partition(":")
+    if separator and (not port.isascii() or not port.isdecimal()
+                      or port.lstrip("0") != {"http": "80", "https": "443"}[scheme]):
+        raise ValidationException(message, field="url")
+    try:
+        hostname = canonical_hostname(hostname)
+    except ValidationException:
+        raise ValidationException(message, field="url") from None
+    return WebsiteAddress(hostname=hostname, scheme=scheme)
