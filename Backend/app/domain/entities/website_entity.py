@@ -1,10 +1,10 @@
-"""Website identity and persisted verification state; no proof is issued here."""
-from dataclasses import dataclass, field
+"""Website identity and challenge transitions; no token generation or network I/O."""
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import uuid4
 
-from app.domain.error.exceptions import ValidationException
+from app.domain.error.exceptions import ValidationException, WebsiteChallengeException
 from app.domain.website import canonical_hostname
 
 WEBSITE_RESERVATION_LIFETIME = timedelta(hours=24)
@@ -79,6 +79,21 @@ class WebsiteEntity:
         if now >= self.reservation_expires_at:
             return "expired"
         return "pending" if self.challenge_digest is not None else "not-issued"
+
+    def issue_challenge(self, digest: bytes, *, now: datetime) -> "WebsiteEntity":
+        """Replace the current challenge; generation and HTML stay outside domain."""
+        self._validate_instant(now)
+        if self.released_at is not None or self.verified_at is not None or now <= self.updated_at:
+            raise WebsiteChallengeException()
+        return replace(self, challenge_digest=digest, challenge_issued_at=now,
+            challenge_expires_at=now + WEBSITE_RESERVATION_LIFETIME,
+            reservation_expires_at=now + WEBSITE_RESERVATION_LIFETIME, updated_at=now)
+
+    def verify_challenge(self, *, now: datetime) -> "WebsiteEntity":
+        self._validate_instant(now)
+        if self.challenge_status(now) != "pending" or now <= self.updated_at:
+            raise WebsiteChallengeException()
+        return replace(self, verified_at=now, updated_at=now)
 
     @staticmethod
     def _validate_instant(value: datetime) -> None:

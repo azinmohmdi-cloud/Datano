@@ -22,3 +22,14 @@ class Website(BaseModel):
     verified_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+
+class WebsiteProofInput(BaseModel):
+    """Only an empty object: the server chooses owner, URL, token and timestamps."""
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class WebsiteChallenge(BaseModel):
+    website: Website
+    token: str = Field(repr=False, min_length=43, max_length=43, pattern=r"^[A-Za-z0-9_-]{43}$")
+    meta_tag: str = Field(repr=False)

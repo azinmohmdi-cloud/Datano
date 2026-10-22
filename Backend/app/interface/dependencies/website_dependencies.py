@@ -10,6 +10,10 @@ from app.interface.dependencies.database_dependencies import get_database_sessio
 from app.interface.repository.website_repository_interface import IWebsiteRepository
 from app.application.use_cases.website.html import IWebsiteHTMLFetcher
 from app.infra.services.website_html_fetcher import HTMLFetchLimits, SafeWebsiteHTMLFetcher
+from app.application.use_cases.website.proof import IssueWebsiteChallengeUseCase, VerifyWebsiteChallengeUseCase, IWebsiteProofRepository
+from app.infra.repositories.postgres.website_proof_repository import SQLWebsiteProofRepository
+from app.infra.services.website_challenge_tokens import WebsiteChallengeTokens
+from app.infra.services.website_meta_parser import WebsiteMetaParser
 
 
 async def get_website_repository(session: AsyncSession = Depends(get_database_session)) -> IWebsiteRepository:
@@ -39,3 +43,17 @@ def get_get_own_websites_usecase(websites: IWebsiteRepository = Depends(get_webs
 
 def get_get_own_website_usecase(websites: IWebsiteRepository = Depends(get_website_repository)) -> GetOwnWebsiteUseCase:
     return GetOwnWebsiteUseCase(websites)
+
+
+def get_website_proof_repository(request: Request) -> IWebsiteProofRepository:
+    # Independent short transactions, so no account/session lock spans HTML I/O.
+    return SQLWebsiteProofRepository(request.app.state.database)
+
+
+def get_issue_website_challenge_usecase(repository: IWebsiteProofRepository = Depends(get_website_proof_repository)) -> IssueWebsiteChallengeUseCase:
+    return IssueWebsiteChallengeUseCase(repository, WebsiteChallengeTokens())
+
+
+def get_verify_website_challenge_usecase(repository: IWebsiteProofRepository = Depends(get_website_proof_repository),
+    fetcher: IWebsiteHTMLFetcher = Depends(get_website_html_fetcher)) -> VerifyWebsiteChallengeUseCase:
+    return VerifyWebsiteChallengeUseCase(repository, WebsiteChallengeTokens(), fetcher, WebsiteMetaParser())

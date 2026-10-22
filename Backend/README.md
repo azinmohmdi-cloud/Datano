@@ -539,7 +539,8 @@ are rejected before a permissive parser could normalize them away. Explicit
 matching default ports (HTTP 80 / HTTPS 443) are aliases and disappear from the
 canonical URL. `www`, parent and subdomains remain independent. URL syntax is
 validated here. **BE-019 now provides the safe HTML receipt port and adapter**
-described below; actual proof remains BE-020. Registration performs no outbound fetch.
+described below; BE-020 adds the challenge/verification APIs documented at the end.
+Registration performs no outbound fetch.
 
 The BE-017 repository still arbitrates duplicate/expiry rules atomically. A
 repeat by the same owner keeps the original ID, scheme and reservation deadline,
@@ -1275,7 +1276,7 @@ pdm run pytest tests/integration/test_persistent_repositories.py tests/integrati
 bounded `WebsiteHTML` (bytes, final URL and content type), or a safe typed
 `HTMLFetchError`. It does not issue a challenge, parse a proof token, verify a
 site, or expose a public fetch endpoint. `get_website_html_fetcher` composes the
-adapter from validated application settings for BE-020. That future use case
+adapter from validated application settings for BE-020. That use case
 must resolve the current authenticated owner and stored WebsiteAddress before
 calling this port; a submitted URL or HTML result is not authorization.
 
@@ -1362,3 +1363,102 @@ protocol/anycast assignments marked globally reachable are also excluded from
 website verification. Reference registries:
 [IANA IPv4](https://www.iana.org/assignments/iana-ipv4-special-registry/),
 [IANA IPv6](https://www.iana.org/assignments/iana-ipv6-special-registry/).
+
+
+## Website ownership challenges (BE-020)
+
+The two cookie/CSRF-protected POST operations use a strict, required empty JSON
+object (`{}`). The backend derives owner from the opaque session and fetches the
+stored canonical website address; caller-provided owner, URL, token, status or
+expiry is rejected. Existing registration/list/detail contracts are unchanged.
+
+| Path | Success payload |
+|---|---|
+| `/api/websites/{website_id}/challenge` | `{website, token, meta_tag}`; new/rotated challenge, unverified |
+| `/api/websites/{website_id}/verify` | Public `Website`; only after valid safe-fetched head metadata, or an already verified current own record |
+
+Both use the existing `{success,message,payload}` envelope and HTTP 200 on
+success, with `Cache-Control: no-store` and `Vary: Cookie`. The token is a random
+256-bit base64url value (43 characters), exposed only in the successful issuance
+response. `meta_tag` is the exact copyable `<meta name="datano-verification"
+content="...">` for the site's explicit HTML head. The normal Website/list/detail
+payloads never include token, owner ID or digest. There is no GET plaintext-token
+recovery endpoint. Keep the issuance response in transient private UI state;
+FE-035 owns that UI connection, not this task.
+
+Only SHA-256 of a framed, domain-separated account/site/hostname/scheme/token
+context is persisted. Token entropy removes the need for a new HMAC secret or
+password KDF; verification uses constant-time digest comparison. The challenge
+expires exactly 24 hours after issuance, with the existing reservation expiry
+set to that same instant. Reissuing rotates the token and invalidates the former
+proof; an expired reservation can be renewed only while this owner still holds
+the current record. Released/replaced records cannot be revived. Verified sites
+reject new issuance and retain their original verification on repeated verify.
+
+`IssueWebsiteChallengeUseCase` and `VerifyWebsiteChallengeUseCase` orchestrate
+separate crypto, metadata-parser and storage ports. `SQLWebsiteProofRepository`
+owns short transactions. It resolves/locks the current active account and session,
+uses the same advisory hostname lock as reservation replacement, samples database
+wall time after lock waits and applies a state/version compare-and-swap. No
+transaction or account/session lock is held across outbound HTML I/O. After the
+safe BE-019 fetch, session validity, active owner, current record, exact challenge
+and expiry are checked again before verification. Rotating a challenge, logging
+out, expiring a session, deactivating the owner or replacing a reservation while
+the fetch is pending cannot publish a successful proof. Concurrent confirmations
+of the identical challenge are idempotent.
+
+`WebsiteMetaParser` requires one unambiguous matching meta in an explicit, closed
+head. It does not execute JavaScript or load external entities. Body text,
+comments, escaped markup, script/style/title/template/noscript content, duplicate
+proofs/attributes, incomplete or structurally ambiguous heads and unsupported
+encodings fail closed. Head markup that would imply a body transition (such as
+textarea/iframe, non-HTML whitespace or malformed noscript content) is rejected.
+UTF-8 and BOM-based UTF-16/32, explicit UTF-16/32 endianness, ASCII, Latin-1 and
+Windows-1252 are supported; duplicate/unknown charset declarations and UTF-7 are
+rejected. Parsing is bounded by the HTML adapter's 5 MiB maximum configurable
+size. This is a conservative source parser, not a browser DOM or JS renderer;
+place the tag directly in a normal explicit head.
+
+Errors:
+
+- 401: absent, invalid, revoked or expired session / inactive account.
+- 403: Origin/session-bound CSRF failure, before quota or network use.
+- 404: foreign, missing or released website, with the same private response.
+- 409 with `WEBSITE_CHALLENGE_INVALID`: no current pending challenge, wrong meta,
+  expired/rotated state, stale write, or issuance for a verified site.
+- 413/422: oversized body or invalid input; validation excludes raw inputs.
+- 429: shared technical proof quota, with Retry-After.
+- 503: safe HTML receipt or storage unavailable; no provider diagnostics, token
+  or partial verification are returned.
+
+Technical server settings in `.env.example` use the existing PostgreSQL limiter
+with an independent `website-proof` namespace, shared by both operations:
+
+| Variable | Default |
+|---|---|
+| `WEBSITE_PROOF_IP_LIMIT` | 20 |
+| `WEBSITE_PROOF_WINDOW_SECONDS` | 600 |
+| `WEBSITE_PROOF_MAX_BODY_BYTES` | 1024 |
+
+This is a peer security limit, not a product plan quota. The fixed 24-hour token
+lifetime is not configurable. Existing BE-019 network limits/SSRF policy apply;
+no new dependency, migration, private key or frontend design change is required.
+Website proof changes only website ownership state; it does not grant Admin,
+Google property access, integrations, sources or report readiness.
+
+Validation commands (dedicated `datano_test*` PostgreSQL is mandatory):
+
+```sh
+pdm run pytest tests/unit/test_website_challenge.py tests/integration/test_website_proof.py tests/integration/test_website_proof_http.py -q --tb=short --show-capture=no
+pdm run pytest -q --tb=short --show-capture=no
+pdm lock --check
+```
+
+The focused suite includes correct/wrong/expired and rotated proofs, cross-site
+replay, owner isolation, persistence/restart, concurrent writes, logout/deactivation/
+replacement during suspended HTML I/O, cookie/CSRF/input/rate boundaries, and
+actual loopback TLS HTML receipt through the BE-019 adapter to the real proof API
+and PostgreSQL. The wire fixture's public-IP routing override is test-only;
+production SSRF and certificate checks remain enabled. No live external website,
+SMTP or Google provider is needed. See the Persian
+[BE-020 validation report](docs/validation/BE-020-website-challenge.md).

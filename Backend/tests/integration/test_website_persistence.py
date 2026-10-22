@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import asdict, replace
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi_pagination import Params
@@ -28,6 +28,13 @@ async def owners(persistent_database):
     return users
 
 
+@pytest.fixture
+async def website_now(persistent_database):
+    # Claims use PostgreSQL's clock; host/VM clock skew must not create future fixtures.
+    async with persistent_database.transaction() as session:
+        return await session.scalar(select(func.clock_timestamp()))
+
+
 def proof_state(site, *, verified=False):
     instant = site.created_at + timedelta(microseconds=1)
     return replace(site, challenge_digest=b"d" * 32, challenge_issued_at=instant,
@@ -53,8 +60,8 @@ async def test_website_storage_is_available_after_migration(persistent_database)
         }
 
 
-async def test_canonical_websites_and_challenges_survive_pool_restart(persistent_database, isolated_postgres_url, owners):
-    source = WebsiteEntity.create(owners[0].id, "BÜCHER.de.", scheme="http")
+async def test_canonical_websites_and_challenges_survive_pool_restart(persistent_database, isolated_postgres_url, owners, website_now):
+    source = WebsiteEntity.create(owners[0].id, "BÜCHER.de.", scheme="http", now=website_now)
     async with persistent_database.transaction() as session:
         repo = SQLWebsiteRepository(session)
         assert isinstance(repo, IWebsiteRepository)
@@ -77,27 +84,27 @@ async def test_canonical_websites_and_challenges_survive_pool_restart(persistent
         await reopened.dispose()
 
 
-async def test_same_owner_reuses_identity_without_refreshing_scheme_or_reservation(persistent_database, owners):
-    first = WebsiteEntity.create(owners[0].id, "Example.COM")
+async def test_same_owner_reuses_identity_without_refreshing_scheme_or_reservation(persistent_database, owners, website_now):
+    first = WebsiteEntity.create(owners[0].id, "Example.COM", now=website_now)
     async with persistent_database.transaction() as session:
         repo = SQLWebsiteRepository(session)
         assert await repo.claim(first) == first
     async with persistent_database.transaction() as session:
-        reused = await SQLWebsiteRepository(session).claim(WebsiteEntity.create(owners[0].id, "example.com.", scheme="http"))
+        reused = await SQLWebsiteRepository(session).claim(WebsiteEntity.create(owners[0].id, "example.com.", scheme="http", now=website_now))
         assert reused == first
         assert await session.scalar(select(func.count()).select_from(WebsiteRow)) == 1
 
 
 @pytest.mark.parametrize("verified", [False, True])
-async def test_other_owner_cannot_replace_live_or_verified_claim(persistent_database, owners, verified):
-    created = datetime.now(UTC) - (timedelta(days=10) if verified else timedelta())
+async def test_other_owner_cannot_replace_live_or_verified_claim(persistent_database, owners, verified, website_now):
+    created = website_now - (timedelta(days=10) if verified else timedelta())
     original = WebsiteEntity.create(owners[0].id, "example.com", now=created)
     if verified:
         original = proof_state(original, verified=True)
     await insert_raw(persistent_database, original)
     with pytest.raises(ConflictException) as error:
         async with persistent_database.transaction() as session:
-            await SQLWebsiteRepository(session).claim(WebsiteEntity.create(owners[1].id, "EXAMPLE.COM."))
+            await SQLWebsiteRepository(session).claim(WebsiteEntity.create(owners[1].id, "EXAMPLE.COM.", now=website_now))
     assert str(error.value) == "Website is unavailable"
     assert error.value.details == {}
     async with persistent_database.transaction() as session:
@@ -105,10 +112,10 @@ async def test_other_owner_cannot_replace_live_or_verified_claim(persistent_data
 
 
 @pytest.mark.parametrize("age", [timedelta(hours=24), timedelta(hours=25)])
-async def test_expired_reservation_replacement_has_new_identity_and_no_inherited_proof(persistent_database, owners, age):
-    original = WebsiteEntity.create(owners[0].id, "example.com", now=datetime.now(UTC) - age)
+async def test_expired_reservation_replacement_has_new_identity_and_no_inherited_proof(persistent_database, owners, age, website_now):
+    original = WebsiteEntity.create(owners[0].id, "example.com", now=website_now - age)
     await insert_raw(persistent_database, original)
-    replacement = WebsiteEntity.create(owners[1].id, "example.com")
+    replacement = WebsiteEntity.create(owners[1].id, "example.com", now=website_now)
     async with persistent_database.transaction() as session:
         assert await SQLWebsiteRepository(session).claim(replacement) == replacement
     async with persistent_database.transaction() as session:
@@ -126,15 +133,15 @@ async def test_expired_reservation_replacement_has_new_identity_and_no_inherited
             proof_state(original, verified=True), expected_updated_at=original.updated_at) is None
 
 
-async def test_same_owner_expired_registration_is_idempotent(persistent_database, owners):
-    original = WebsiteEntity.create(owners[0].id, "example.com", now=datetime.now(UTC) - timedelta(days=2))
+async def test_same_owner_expired_registration_is_idempotent(persistent_database, owners, website_now):
+    original = WebsiteEntity.create(owners[0].id, "example.com", now=website_now - timedelta(days=2))
     await insert_raw(persistent_database, original)
     async with persistent_database.transaction() as session:
-        assert await SQLWebsiteRepository(session).claim(WebsiteEntity.create(owners[0].id, "example.com")) == original
+        assert await SQLWebsiteRepository(session).claim(WebsiteEntity.create(owners[0].id, "example.com", now=website_now)) == original
 
 
-async def test_www_and_subdomains_have_independent_owners_and_multiple_sites_are_allowed(persistent_database, owners):
-    sites = [WebsiteEntity.create(owners[i % 2].id, host) for i, host in enumerate(
+async def test_www_and_subdomains_have_independent_owners_and_multiple_sites_are_allowed(persistent_database, owners, website_now):
+    sites = [WebsiteEntity.create(owners[i % 2].id, host, now=website_now) for i, host in enumerate(
         ["example.com", "www.example.com", "shop.example.com", "faß.de", "fass.de"])]
     async with persistent_database.transaction() as session:
         repo = SQLWebsiteRepository(session)
@@ -145,8 +152,8 @@ async def test_www_and_subdomains_have_independent_owners_and_multiple_sites_are
         assert (await SQLWebsiteRepository(session).get_by_owner(owners[1].id, Params())).total == 2
 
 
-async def test_owner_pagination_is_bounded_stable_and_has_no_foreign_records(persistent_database, owners):
-    now = datetime.now(UTC) - timedelta(seconds=5)
+async def test_owner_pagination_is_bounded_stable_and_has_no_foreign_records(persistent_database, owners, website_now):
+    now = website_now - timedelta(seconds=5)
     sites = sorted([WebsiteEntity.create(owners[0].id, f"site{i}.example", now=now) for i in range(5)], key=lambda site: site.id)
     async with persistent_database.transaction() as session:
         repo = SQLWebsiteRepository(session)
@@ -164,10 +171,10 @@ async def test_owner_pagination_is_bounded_stable_and_has_no_foreign_records(per
 
 
 @pytest.mark.parametrize("same_owner,expired", [(False, False), (True, False), (False, True)])
-async def test_concurrent_registration_serializes_canonical_claims(persistent_database, owners, same_owner, expired):
+async def test_concurrent_registration_serializes_canonical_claims(persistent_database, owners, same_owner, expired, website_now):
     if expired:
         await insert_raw(persistent_database, WebsiteEntity.create(
-            owners[0].id, "example.com", now=datetime.now(UTC) - timedelta(days=2)))
+            owners[0].id, "example.com", now=website_now - timedelta(days=2)))
         # Both contenders must be new claimants, independent from the expired owner.
         third = UserEntity.create(first_name="Third", last_name="Owner", email="third@example.test",
                                   username="owner-third", hashed_password="test-only-hash")
@@ -183,7 +190,7 @@ async def test_concurrent_registration_serializes_canonical_claims(persistent_da
             repo = SQLWebsiteRepository(session)
             assert (await repo.get_by_owner(contenders[index].id, Params())).total == 0
             await barrier.wait()
-            return await repo.claim(WebsiteEntity.create(contenders[index].id, ["EXAMPLE.COM.", "example.com"][index]))
+            return await repo.claim(WebsiteEntity.create(contenders[index].id, ["EXAMPLE.COM.", "example.com"][index], now=website_now))
 
     results = await asyncio.wait_for(asyncio.gather(attempt(0), attempt(1), return_exceptions=True), 15)
     if same_owner:
@@ -196,12 +203,12 @@ async def test_concurrent_registration_serializes_canonical_claims(persistent_da
         assert await session.scalar(select(func.count()).select_from(WebsiteRow).where(WebsiteRow.released_at.is_(None))) == 1
 
 
-async def test_raw_concurrent_inserts_are_protected_by_database_unique_index(persistent_database, owners):
+async def test_raw_concurrent_inserts_are_protected_by_database_unique_index(persistent_database, owners, website_now):
     barrier = asyncio.Barrier(2)
     async def attempt(index):
         async with persistent_database.transaction() as session:
             await barrier.wait()
-            session.add(WebsiteRow(**asdict(WebsiteEntity.create(owners[index].id, "example.com"))))
+            session.add(WebsiteRow(**asdict(WebsiteEntity.create(owners[index].id, "example.com", now=website_now))))
             await session.flush()
     results = await asyncio.wait_for(asyncio.gather(attempt(0), attempt(1), return_exceptions=True), 15)
     assert sum(result is None for result in results) == 1
@@ -210,11 +217,11 @@ async def test_raw_concurrent_inserts_are_protected_by_database_unique_index(per
 
 
 @pytest.mark.parametrize("existing_expired", [False, True])
-async def test_failed_claim_rolls_back_new_row_and_reservation_release(persistent_database, owners, existing_expired):
-    original = WebsiteEntity.create(owners[0].id, "example.com", now=datetime.now(UTC) - timedelta(days=2))
+async def test_failed_claim_rolls_back_new_row_and_reservation_release(persistent_database, owners, existing_expired, website_now):
+    original = WebsiteEntity.create(owners[0].id, "example.com", now=website_now - timedelta(days=2))
     if existing_expired:
         await insert_raw(persistent_database, original)
-    candidate = WebsiteEntity.create(owners[1].id, "example.com")
+    candidate = WebsiteEntity.create(owners[1].id, "example.com", now=website_now)
     with pytest.raises(RuntimeError, match="abort"):
         async with persistent_database.transaction() as session:
             await SQLWebsiteRepository(session).claim(candidate)
@@ -225,20 +232,20 @@ async def test_failed_claim_rolls_back_new_row_and_reservation_release(persisten
         assert await repo.get_by_id(original.id, owners[0].id) == (original if existing_expired else None)
 
 
-async def test_missing_owner_is_safe_and_failed_replacement_restores_previous_record(persistent_database, owners):
-    original = WebsiteEntity.create(owners[0].id, "example.com", now=datetime.now(UTC) - timedelta(days=2))
+async def test_missing_owner_is_safe_and_failed_replacement_restores_previous_record(persistent_database, owners, website_now):
+    original = WebsiteEntity.create(owners[0].id, "example.com", now=website_now - timedelta(days=2))
     await insert_raw(persistent_database, original)
     with pytest.raises(ResourceNotFoundException) as error:
         async with persistent_database.transaction() as session:
-            await SQLWebsiteRepository(session).claim(WebsiteEntity.create("missing-owner", "example.com"))
+            await SQLWebsiteRepository(session).claim(WebsiteEntity.create("missing-owner", "example.com", now=website_now))
     assert "SQL" not in str(error.value) and "missing-owner" not in str(error.value)
     async with persistent_database.transaction() as session:
         assert await SQLWebsiteRepository(session).get_by_id(original.id, owners[0].id) == original
 
 
 @pytest.mark.parametrize("change", ["owner", "hostname", "scheme", "created", "stale"])
-async def test_verification_save_rejects_foreign_stale_or_changed_identity(persistent_database, owners, change):
-    site = WebsiteEntity.create(owners[0].id, "example.com")
+async def test_verification_save_rejects_foreign_stale_or_changed_identity(persistent_database, owners, change, website_now):
+    site = WebsiteEntity.create(owners[0].id, "example.com", now=website_now)
     async with persistent_database.transaction() as session:
         await SQLWebsiteRepository(session).claim(site)
     pending = proof_state(site)
@@ -252,8 +259,8 @@ async def test_verification_save_rejects_foreign_stale_or_changed_identity(persi
         assert await SQLWebsiteRepository(session).get_by_id(site.id, owners[0].id) == site
 
 
-async def test_save_verification_preserves_proof_and_rejects_stale_or_terminal_writes(persistent_database, owners):
-    site = WebsiteEntity.create(owners[0].id, "example.com")
+async def test_save_verification_preserves_proof_and_rejects_stale_or_terminal_writes(persistent_database, owners, website_now):
+    site = WebsiteEntity.create(owners[0].id, "example.com", now=website_now)
     async with persistent_database.transaction() as session:
         repo = SQLWebsiteRepository(session)
         await repo.claim(site)
@@ -288,8 +295,8 @@ async def test_save_verification_preserves_proof_and_rejects_stale_or_terminal_w
     ("verified_at = created_at", "23514"),
     ("released_at = created_at - interval '1 second'", "23514"),
 ])
-async def test_database_rejects_invalid_state_without_domain_prechecks(persistent_database, owners, assignment, code):
-    site = WebsiteEntity.create(owners[0].id, "example.com")
+async def test_database_rejects_invalid_state_without_domain_prechecks(persistent_database, owners, assignment, code, website_now):
+    site = WebsiteEntity.create(owners[0].id, "example.com", now=website_now)
     await insert_raw(persistent_database, site)
     with pytest.raises(IntegrityError) as error:
         async with persistent_database.transaction() as session:
@@ -299,8 +306,8 @@ async def test_database_rejects_invalid_state_without_domain_prechecks(persisten
         assert await SQLWebsiteRepository(session).get_by_id(site.id, owners[0].id) == site
 
 
-async def test_owner_deletion_is_restricted_instead_of_transferring_or_orphaning_site(persistent_database, owners):
-    site = WebsiteEntity.create(owners[0].id, "example.com")
+async def test_owner_deletion_is_restricted_instead_of_transferring_or_orphaning_site(persistent_database, owners, website_now):
+    site = WebsiteEntity.create(owners[0].id, "example.com", now=website_now)
     await insert_raw(persistent_database, site)
     with pytest.raises(IntegrityError) as error:
         async with persistent_database.transaction() as session:
@@ -311,10 +318,10 @@ async def test_owner_deletion_is_restricted_instead_of_transferring_or_orphaning
 
 
 @pytest.mark.parametrize("age", [timedelta(days=2), -timedelta(days=1)])
-async def test_invalid_candidate_cannot_release_an_expired_claim_even_when_caught(persistent_database, owners, age):
-    original = WebsiteEntity.create(owners[0].id, "example.com", now=datetime.now(UTC) - timedelta(days=2))
+async def test_invalid_candidate_cannot_release_an_expired_claim_even_when_caught(persistent_database, owners, age, website_now):
+    original = WebsiteEntity.create(owners[0].id, "example.com", now=website_now - timedelta(days=2))
     await insert_raw(persistent_database, original)
-    candidate = WebsiteEntity.create(owners[1].id, "example.com", now=datetime.now(UTC) - age)
+    candidate = WebsiteEntity.create(owners[1].id, "example.com", now=website_now - age)
     async with persistent_database.transaction() as session:
         repo = SQLWebsiteRepository(session)
         with pytest.raises(ValidationException):
@@ -323,8 +330,8 @@ async def test_invalid_candidate_cannot_release_an_expired_claim_even_when_caugh
 
 
 @pytest.mark.parametrize("state", ["pending", "released", "updated"])
-async def test_claim_cannot_insert_preexisting_verification_or_lifecycle_state(persistent_database, owners, state):
-    site = WebsiteEntity.create(owners[0].id, "example.com")
+async def test_claim_cannot_insert_preexisting_verification_or_lifecycle_state(persistent_database, owners, state, website_now):
+    site = WebsiteEntity.create(owners[0].id, "example.com", now=website_now)
     if state == "pending":
         site = proof_state(site)
     elif state == "released":
@@ -338,8 +345,8 @@ async def test_claim_cannot_insert_preexisting_verification_or_lifecycle_state(p
         assert (await SQLWebsiteRepository(session).get_by_owner(owners[0].id, Params())).total == 0
 
 
-async def test_primary_key_conflict_is_translated_without_exposing_driver_details(persistent_database, owners):
-    site = WebsiteEntity.create(owners[0].id, "example.com")
+async def test_primary_key_conflict_is_translated_without_exposing_driver_details(persistent_database, owners, website_now):
+    site = WebsiteEntity.create(owners[0].id, "example.com", now=website_now)
     await insert_raw(persistent_database, site)
     with pytest.raises(ConflictException) as error:
         async with persistent_database.transaction() as session:

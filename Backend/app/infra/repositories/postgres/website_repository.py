@@ -34,14 +34,18 @@ def website_constraints() -> Iterator[None]:
         raise
 
 
+async def lock_website_hostname(session: AsyncSession, hostname: str) -> None:
+    key = int.from_bytes(sha256(("datano:website:" + hostname).encode("ascii")).digest()[:8], signed=True)
+    await session.execute(select(func.pg_advisory_xact_lock(key)))
+
+
 class SQLWebsiteRepository(IWebsiteRepository):
     """Caller owns the transaction; hostname locks last until its completion."""
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
     async def _lock_hostname(self, hostname: str) -> None:
-        key = int.from_bytes(sha256(("datano:website:" + hostname).encode("ascii")).digest()[:8], signed=True)
-        await self.session.execute(select(func.pg_advisory_xact_lock(key)))
+        await lock_website_hostname(self.session, hostname)
 
     async def claim(self, candidate: WebsiteEntity) -> WebsiteEntity:
         if (candidate.challenge_digest is not None or candidate.verified_at is not None

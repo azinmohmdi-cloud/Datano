@@ -199,6 +199,12 @@ class ServiceUnavailableException(DomainException):
         )
 
 
+class WebsiteChallengeException(DomainException):
+    def __init__(self):
+        super().__init__("Website challenge is invalid or no longer current",
+            error_code="WEBSITE_CHALLENGE_INVALID", status_code=status.HTTP_409_CONFLICT)
+
+
 class LegacyAuthenticationRetiredException(DomainException):
     def __init__(self):
         super().__init__("Legacy token authentication is retired; sign in again",

@@ -23,6 +23,9 @@ class Config(BaseSettings):
     html_fetch_connect_seconds: float = Field(default=3, gt=0, le=10, alias="HTML_FETCH_CONNECT_SECONDS")
     html_fetch_read_seconds: float = Field(default=3, gt=0, le=10, alias="HTML_FETCH_READ_SECONDS")
     html_fetch_max_bytes: int = Field(default=1048576, gt=0, le=5242880, alias="HTML_FETCH_MAX_BYTES")
+    website_proof_ip_limit: int = Field(default=20, gt=0, le=2147483646, alias="WEBSITE_PROOF_IP_LIMIT")
+    website_proof_window_seconds: int = Field(default=600, gt=0, alias="WEBSITE_PROOF_WINDOW_SECONDS")
+    website_proof_max_body_bytes: int = Field(default=1024, gt=0, alias="WEBSITE_PROOF_MAX_BODY_BYTES")
 
     admin_email_allowlist: SecretStr | None = Field(default=None, alias="ADMIN_EMAIL_ALLOWLIST", repr=False, exclude=True)
     admin_proof_ip_limit: int = Field(default=10, gt=0, le=2147483646, alias="ADMIN_PROOF_IP_LIMIT")
