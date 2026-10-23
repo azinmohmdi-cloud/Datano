@@ -1,7 +1,7 @@
 """Persistence models, separate from HTTP DTOs and domain entities."""
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, Index, Integer, LargeBinary, String, Table, Text, text
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, ForeignKeyConstraint, Index, Integer, LargeBinary, String, Table, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -42,6 +42,7 @@ class RoleRow(Base):
 class WebsiteRow(Base):
     __tablename__ = "websites"
     __table_args__ = (
+        UniqueConstraint("id", "owner_id", name="uq_websites_id_owner"),
         CheckConstraint("length(btrim(id)) > 0 AND length(btrim(owner_id)) > 0", name="identifiers_valid"),
         CheckConstraint(
             r"length(hostname) <= 253 AND hostname ~ '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$' "
@@ -74,6 +75,46 @@ class WebsiteRow(Base):
     challenge_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class IntegrationRow(Base):
+    __tablename__ = "integrations"
+    __table_args__ = (
+        ForeignKeyConstraint(["website_id", "owner_id"], ["websites.id", "websites.owner_id"],
+            name="fk_integrations_website_owner", ondelete="RESTRICT"),
+        CheckConstraint("octet_length(id) BETWEEN 1 AND 128 AND length(btrim(id)) > 0 "
+            "AND id !~ '[[:cntrl:]]' AND octet_length(owner_id) BETWEEN 1 AND 128 "
+            "AND length(btrim(owner_id)) > 0 AND owner_id !~ '[[:cntrl:]]' "
+            "AND octet_length(website_id) BETWEEN 1 AND 128 AND length(btrim(website_id)) > 0 "
+            "AND website_id !~ '[[:cntrl:]]'", name="identifiers_valid"),
+        CheckConstraint("source IN ('ga4', 'gsc', 'ads')", name="source_valid"),
+        CheckConstraint("octet_length(property_id) BETWEEN 1 AND 2048 AND length(btrim(property_id)) > 0 "
+            "AND property_id !~ '[[:cntrl:]]'", name="property_valid"),
+        CheckConstraint("created_at <= updated_at AND (retired_at IS NULL OR retired_at = updated_at)", name="timestamps_valid"),
+        CheckConstraint("revision > 0", name="revision_valid"),
+        Index("uq_integrations_current_source", "website_id", "source", unique=True,
+            postgresql_where=text("retired_at IS NULL")),
+    )
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    owner_id: Mapped[str] = mapped_column(Text)
+    website_id: Mapped[str] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(3))
+    property_id: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revision: Mapped[int] = mapped_column(Integer)
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class IntegrationCredentialRow(Base):
+    __tablename__ = "integration_credentials"
+    __table_args__ = (
+        CheckConstraint("octet_length(ciphertext) BETWEEN 30 AND 16413 AND get_byte(ciphertext, 0) = 1", name="envelope_valid"),
+    )
+
+    integration_id: Mapped[str] = mapped_column(Text, ForeignKey("integrations.id", ondelete="CASCADE"), primary_key=True)
+    ciphertext: Mapped[bytes] = mapped_column(LargeBinary)
 
 
 class AdminGrantRow(Base):

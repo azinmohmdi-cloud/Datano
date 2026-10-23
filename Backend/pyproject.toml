@@ -19,6 +19,7 @@ dependencies = [
     "argon2-cffi<27,>=25.1",
     "idna<4,>=3.11",
     "httpcore[asyncio]==1.0.9",
+    "cryptography<47,>=46.0.3",
 ]
 
 requires-python = "==3.12.*"

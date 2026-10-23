@@ -16,6 +16,10 @@ class Config(BaseSettings):
     database_url: SecretStr | None = Field(default=None, alias="DATABASE_URL")
     public_origin: str | None = Field(default=None, alias="PUBLIC_ORIGIN")
     csrf_secret_key: SecretStr | None = Field(default=None, alias="CSRF_SECRET_KEY")
+    # Independent encryption key, outside database/backups and public configuration.
+    # Missing is allowed only before encrypted integration records exist.
+    integration_credential_key: SecretStr | None = Field(default=None,
+        alias="INTEGRATION_CREDENTIAL_KEY", repr=False, exclude=True)
 
     # BE-019 receipt limits; redirect policy is fixed at three, not configurable.
     html_fetch_total_seconds: float = Field(default=10, gt=0, le=30, alias="HTML_FETCH_TOTAL_SECONDS")

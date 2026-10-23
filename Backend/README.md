@@ -580,6 +580,99 @@ pdm run pytest
 See [the Persian BE-018 validation report](docs/validation/BE-018-own-websites-api.md)
 for TDD, exact commands, results and remaining task boundaries.
 
+## Integration persistence and encrypted credentials (BE-021)
+
+`0010_integrations` adds `integrations` and `integration_credentials` after the
+website revision. Upgrade the intended environment with the existing Alembic
+workflow before starting the server; there is no automatic schema creation.
+The migration adds a composite website/owner foreign key and a partial unique
+index allowing one current selection per website/source (`ga4`, `gsc`, `ads`).
+It does not add analytics tables, OAuth routes or provider discovery.
+
+`IntegrationEntity` contains only metadata: identity, owner, website, source,
+opaque property/account ID, UTC timestamps, revision and retirement timestamp.
+The separate credential row contains only the integration ID and a versioned
+authenticated ciphertext. No encryption key or plaintext token is in SQL.
+Only the durable refresh token is stored; access tokens remain transient.
+Resource IDs are preserved exactly, not lowercased or interpreted as URLs here.
+Provider permission and website association must be checked by the later trusted
+provider use cases; a persistence record alone never grants Google access.
+
+The internal `IIntegrationRepository` port and `SQLIntegrationRepository` provide:
+
+- `get_active(owner_id, website_id, source)`: current metadata only.
+- `get_by_id(owner_id, website_id, integration_id)`: owner-scoped metadata,
+  including retired identities for historical references.
+- `save_selection(..., credential, expected=observed_metadata)`: atomic
+  compare-and-swap selection. `expected=None` requires no current selection.
+  A conflict must be surfaced; silently rereading and overwriting defeats its
+  stale-action protection. Capture the expected state for the authorized action.
+- `get_credential(owner_id, website_id, integration_id)`: explicit secret access
+  for a current selection only. Never serialize its result into an HTTP response.
+
+Every operation requires the active owner and a verified, unreleased own website.
+Foreign/missing/inaccessible websites produce the same safe not-found error.
+Writes and secret reads lock account, canonical hostname and website in the
+existing order. The caller owns the short transaction; do not keep it open across
+provider HTTP calls. Future HTTP consumers must supply the trusted server identity
+and check the live session, not accept a submitted owner ID. Future jobs must
+recheck authorization/selection immediately before using credentials.
+
+Renewing credentials for the same property keeps the integration ID and advances
+the revision. Passing `credential=None` preserves that property's refresh token
+when the provider omits it; a new property requires an explicit credential.
+Switching A -> B retires A, deletes A's local encrypted credential and creates B
+with a fresh integration ID. Switching back to A creates another fresh ID.
+Old metadata and future history foreign keys are never moved or merged. This is
+a storage primitive, not the public disconnect/replacement workflow in BE-034;
+it does not revoke provider grants or stop jobs that have not yet been built.
+
+### Private encryption key
+
+Provision **INTEGRATION_CREDENTIAL_KEY** privately on the backend: canonical padded
+base64url encoding of exactly 32 independently generated random bytes. Keep it in
+the deployment secret store, separately from SQL/database backups and from CSRF,
+email-code and legacy JWT keys. `.env.example` has a commented placeholder only.
+Never use a `NEXT_PUBLIC_*` variable, print it into a report, or commit it.
+
+The AES-256-GCM implementation uses the existing `cryptography==46.0.3` resolution,
+now declared directly as a runtime dependency; no installed version was changed.
+Each encryption has a fresh random 12-byte nonce and a full authentication tag.
+Associated data binds the envelope to the version, integration ID, owner, site,
+source, property and revision. Tampering, ciphertext swaps, stale revision replay,
+wrong keys and invalid plaintext fail with a fixed credential-unavailable error.
+The token is excluded from object repr; public metadata contains no secret fields.
+
+Startup validates a supplied key and requires the new schema. A missing key is
+allowed before any credential rows exist, so existing identity/website flows can
+run before Google setup. Once credentials exist, startup without a key fails.
+Constructing the integration dependency always requires the explicit key; there
+is no default or plaintext fallback. A well-formed but wrong key is detected when
+decrypting an envelope, not by a full-table decrypt during startup.
+
+This version supports one deployment key, not automatic key rotation. Preserve
+the original key in an independent secure recovery process. Changing or losing
+it makes existing envelopes unreadable; simply generating a new key does not
+recover them. Any rotation requires an explicitly planned re-encryption/migration
+or fresh provider consent. Database backup alone cannot restore credentials.
+
+The downgrade to `0009_websites` destroys BE-021 integration/credential records
+only and removes its composite constraint; previous website/identity data are
+preserved. Back up and authorize a downgrade separately; it is not a token-recovery
+procedure. Automated upgrade/downgrade checks use disposable test schemas only.
+
+```sh
+pdm run pytest tests/unit/test_integration_credentials.py tests/unit/test_integration_entity.py tests/unit/test_integration_settings.py tests/unit/test_integration_storage_errors.py tests/integration/test_integration_persistence.py tests/integration/test_integration_migration.py -q --tb=short --show-capture=no
+pdm run pytest -q --tb=short --show-capture=no
+pdm lock --check
+```
+
+Real PostgreSQL with a dedicated `DATANO_TEST_DATABASE_URL` is required. The tests
+use synthetic provider tokens and an isolated key; they do not claim live OAuth
+or Google API acceptance. Actual OpenAPI is unchanged, so no frontend client
+regeneration or UI change is required. See the Persian
+[BE-021 validation report](docs/validation/BE-021-integration-persistence.md).
+
 ## Current implementation
 
 - Auth, users, and roles routes under `/api`; OpenAPI at `/openapi.json`.

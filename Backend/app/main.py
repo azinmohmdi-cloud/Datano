@@ -13,12 +13,13 @@ from app.infra.core.config import Config, config
 from app.infra.core.logging import register_logger
 from app.infra.database.bootstrap import ensure_required_roles
 from app.infra.database.connection import Database
-from app.infra.database.models import AdminGrantRow, RecoveryGrantRow, RegistrationAttemptRow, SessionRow, WebsiteRow
+from app.infra.database.models import AdminGrantRow, IntegrationCredentialRow, IntegrationRow, RecoveryGrantRow, RegistrationAttemptRow, SessionRow, WebsiteRow
 from app.interface.controller import api_router
 from app.interface.dependencies.session_dependencies import session_policy
 from app.infra.services.csrf_service import CsrfService
 from app.interface.csrf import document_csrf
 from app.infra.services.smtp_email_service import SMTPEmailSender
+from app.infra.services.integration_credentials import AESCredentialCipher
 
 
 def create_app(
@@ -30,6 +31,8 @@ def create_app(
     async def lifespan(application: FastAPI):
         session_policy(application.state.settings)
         CsrfService.from_config(application.state.settings)
+        if application.state.settings.integration_credential_key is not None:
+            AESCredentialCipher.from_config(application.state.settings)
         # Validate enabled mail configuration before opening the database. No mail
         # is sent and no SMTP connection is made during application startup.
         email_sender = SMTPEmailSender(application.state.settings) if application.state.settings.smtp_enabled else None
@@ -45,6 +48,11 @@ def create_app(
                     await session.execute(select(RecoveryGrantRow).limit(0))
                     await session.execute(select(AdminGrantRow).limit(0))
                     await session.execute(select(WebsiteRow).limit(0))
+                    await session.execute(select(IntegrationRow).limit(0))
+                    await session.execute(select(IntegrationCredentialRow).limit(0))
+                    if (application.state.settings.integration_credential_key is None
+                            and await session.scalar(select(IntegrationCredentialRow.integration_id).limit(1)) is not None):
+                        raise RuntimeError("INTEGRATION_CREDENTIAL_KEY is required for stored integrations")
             except ProgrammingError as error:
                 if getattr(error.orig, "sqlstate", None) in {"42P01", "42703"}:
                     raise RuntimeError(

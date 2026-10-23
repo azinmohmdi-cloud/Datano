@@ -35,8 +35,9 @@ async def test_upgrade_from_prior_revision_preserves_all_existing_rows_and_downg
             snapshots = {table: [dict(row) for row in (await connection.execute(text("SELECT * FROM " + table))).mappings()] for table in tables}
             await connection.run_sync(migrate)
             await connection.run_sync(migrate)
-            assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == "0009_websites"
-            assert set(await connection.run_sync(lambda sync: inspect(sync).get_table_names())) == tables | {"alembic_version", "websites"}
+            assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == "0010_integrations"
+            assert set(await connection.run_sync(lambda sync: inspect(sync).get_table_names())) == tables | {
+                "alembic_version", "websites", "integrations", "integration_credentials"}
             assert await connection.run_sync(lambda sync: compare_metadata(MigrationContext.configure(sync), Base.metadata)) == []
             for table, before in snapshots.items():
                 assert [dict(row) for row in (await connection.execute(text("SELECT * FROM " + table))).mappings()] == before

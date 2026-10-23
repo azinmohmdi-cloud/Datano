@@ -4,6 +4,7 @@ from .refresh_token_entity import RefreshTokenEntity
 from .role_entity import RoleEntity
 from .user_entity import UserEntity
 from .website_entity import WebsiteEntity
+from .integration_entity import IntegrationEntity
 
 __all__ = [
     "PermissionEntity",
@@ -12,4 +13,5 @@ __all__ = [
     "RoleEntity",
     "UserEntity",
     "WebsiteEntity",
+    "IntegrationEntity",
 ]
